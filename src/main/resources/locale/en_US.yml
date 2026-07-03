@@ -1,0 +1,38 @@
+error:
+  no-permission: "&cYou do not have permission to use NeoModeration."
+help:
+  title: "&bNeoModeration"
+  status: "&7/{label} status"
+  reload: "&7/{label} reload"
+  config-get: "&7/{label} config get <path>"
+  config-set: "&7/{label} config set <path> <value>"
+  config-clear-key: "&7/{label} config clear moderation.api.apiKey"
+  rules: "&7/{label} rules <list|add-word|remove-word|add-url|remove-url>"
+  setup: "&eSetup: /{label} config set moderation.api.apiKey YOUR_KEY"
+status:
+  title: "&bNeoModeration status"
+  enabled: "&7Enabled: &f{value}"
+  api-key: "&7API key configured: &f{value}"
+  endpoint: "&7Endpoint: &f{value}"
+  offline: "&7Offline rules: &f{value} &8({words} words, {urls} URL rules)"
+  circuit: "&7Circuit open: &f{value}"
+reload:
+  done: "&aNeoModeration config reloaded."
+config:
+  usage: "&cUsage: /{label} config get <path>, set <path> <value>, or clear moderation.api.apiKey"
+  set-usage: "&cUsage: /{label} config set <path> <value>"
+  not-editable: "&cPath is not editable: {path}"
+  not-scalar: "&cPath is not a scalar value: {path}"
+  value: "&7{path}: &f{value}"
+  clear-key-only: "&cOnly moderation.api.apiKey can be cleared."
+  cleared: "&aCleared {path}."
+  unknown-operation: "&cUnknown config operation: {operation}"
+  updated: "&aUpdated {path} to {value}"
+  invalid-value: "&cInvalid value for {path}: {value}"
+rules:
+  usage: "&cUsage: /{label} rules <list|add-word|remove-word|add-url|remove-url> [value]"
+  list-words: "&7Banned words: &f{values}"
+  list-urls: "&7Banned URLs: &f{values}"
+  value-required: "&cA rule value is required."
+  updated: "&aUpdated {path}: {value}"
+  unchanged: "&eNo change for {path}: {value}"

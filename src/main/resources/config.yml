@@ -1,5 +1,17 @@
+locale: "en_US"
+
 moderation:
   enabled: false
+  offline:
+    enabled: true
+    blockAnyUrl: false
+    normalizeLeetspeak: true
+    bannedWords:
+      - "badword"
+      - "scam"
+    bannedUrls:
+      - "grabify.link"
+      - "discord.gg/free"
   api:
     endpoint: "https://api.neomechanical.com/v1/events"
     apiKey: ""

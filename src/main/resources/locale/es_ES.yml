@@ -1,0 +1,38 @@
+error:
+  no-permission: "&cNo tienes permiso para usar NeoModeration."
+help:
+  title: "&bNeoModeration"
+  status: "&7/{label} status"
+  reload: "&7/{label} reload"
+  config-get: "&7/{label} config get <ruta>"
+  config-set: "&7/{label} config set <ruta> <valor>"
+  config-clear-key: "&7/{label} config clear moderation.api.apiKey"
+  rules: "&7/{label} rules <list|add-word|remove-word|add-url|remove-url>"
+  setup: "&eConfiguración: /{label} config set moderation.api.apiKey TU_CLAVE"
+status:
+  title: "&bEstado de NeoModeration"
+  enabled: "&7Activado: &f{value}"
+  api-key: "&7Clave API configurada: &f{value}"
+  endpoint: "&7Endpoint: &f{value}"
+  offline: "&7Reglas offline: &f{value} &8({words} palabras, {urls} reglas URL)"
+  circuit: "&7Circuito abierto: &f{value}"
+reload:
+  done: "&aConfiguración de NeoModeration recargada."
+config:
+  usage: "&cUso: /{label} config get <ruta>, set <ruta> <valor>, o clear moderation.api.apiKey"
+  set-usage: "&cUso: /{label} config set <ruta> <valor>"
+  not-editable: "&cLa ruta no se puede editar: {path}"
+  not-scalar: "&cLa ruta no es un valor simple: {path}"
+  value: "&7{path}: &f{value}"
+  clear-key-only: "&cSolo moderation.api.apiKey se puede borrar."
+  cleared: "&aBorrado {path}."
+  unknown-operation: "&cOperación de configuración desconocida: {operation}"
+  updated: "&aActualizado {path} a {value}"
+  invalid-value: "&cValor inválido para {path}: {value}"
+rules:
+  usage: "&cUso: /{label} rules <list|add-word|remove-word|add-url|remove-url> [valor]"
+  list-words: "&7Palabras prohibidas: &f{values}"
+  list-urls: "&7URLs prohibidas: &f{values}"
+  value-required: "&cSe requiere un valor de regla."
+  updated: "&aActualizado {path}: {value}"
+  unchanged: "&eSin cambios para {path}: {value}"

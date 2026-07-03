@@ -9,6 +9,7 @@ import java.util.Map;
 public record ModerationSettings(
         boolean enabled,
         ModerationApiSettings api,
+        OfflineModerationSettings offline,
         ModerationCategorySettings categories,
         List<ModerationAction> actions,
         boolean scanAsyncChat,
@@ -18,6 +19,7 @@ public record ModerationSettings(
         return new ModerationSettings(
                 config.getBoolean("moderation.enabled", false),
                 ModerationApiSettings.from(config),
+                OfflineModerationSettings.from(config),
                 ModerationCategorySettings.from(config),
                 loadActions(config),
                 config.getBoolean("moderation.chat.scanAsyncChat", true),

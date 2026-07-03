@@ -4,6 +4,7 @@ import com.neomechanical.neomoderation.commands.NeoModerationCommand;
 import com.neomechanical.neomoderation.config.ModerationSettings;
 import com.neomechanical.neomoderation.listener.ChatModerationListener;
 import com.neomechanical.neomoderation.listener.PaperAsyncChatBridge;
+import com.neomechanical.neomoderation.messages.MessageService;
 import com.neomechanical.neomoderation.moderation.ChatModerationActionExecutor;
 import com.neomechanical.neomoderation.moderation.ChatModerationCoordinator;
 import com.neomechanical.neomoderation.moderation.ChatModerationProcessor;
@@ -13,6 +14,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class NeoModerationPlugin extends JavaPlugin {
     private ChatModerationCoordinator coordinator;
     private ModerationSettings settings;
+    private MessageService messages;
 
     @Override
     public void onEnable() {
@@ -48,6 +50,7 @@ public final class NeoModerationPlugin extends JavaPlugin {
     public void reloadModerationConfig() {
         reloadConfig();
         settings = ModerationSettings.from(getConfig());
+        messages = MessageService.load(this, getConfig().getString("locale", "en_US"));
         if (coordinator != null) {
             coordinator.resetCircuit();
         }
@@ -59,5 +62,9 @@ public final class NeoModerationPlugin extends JavaPlugin {
 
     public ChatModerationCoordinator coordinator() {
         return coordinator;
+    }
+
+    public MessageService messages() {
+        return messages;
     }
 }

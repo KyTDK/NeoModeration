@@ -27,6 +27,13 @@ public final class ChatModerationProcessor {
         if (player.hasPermission("neomoderation.bypass")) {
             return false;
         }
+
+        OfflineModerationResult offlineResult = OfflineModerationEngine.evaluate(message, settings.offline());
+        if (offlineResult.flagged()) {
+            executeActions(player, settings, offlineResult.reason());
+            return true;
+        }
+
         if (settings.api().apiKey().isBlank()) {
             return false;
         }
@@ -36,10 +43,16 @@ public final class ChatModerationProcessor {
             return false;
         }
 
+        executeActions(player, settings, "platform");
+        return true;
+    }
+
+    private void executeActions(Player player, ModerationSettings settings, String reason) {
         plugin.getServer().getScheduler().runTask(plugin, () -> {
             actionExecutor.execute(player, settings.actions());
-            plugin.getLogger().info("Flagged chat from " + player.getName() + " and executed " + settings.actions().size() + " action(s).");
+            plugin.getLogger().info("Flagged chat from " + player.getName()
+                    + " via " + reason
+                    + " and executed " + settings.actions().size() + " action(s).");
         });
-        return true;
     }
 }
