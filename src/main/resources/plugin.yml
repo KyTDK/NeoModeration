@@ -1,0 +1,21 @@
+name: NeoModeration
+version: '${project.version}'
+main: com.neomechanical.neomoderation.NeoModerationPlugin
+load: POSTWORLD
+authors:
+  - NeoDevs
+prefix: NeoModeration
+api-version: 1.13
+softdepend: [ LuckPerms ]
+commands:
+  neomod:
+    description: Manage NeoModeration.
+    usage: /neomod help
+    aliases: [ neomoderation, nmod ]
+permissions:
+  neomoderation.admin:
+    description: Allows use of NeoModeration admin commands.
+    default: op
+  neomoderation.bypass:
+    description: Skips moderation checks.
+    default: false

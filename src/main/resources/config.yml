@@ -1,0 +1,24 @@
+moderation:
+  enabled: false
+  api:
+    endpoint: "https://api.neomechanical.com/v1/events"
+    apiKey: ""
+    connectTimeoutMs: 3000
+    readTimeoutMs: 3000
+  categories:
+    sexual: true
+    hate: true
+    harassment: true
+    violence: true
+    scam: true
+    spam: true
+    illicit: true
+    selfHarm: true
+  actions:
+    - type: CLEAR_CHAT
+    - type: MUTE
+      durationSeconds: 300
+      reason: "Inappropriate chat message"
+  chat:
+    scanAsyncChat: true
+    failOpen: true

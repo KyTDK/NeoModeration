@@ -1,0 +1,26 @@
+name: Commit Message Policy
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check-commit-messages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check commit messages
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            range="${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+          else
+            range="${{ github.event.before }}..${{ github.sha }}"
+            if [[ "${{ github.event.before }}" == "0000000000000000000000000000000000000000" ]]; then
+              range="${{ github.sha }}"
+            fi
+          fi
+          git log --format=%B "$range" | scripts/check-commit-message-policy.sh /dev/stdin
