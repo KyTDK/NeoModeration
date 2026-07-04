@@ -9,16 +9,17 @@ import org.bukkit.entity.Player;
 import java.util.List;
 
 public final class ChatModerationActionExecutor {
-    private static final String DEFAULT_MUTE_COMMAND = "mute %PLAYER% %DURATION%s %REASON%";
     private static final String DEFAULT_TIMEOUT_COMMAND = "tempmute %PLAYER% %DURATION%s %REASON%";
     private static final String DEFAULT_GIVE_ROLE_COMMAND = "lp user %PLAYER% parent add %ROLE%";
     private static final String DEFAULT_TAKE_ROLE_COMMAND = "lp user %PLAYER% parent remove %ROLE%";
     private static final String DEFAULT_TEMP_ROLE_COMMAND = "lp user %PLAYER% parent addtemp %ROLE% %DURATION%s";
 
     private final String sourceName;
+    private final PlayerMuteService muteService;
 
-    public ChatModerationActionExecutor(String sourceName) {
+    public ChatModerationActionExecutor(String sourceName, PlayerMuteService muteService) {
         this.sourceName = sourceName;
+        this.muteService = muteService;
     }
 
     public void execute(Player player, List<ModerationAction> actions) {
@@ -32,7 +33,7 @@ public final class ChatModerationActionExecutor {
             case CLEAR_CHAT -> clearChat();
             case KICK -> player.kickPlayer(action.reason());
             case BAN -> banPlayer(player, action.reason());
-            case MUTE -> runCommand(player, action, fallbackOr(action.command(), DEFAULT_MUTE_COMMAND));
+            case MUTE -> muteService.mute(player.getUniqueId(), action.durationSeconds());
             case TIMEOUT -> runCommand(player, action, fallbackOr(action.command(), DEFAULT_TIMEOUT_COMMAND));
             case GIVE_ROLE -> runCommand(player, action, fallbackOr(action.command(), DEFAULT_GIVE_ROLE_COMMAND));
             case TAKE_ROLE -> runCommand(player, action, fallbackOr(action.command(), DEFAULT_TAKE_ROLE_COMMAND));

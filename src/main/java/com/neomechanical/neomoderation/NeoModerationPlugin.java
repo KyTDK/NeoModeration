@@ -8,6 +8,7 @@ import com.neomechanical.neomoderation.messages.MessageService;
 import com.neomechanical.neomoderation.moderation.ChatModerationActionExecutor;
 import com.neomechanical.neomoderation.moderation.ChatModerationCoordinator;
 import com.neomechanical.neomoderation.moderation.ChatModerationProcessor;
+import com.neomechanical.neomoderation.moderation.PlayerMuteService;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -15,16 +16,19 @@ public final class NeoModerationPlugin extends JavaPlugin {
     private ChatModerationCoordinator coordinator;
     private ModerationSettings settings;
     private MessageService messages;
+    private PlayerMuteService muteService;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
         reloadModerationConfig();
+        muteService = new PlayerMuteService();
         coordinator = new ChatModerationCoordinator(getLogger());
         ChatModerationProcessor processor = new ChatModerationProcessor(
                 this,
                 coordinator,
-                new ChatModerationActionExecutor("NeoModeration")
+                new ChatModerationActionExecutor("NeoModeration", muteService),
+                muteService
         );
         getServer().getPluginManager().registerEvents(
                 new ChatModerationListener(this, processor),
@@ -66,5 +70,9 @@ public final class NeoModerationPlugin extends JavaPlugin {
 
     public MessageService messages() {
         return messages;
+    }
+
+    public PlayerMuteService muteService() {
+        return muteService;
     }
 }

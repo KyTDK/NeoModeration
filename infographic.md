@@ -1,13 +1,6 @@
-# NeoModeration
+# NeoModeration 1.1.0
 
 **Chat safety for Minecraft** · Local rules · Optional cloud · One-command setup
-
-## What it does
-
-- Blocks banned words and links on your server (no account needed)
-- Optional cloud scan for smarter moderation
-- Mutes / clears chat when something is blocked
-- Keeps chat working if the cloud is down
 
 ## Setup (60 seconds)
 
@@ -21,19 +14,29 @@
 
 Get a key at https://platform.neomechanical.com → API keys → `events:write`
 
+## On detect
+
+```text
+/nmod action list
+/nmod action add clear
+/nmod action add mute 5m
+/nmod action add kick
+/nmod action add ban
+/nmod action remove mute
+/nmod action reset
+```
+
+Default: **clear** chat spam + **mute** 5 minutes (built-in).
+
 ## Commands
 
 ```text
-/nmod setup <apiKey>     turn on cloud moderation
-/nmod on | off           enable / disable
-/nmod key <apiKey>       save key
-/nmod key clear          remove key
-/nmod word add <word>    block a word
-/nmod word remove <word>
-/nmod word list
-/nmod url add <link>     block a link
-/nmod url remove <link>
-/nmod url list
+/nmod setup <apiKey>
+/nmod on | off
+/nmod key <apiKey> | clear
+/nmod action list | add | remove | reset
+/nmod word add | remove | list
+/nmod url add | remove | list
 /nmod status
 /nmod reload
 ```
@@ -44,8 +47,3 @@ Get a key at https://platform.neomechanical.com → API keys → `events:write`
 |------------|-----|
 | `neomoderation.admin` | Ops (manage plugin) |
 | `neomoderation.bypass` | Staff who skip checks |
-
-## Default actions
-
-When chat is blocked: clear the message, mute for 5 minutes.
-Change actions in `plugins/NeoModeration/config.yml` if you need more.

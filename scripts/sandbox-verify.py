@@ -24,7 +24,7 @@ CONTAINER = "np-test-sandbox"
 LOG = Path("/var/lib/pterodactyl/volumes/np-test-sandbox/logs/latest.log")
 CONFIG = Path("/var/lib/pterodactyl/volumes/np-test-sandbox/plugins/NeoModeration/config.yml")
 PROPS = Path("/var/lib/pterodactyl/volumes/np-test-sandbox/server.properties")
-JAR = Path("/var/lib/pterodactyl/volumes/np-test-sandbox/plugins/NeoModeration-1.0.0.jar")
+JAR = Path("/var/lib/pterodactyl/volumes/np-test-sandbox/plugins/NeoModeration-1.1.0.jar")
 OUT = Path("/tmp/neomod-sandbox-verify.json")
 HELP_PLAYER = "FriedRizzler"
 CHAT_PLAYER = "NeoModChat"
@@ -137,7 +137,7 @@ const result = { sawHelp: false, sawSetup: false, errors: [] };
 const bot = mineflayer.createBot({ host: '127.0.0.1', port: 25566, username: 'FriedRizzler' });
 bot.once('spawn', () => setTimeout(() => bot.chat('/neomod help'), 1500));
 bot.on('messagestr', (message) => {
-  if (/NeoModeration|\\/nmod setup/i.test(message)) result.sawHelp = true;
+  if (/NeoModeration|\\/nmod setup|action list/i.test(message)) result.sawHelp = true;
   if (/setup <apiKey>|cloud moderation/i.test(message)) result.sawSetup = true;
 });
 setTimeout(() => {
@@ -226,8 +226,8 @@ moderation:
 
 def test_commands() -> tuple[bool, str]:
     cases = [
-        ("neomod help", ("setup", "word", "url")),
-        ("neomod status", ("status", "cloud", "local rules")),
+        ("neomod help", ("setup", "word", "url", "action")),
+        ("neomod status", ("status", "cloud", "local rules", "on detect")),
         ("neomod off", ("off",)),
         ("neomod on", ("on",)),
         ("neomod reload", ("reloaded",)),
@@ -238,6 +238,26 @@ def test_commands() -> tuple[bool, str]:
         if not all(part.lower() in response.lower() for part in expected):
             failures.append(f"{command}: {response.strip()}")
     return not failures, "; ".join(failures) if failures else "help/status/on/off/reload OK"
+
+
+def test_action_commands() -> tuple[bool, str]:
+    reset_ok = "reset" in rcon_command("neomod action reset").lower()
+    list_default = rcon_command("neomod action list").lower()
+    default_ok = "clear" in list_default and "mute 5m" in list_default
+    add_kick = "kick" in rcon_command("neomod action add kick").lower()
+    add_ban = "ban" in rcon_command("neomod action add ban").lower()
+    add_mute = "mute 10m" in rcon_command("neomod action add mute 10m").lower()
+    listed = rcon_command("neomod action list").lower()
+    list_ok = all(part in listed for part in ("clear", "mute 10m", "kick", "ban"))
+    remove_ban = "removed action" in rcon_command("neomod action remove ban").lower()
+    status = rcon_command("neomod status").lower()
+    status_ok = "on detect" in status and "kick" in status and "ban" not in status.split("on detect", 1)[-1]
+    rcon_command("neomod action reset")
+    ok = reset_ok and default_ok and add_kick and add_ban and add_mute and list_ok and remove_ban and status_ok
+    return ok, (
+        f"reset={reset_ok}; default={default_ok}; kick={add_kick}; ban={add_ban}; "
+        f"mute={add_mute}; list={list_ok}; remove={remove_ban}; status={status_ok}"
+    )
 
 
 def test_setup_and_key_commands() -> tuple[bool, str]:
@@ -424,17 +444,19 @@ def main() -> int:
     ensure_bot()
 
     jar_ok = JAR.exists()
-    report.add("NeoModeration-1.0.0.jar present", jar_ok, f"{JAR.stat().st_size if jar_ok else 0} bytes")
+    report.add("NeoModeration-1.1.0.jar present", jar_ok, f"{JAR.stat().st_size if jar_ok else 0} bytes")
     plugins_output = rcon_command("plugins")
     version_output = rcon_command("version NeoModeration")
     report.add(
-        "Plugin loaded v1.0.0",
-        "NeoModeration" in plugins_output and "1.0.0" in version_output,
+        "Plugin loaded v1.1.0",
+        "NeoModeration" in plugins_output and "1.1.0" in version_output,
         version_output.strip()[:180],
     )
 
     ok, detail = test_commands()
     report.add("Core /nmod commands", ok, detail)
+    ok, detail = test_action_commands()
+    report.add("/nmod action commands", ok, detail)
     ok, detail = test_setup_and_key_commands()
     report.add("/nmod setup + key commands", ok, detail)
     ok, detail = test_word_and_url_commands()

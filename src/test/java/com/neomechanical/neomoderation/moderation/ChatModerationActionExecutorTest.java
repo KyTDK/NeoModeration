@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -24,17 +25,18 @@ import static org.mockito.Mockito.when;
 
 class ChatModerationActionExecutorTest {
     @Test
-    void dispatchesAllCommandBackedActionsWithHydratedPlaceholders() {
+    void usesBuiltInMuteAndDispatchesAdvancedCommands() {
         Player player = mockPlayer();
         Server server = mock(Server.class);
         ConsoleCommandSender console = mock(ConsoleCommandSender.class);
         when(server.getConsoleSender()).thenReturn(console);
+        PlayerMuteService muteService = new PlayerMuteService();
 
         try (MockedStatic<Bukkit> bukkit = Mockito.mockStatic(Bukkit.class)) {
             bukkit.when(Bukkit::getServer).thenReturn(server);
             bukkit.when(() -> Bukkit.dispatchCommand(any(ConsoleCommandSender.class), any(String.class))).thenReturn(true);
 
-            new ChatModerationActionExecutor("NeoModeration").execute(player, List.of(
+            new ChatModerationActionExecutor("NeoModeration", muteService).execute(player, List.of(
                     action("MUTE", Map.of("durationSeconds", 30, "reason", "bad chat")),
                     action("TIMEOUT", Map.of("durationSeconds", 60, "reason", "timeout")),
                     action("GIVE_ROLE", Map.of("role", "trusted")),
@@ -43,7 +45,7 @@ class ChatModerationActionExecutorTest {
                     action("COMMAND", Map.of("command", "/warn %PLAYER% %UUID% %REASON%", "reason", "custom reason"))
             ));
 
-            bukkit.verify(() -> Bukkit.dispatchCommand(console, "mute TestPlayer 30s bad chat"));
+            assertTrue(muteService.isMuted(player.getUniqueId()));
             bukkit.verify(() -> Bukkit.dispatchCommand(console, "tempmute TestPlayer 60s timeout"));
             bukkit.verify(() -> Bukkit.dispatchCommand(console, "lp user TestPlayer parent add trusted"));
             bukkit.verify(() -> Bukkit.dispatchCommand(console, "lp user TestPlayer parent remove member"));
@@ -56,11 +58,12 @@ class ChatModerationActionExecutorTest {
     void executesKickBanAndClearChatActions() {
         Player player = mockPlayer();
         BanList banList = mock(BanList.class);
+        PlayerMuteService muteService = new PlayerMuteService();
 
         try (MockedStatic<Bukkit> bukkit = Mockito.mockStatic(Bukkit.class)) {
             bukkit.when(() -> Bukkit.getBanList(BanList.Type.NAME)).thenReturn(banList);
 
-            new ChatModerationActionExecutor("NeoModeration").execute(player, List.of(
+            new ChatModerationActionExecutor("NeoModeration", muteService).execute(player, List.of(
                     action("CLEAR_CHAT", Map.of()),
                     action("KICK", Map.of("reason", "kick reason")),
                     action("BAN", Map.of("reason", "ban reason"))

@@ -1,0 +1,32 @@
+package com.neomechanical.neomoderation.commands;
+
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+class DurationParserTest {
+    @Test
+    void parsesCommonDurations() {
+        assertEquals(30, DurationParser.parseSeconds("30", 300));
+        assertEquals(30, DurationParser.parseSeconds("30s", 300));
+        assertEquals(300, DurationParser.parseSeconds("5m", 60));
+        assertEquals(3600, DurationParser.parseSeconds("1h", 60));
+        assertEquals(86400, DurationParser.parseSeconds("1d", 60));
+        assertEquals(300, DurationParser.parseSeconds("", 300));
+    }
+
+    @Test
+    void formatsDurations() {
+        assertEquals("30s", DurationParser.format(30));
+        assertEquals("5m", DurationParser.format(300));
+        assertEquals("1h", DurationParser.format(3600));
+        assertEquals("1d", DurationParser.format(86400));
+    }
+
+    @Test
+    void rejectsInvalidDurations() {
+        assertThrows(IllegalArgumentException.class, () -> DurationParser.parseSeconds("nope", 300));
+        assertThrows(IllegalArgumentException.class, () -> DurationParser.parseSeconds("0m", 300));
+    }
+}

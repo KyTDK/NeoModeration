@@ -49,9 +49,6 @@ public final class MessageService {
     }
 
     private static void ensureLocale(JavaPlugin plugin, String locale) {
-        File target = new File(plugin.getDataFolder(), "locale/" + locale + ".yml");
-        if (!target.exists()) {
-            plugin.saveResource("locale/" + locale + ".yml", false);
-        }
+        plugin.saveResource("locale/" + locale + ".yml", true);
     }
 }

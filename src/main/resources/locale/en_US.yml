@@ -5,6 +5,7 @@ help:
   setup: "&e/{label} setup <apiKey> &7— turn on cloud moderation"
   on-off: "&7/{label} on|off"
   key: "&7/{label} key <apiKey>|clear"
+  action: "&7/{label} action list|add|remove|reset"
   word: "&7/{label} word add|remove|list [word]"
   url: "&7/{label} url add|remove|list [link]"
   status: "&7/{label} status"
@@ -24,6 +25,7 @@ status:
   enabled: "&7Status: &f{value}"
   cloud: "&7Cloud: &f{value}"
   rules: "&7Local rules: &f{words} words, {urls} links"
+  actions: "&7On detect: &f{value}"
 reload:
   done: "&aReloaded."
 rules:
@@ -32,3 +34,18 @@ rules:
   value-required: "&cAdd a word or link."
   updated: "&a{action} {kind}: &f{value}"
   unchanged: "&eNo change for {kind}: &f{value}"
+action:
+  usage: "&cUsage: /{label} action list|add|remove|reset"
+  add-usage: "&cUsage: /{label} action add <clear|mute|kick|ban> [duration]"
+  remove-usage: "&cUsage: /{label} action remove <clear|mute|kick|ban>"
+  list-title: "&bWhen chat is blocked:"
+  list-item: "&7{index}. &f{value}"
+  empty: "&eNo actions configured. Chat is blocked but nothing else happens."
+  added: "&aOn detect: &f{value}"
+  removed: "&eRemoved action: &f{value}"
+  missing: "&cThat action is not configured: {value}"
+  unknown: "&cUnknown action. Use clear, mute, kick, or ban."
+  bad-duration: "&cBad duration: {value}. Try 30s, 5m, or 1h."
+  reset: "&aActions reset to clear + mute 5m."
+mute:
+  blocked: "&cYou are muted for &f{duration}&c."

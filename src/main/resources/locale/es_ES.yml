@@ -5,6 +5,7 @@ help:
   setup: "&e/{label} setup <apiKey> &7— activar moderación en la nube"
   on-off: "&7/{label} on|off"
   key: "&7/{label} key <apiKey>|clear"
+  action: "&7/{label} action list|add|remove|reset"
   word: "&7/{label} word add|remove|list [palabra]"
   url: "&7/{label} url add|remove|list [enlace]"
   status: "&7/{label} status"
@@ -24,6 +25,7 @@ status:
   enabled: "&7Estado: &f{value}"
   cloud: "&7Nube: &f{value}"
   rules: "&7Reglas locales: &f{words} palabras, {urls} enlaces"
+  actions: "&7Al detectar: &f{value}"
 reload:
   done: "&aRecargado."
 rules:
@@ -32,3 +34,18 @@ rules:
   value-required: "&cAñade una palabra o enlace."
   updated: "&a{action} {kind}: &f{value}"
   unchanged: "&eSin cambios para {kind}: &f{value}"
+action:
+  usage: "&cUso: /{label} action list|add|remove|reset"
+  add-usage: "&cUso: /{label} action add <clear|mute|kick|ban> [duración]"
+  remove-usage: "&cUso: /{label} action remove <clear|mute|kick|ban>"
+  list-title: "&bCuando se bloquea el chat:"
+  list-item: "&7{index}. &f{value}"
+  empty: "&eNo hay acciones. El chat se bloquea pero no pasa nada más."
+  added: "&aAl detectar: &f{value}"
+  removed: "&eAcción eliminada: &f{value}"
+  missing: "&cEsa acción no está configurada: {value}"
+  unknown: "&cAcción desconocida. Usa clear, mute, kick o ban."
+  bad-duration: "&cDuración inválida: {value}. Prueba 30s, 5m o 1h."
+  reset: "&aAcciones restablecidas a clear + mute 5m."
+mute:
+  blocked: "&cEstás silenciado por &f{duration}&c."
