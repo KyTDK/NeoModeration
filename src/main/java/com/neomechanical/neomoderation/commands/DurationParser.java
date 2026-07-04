@@ -18,20 +18,30 @@ public final class DurationParser {
         if (!matcher.matches()) {
             throw new IllegalArgumentException("Invalid duration: " + raw);
         }
-        int amount = Integer.parseInt(matcher.group(1));
+        long amount = Long.parseLong(matcher.group(1));
         if (amount <= 0) {
             throw new IllegalArgumentException("Duration must be positive");
         }
         String unit = matcher.group(2);
-        if (unit == null || unit.equals("s")) {
-            return amount;
+        long seconds;
+        try {
+            if (unit == null || unit.equals("s")) {
+                seconds = amount;
+            } else {
+                seconds = switch (unit) {
+                    case "m" -> Math.multiplyExact(amount, 60L);
+                    case "h" -> Math.multiplyExact(amount, 3600L);
+                    case "d" -> Math.multiplyExact(amount, 86400L);
+                    default -> throw new IllegalArgumentException("Invalid duration: " + raw);
+                };
+            }
+        } catch (ArithmeticException overflow) {
+            throw new IllegalArgumentException("Duration too long: " + raw);
         }
-        return switch (unit) {
-            case "m" -> amount * 60;
-            case "h" -> amount * 3600;
-            case "d" -> amount * 86400;
-            default -> throw new IllegalArgumentException("Invalid duration: " + raw);
-        };
+        if (seconds > InputLimits.MAX_MUTE_SECONDS) {
+            throw new IllegalArgumentException("Duration too long: " + raw);
+        }
+        return (int) seconds;
     }
 
     public static String format(int seconds) {

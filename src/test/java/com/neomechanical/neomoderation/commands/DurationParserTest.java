@@ -25,8 +25,12 @@ class DurationParserTest {
     }
 
     @Test
-    void rejectsInvalidDurations() {
+    void rejectsInvalidAndOverflowDurations() {
         assertThrows(IllegalArgumentException.class, () -> DurationParser.parseSeconds("nope", 300));
         assertThrows(IllegalArgumentException.class, () -> DurationParser.parseSeconds("0m", 300));
+        assertThrows(IllegalArgumentException.class, () -> DurationParser.parseSeconds("999999999d", 300));
+        assertThrows(IllegalArgumentException.class, () -> DurationParser.parseSeconds("31d", 300));
+        assertThrows(IllegalArgumentException.class, () -> DurationParser.parseSeconds("106751991167301d", 300));
+        assertEquals(InputLimits.MAX_MUTE_SECONDS, DurationParser.parseSeconds("30d", 300));
     }
 }

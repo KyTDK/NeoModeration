@@ -1,5 +1,8 @@
 package com.neomechanical.neomoderation.config;
 
+import java.util.Locale;
+import java.util.Optional;
+
 public enum ModerationActionType {
     CLEAR_CHAT,
     MUTE,
@@ -11,14 +14,22 @@ public enum ModerationActionType {
     TEMP_ROLE,
     COMMAND;
 
-    public static ModerationActionType fromString(String value) {
+    public static Optional<ModerationActionType> parse(String value) {
         if (value == null || value.trim().isEmpty()) {
-            return COMMAND;
+            return Optional.empty();
         }
         try {
-            return ModerationActionType.valueOf(value.trim().toUpperCase());
+            return Optional.of(ModerationActionType.valueOf(value.trim().toUpperCase(Locale.ROOT)));
         } catch (IllegalArgumentException ex) {
-            return COMMAND;
+            return Optional.empty();
         }
+    }
+
+    /**
+     * @deprecated Prefer {@link #parse(String)} so invalid types are not silently coerced.
+     */
+    @Deprecated
+    public static ModerationActionType fromString(String value) {
+        return parse(value).orElse(COMMAND);
     }
 }

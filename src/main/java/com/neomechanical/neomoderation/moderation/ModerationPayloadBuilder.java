@@ -4,19 +4,38 @@ import com.neomechanical.neomoderation.config.ModerationCategorySettings;
 
 import java.util.Map;
 
-public final class ChatModerationPayloadBuilder {
+public final class ModerationPayloadBuilder {
     private static final String ADAPTER = "neomoderation";
     private static final String SOURCE = "minecraft";
     private static final double ENABLED_THRESHOLD = 0.7D;
     private static final double DISABLED_THRESHOLD = 1.0D;
 
-    private ChatModerationPayloadBuilder() {
+    private ModerationPayloadBuilder() {
     }
 
-    public static String build(
+    public static String buildText(
             String playerName,
             String playerUuid,
             String message,
+            ModerationCategorySettings categorySettings
+    ) {
+        return buildPayload(playerName, playerUuid, message, null, categorySettings);
+    }
+
+    public static String buildImage(
+            String playerName,
+            String playerUuid,
+            String base64Image,
+            ModerationCategorySettings categorySettings
+    ) {
+        return buildPayload(playerName, playerUuid, "", base64Image, categorySettings);
+    }
+
+    private static String buildPayload(
+            String playerName,
+            String playerUuid,
+            String text,
+            String base64Image,
             ModerationCategorySettings categorySettings
     ) {
         StringBuilder thresholds = new StringBuilder();
@@ -33,12 +52,17 @@ public final class ChatModerationPayloadBuilder {
         }
 
         String escapedPlayerName = escapeJsonString(playerName);
+        String eventType = base64Image != null ? "map_art" : "chat_message";
+        String attachmentsStr = base64Image != null
+                ? "[{\"kind\":\"image\",\"inlineDataBase64\":\"" + base64Image + "\"}]"
+                : "[]";
+
         return "{"
                 + "\"mode\":\"sync\","
                 + "\"event\":{"
                 + "\"source\":\"" + SOURCE + "\","
                 + "\"adapter\":\"" + ADAPTER + "\","
-                + "\"eventType\":\"chat_message\","
+                + "\"eventType\":\"" + eventType + "\","
                 + "\"actor\":{"
                 + "\"externalId\":\"" + escapeJsonString(playerUuid) + "\","
                 + "\"username\":\"" + escapedPlayerName + "\","
@@ -49,8 +73,8 @@ public final class ChatModerationPayloadBuilder {
                 + "\"tags\":[\"chat\"]"
                 + "},"
                 + "\"content\":{"
-                + "\"text\":\"" + escapeJsonString(message) + "\","
-                + "\"attachments\":[]"
+                + "\"text\":\"" + escapeJsonString(text) + "\","
+                + "\"attachments\":" + attachmentsStr
                 + "},"
                 + "\"metadata\":{"
                 + "\"platformPolicy\":{"

@@ -6,7 +6,7 @@
 
     <groupId>com.neomechanical</groupId>
     <artifactId>NeoModeration</artifactId>
-    <version>1.1.0</version>
+    <version>1.2.0</version>
     <packaging>jar</packaging>
 
     <name>NeoModeration</name>
@@ -124,6 +124,7 @@
                         <lib>${java.home}/jmods/java.base.jmod</lib>
                         <lib>${java.home}/jmods/java.logging.jmod</lib>
                         <lib>${java.home}/jmods/java.net.http.jmod</lib>
+                        <lib>${java.home}/jmods/java.desktop.jmod</lib>
                     </libs>
                 </configuration>
             </plugin>

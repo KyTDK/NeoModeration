@@ -1,10 +1,24 @@
+# ===========================================================================
+#  NeoModeration
+#  Chat + map-art moderation for Minecraft.
+#
+#  Most settings can also be changed in-game with /nmod (no restart needed).
+#  Run "/nmod status" any time to see what is currently active.
+# ===========================================================================
+
+# Language file to use from the /locale folder (en_US, es_ES, or your own).
 locale: "en_US"
 
 moderation:
+  # Master switch. When false, NeoModeration does nothing.
   enabled: true
+
+  # ---- Local rules (no API key required, run instantly) -------------------
   offline:
     enabled: true
+    # Block ANY url, not just the ones listed in bannedUrls.
     blockAnyUrl: false
+    # Treat "b4dw0rd" style spellings as their plain-text equivalent.
     normalizeLeetspeak: true
     bannedWords:
       - "badword"
@@ -12,11 +26,18 @@ moderation:
     bannedUrls:
       - "grabify.link"
       - "discord.gg/free"
+
+  # ---- Cloud moderation (requires a NeoMechanical API key) -----------------
+  # Create a key at https://platform.neomechanical.com (scope: events:write),
+  # then run:  /nmod setup <apiKey>
   api:
     endpoint: "https://api.neomechanical.com/v1/events"
     apiKey: ""
     connectTimeoutMs: 3000
     readTimeoutMs: 3000
+
+  # Which content categories the cloud should flag. Turn off any you don't
+  # want enforced. Ignored when no API key is set.
   categories:
     sexual: true
     hate: true
@@ -26,11 +47,35 @@ moderation:
     spam: true
     illicit: true
     selfHarm: true
+
+  # ---- Map art (filled maps) scanning -------------------------------------
+  # Scans filled maps for NSFW imagery via the cloud. Requires an API key.
+  # Results are cached per map so each map is only scanned once.
+  mapArt:
+    enabled: true
+    # Scan when a player scrolls to / holds a filled map.
+    scanOnHold: true
+    # Scan when a player right-clicks an item frame holding a map.
+    scanOnFrameInteract: true
+    # Remove the map from the player when it is flagged. When false the player
+    # is warned but keeps the item.
+    confiscate: true
+    # How many map results to remember (safe + flagged) before old ones drop.
+    cacheSize: 1000
+
+  # ---- What happens when a message/map is flagged -------------------------
+  # Order matters. Manage in-game with /nmod action ...
+  #   type: CLEAR_CHAT | MUTE | KICK | BAN
+  #   MUTE also takes durationSeconds and an optional reason.
   actions:
     - type: CLEAR_CHAT
     - type: MUTE
       durationSeconds: 300
       reason: "Inappropriate chat message"
+
   chat:
+    # Hook Paper's async chat event for lower-latency scanning.
     scanAsyncChat: true
+    # If the cloud is unreachable, let the message through (true) instead of
+    # blocking it (false).
     failOpen: true

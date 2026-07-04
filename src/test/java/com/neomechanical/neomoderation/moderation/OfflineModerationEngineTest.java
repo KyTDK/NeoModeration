@@ -58,5 +58,7 @@ class OfflineModerationEngineTest {
         assertTrue(OfflineModerationEngine.evaluate("discord.gg/free-nitro", fragmentOnly).flagged());
         assertFalse(OfflineModerationEngine.evaluate("example.com is fine here", fragmentOnly).flagged());
         assertTrue(OfflineModerationEngine.evaluate("example.com is blocked in any-url mode", anyUrl).flagged());
+        assertTrue(OfflineModerationEngine.evaluate("join 1.2.3.4 now", anyUrl).flagged());
     }
 }
+

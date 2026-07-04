@@ -9,6 +9,9 @@ public final class OfflineModerationEngine {
     private static final Pattern URL_PATTERN = Pattern.compile(
             "(?i)(?:https?://|www\\.)\\S+|\\b[a-z0-9.-]+\\.[a-z]{2,}(?:/\\S*)?"
     );
+    private static final Pattern IPV4_PATTERN = Pattern.compile(
+            "\\b(?:\\d{1,3}\\.){3}\\d{1,3}\\b"
+    );
 
     private OfflineModerationEngine() {
     }
@@ -26,7 +29,8 @@ public final class OfflineModerationEngine {
             }
         }
 
-        if (settings.blockAnyUrl() && URL_PATTERN.matcher(message).find()) {
+        if (settings.blockAnyUrl()
+                && (URL_PATTERN.matcher(message).find() || IPV4_PATTERN.matcher(message).find())) {
             return OfflineModerationResult.flagged("blocked_url:any");
         }
 

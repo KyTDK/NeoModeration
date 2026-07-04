@@ -22,7 +22,7 @@ public final class NeoModerationPlugin extends JavaPlugin {
     public void onEnable() {
         saveDefaultConfig();
         reloadModerationConfig();
-        muteService = new PlayerMuteService();
+        muteService = new PlayerMuteService(this);
         coordinator = new ChatModerationCoordinator(getLogger());
         ChatModerationProcessor processor = new ChatModerationProcessor(
                 this,
@@ -32,6 +32,10 @@ public final class NeoModerationPlugin extends JavaPlugin {
         );
         getServer().getPluginManager().registerEvents(
                 new ChatModerationListener(this, processor),
+                this
+        );
+        getServer().getPluginManager().registerEvents(
+                new com.neomechanical.neomoderation.listener.MapArtListener(this),
                 this
         );
         PaperAsyncChatBridge.registerIfAvailable(this, processor);
@@ -53,7 +57,7 @@ public final class NeoModerationPlugin extends JavaPlugin {
 
     public void reloadModerationConfig() {
         reloadConfig();
-        settings = ModerationSettings.from(getConfig());
+        settings = ModerationSettings.from(getConfig(), getLogger());
         messages = MessageService.load(this, getConfig().getString("locale", "en_US"));
         if (coordinator != null) {
             coordinator.resetCircuit();
@@ -74,5 +78,9 @@ public final class NeoModerationPlugin extends JavaPlugin {
 
     public PlayerMuteService muteService() {
         return muteService;
+    }
+
+    public com.neomechanical.neomoderation.moderation.ModerationApiClient apiClient() {
+        return coordinator.apiClient();
     }
 }

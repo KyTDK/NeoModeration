@@ -47,8 +47,11 @@ public final class ChatModerationActionExecutor {
     }
 
     private void clearChat() {
-        for (int i = 0; i < 90; i++) {
-            Bukkit.broadcastMessage(" ");
+        // Per-player messages avoid flooding the server console/log the way broadcastMessage does.
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            for (int i = 0; i < 20; i++) {
+                online.sendMessage(" ");
+            }
         }
     }
 

@@ -11,22 +11,41 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
-public final class ChatModerationApiClient {
+public final class ModerationApiClient {
     private static final HttpClient HTTP = HttpClient.newBuilder()
             .version(HttpClient.Version.HTTP_1_1)
             .build();
 
-    public ModerationApiResult moderate(
+    public ModerationApiResult moderateText(
             String playerName,
             String playerUuid,
             String message,
             ModerationApiSettings apiSettings,
             ModerationCategorySettings categorySettings
     ) {
+        String body = ModerationPayloadBuilder.buildText(playerName, playerUuid, message, categorySettings);
+        return sendRequest(body, apiSettings, categorySettings);
+    }
+
+    public ModerationApiResult moderateImage(
+            String playerName,
+            String playerUuid,
+            String base64Image,
+            ModerationApiSettings apiSettings,
+            ModerationCategorySettings categorySettings
+    ) {
+        String body = ModerationPayloadBuilder.buildImage(playerName, playerUuid, base64Image, categorySettings);
+        return sendRequest(body, apiSettings, categorySettings);
+    }
+
+    private ModerationApiResult sendRequest(
+            String body,
+            ModerationApiSettings apiSettings,
+            ModerationCategorySettings categorySettings
+    ) {
         long connectMs = Math.max(1, apiSettings.connectTimeoutMs());
         long readMs = Math.max(1, apiSettings.readTimeoutMs());
         long totalMs = Math.min(60_000L, connectMs + readMs + 500L);
-        String body = ChatModerationPayloadBuilder.build(playerName, playerUuid, message, categorySettings);
 
         HttpRequest request;
         try {

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import socket
 import struct
@@ -20,7 +21,7 @@ VERSIONS = [
     ("1.21.11", "ghcr.io/pterodactyl/yolks:java_21"),
 ]
 BASE_DIR = Path("/tmp/neomod-version-matrix")
-JAR = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("target/NeoModeration-1.0.0.jar")
+JAR = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("target/NeoModeration-1.2.0.jar")
 BOT_DIR = BASE_DIR / "mineflayer"
 RCON_PASSWORD = "neomod-version-local"
 USER_AGENT = "NeoModerationVerifier/1.0 (https://github.com/KyTDK/NeoModeration)"
@@ -123,8 +124,8 @@ const msg = process.argv[3];
 const bot = mineflayer.createBot({ host: '127.0.0.1', port, username: 'NeoMatrix' });
 bot.once('spawn', () => setTimeout(() => {
   bot.chat(msg);
-  setTimeout(() => bot.quit(), 1000);
-}, 1200));
+  setTimeout(() => bot.quit(), 2500);
+}, 2000));
 bot.on('end', () => process.exit(0));
 bot.on('error', (e) => { console.error(e.message); process.exit(1); });
 setTimeout(() => process.exit(2), 70000);
@@ -145,7 +146,7 @@ def run_container(version: str, image: str, index: int) -> Result:
     work.mkdir(parents=True, exist_ok=True)
     (work / "plugins").mkdir(exist_ok=True)
     download_server(version, server_jar)
-    shutil.copy2(JAR, work / "plugins/NeoModeration-1.0.0.jar")
+    shutil.copy2(JAR, work / "plugins" / JAR.name)
     (work / "eula.txt").write_text("eula=true\n", encoding="utf-8")
     (work / "server.properties").write_text(
         "\n".join(
@@ -205,16 +206,21 @@ def run_container(version: str, image: str, index: int) -> Result:
             tail = log_path.read_text(errors="replace")[-2000:] if log_path.exists() else "no log"
             return Result(version, False, "RCON not ready: " + tail)
 
+        def plain(text: str) -> str:
+            return re.sub(r"§.", "", text).lower()
+
         checks = {
             "plugin": "NeoModeration" in rcon("plugins", rcon_port),
-            "help": "setup" in rcon("neomod help", rcon_port).lower(),
-            "status": "status" in rcon("neomod status", rcon_port).lower(),
-            "rules": "matrixbad" in (
+            "help": "setup" in plain(rcon("neomod help", rcon_port)) and "action" in plain(rcon("neomod help", rcon_port)),
+            "status": "status" in plain(rcon("neomod status", rcon_port)),
+            "rules": "matrixbad" in plain(
                 rcon("neomod word add matrixbad", rcon_port)
                 + rcon("neomod word list", rcon_port)
-            ).lower(),
-            "on": "on" in rcon("neomod on", rcon_port).lower(),
-            "keyClear": "api key removed" in rcon("neomod key clear", rcon_port).lower(),
+            ),
+            "actions": "mute 5m" in plain(rcon("neomod action reset", rcon_port) + rcon("neomod action list", rcon_port)),
+            "kick": "kick" in plain(rcon("neomod action add kick", rcon_port)),
+            "on": "on" in plain(rcon("neomod on", rcon_port)),
+            "keyClear": "api key removed" in plain(rcon("neomod key clear", rcon_port)),
         }
         rcon("neomod reload", rcon_port)
         since = log_path.stat().st_size if log_path.exists() else 0

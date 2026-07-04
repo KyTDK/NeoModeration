@@ -30,7 +30,7 @@ class ChatModerationActionExecutorTest {
         Server server = mock(Server.class);
         ConsoleCommandSender console = mock(ConsoleCommandSender.class);
         when(server.getConsoleSender()).thenReturn(console);
-        PlayerMuteService muteService = new PlayerMuteService();
+        PlayerMuteService muteService = new PlayerMuteService((java.io.File) null);
 
         try (MockedStatic<Bukkit> bukkit = Mockito.mockStatic(Bukkit.class)) {
             bukkit.when(Bukkit::getServer).thenReturn(server);
@@ -58,10 +58,11 @@ class ChatModerationActionExecutorTest {
     void executesKickBanAndClearChatActions() {
         Player player = mockPlayer();
         BanList banList = mock(BanList.class);
-        PlayerMuteService muteService = new PlayerMuteService();
+        PlayerMuteService muteService = new PlayerMuteService((java.io.File) null);
 
         try (MockedStatic<Bukkit> bukkit = Mockito.mockStatic(Bukkit.class)) {
             bukkit.when(() -> Bukkit.getBanList(BanList.Type.NAME)).thenReturn(banList);
+            bukkit.when(Bukkit::getOnlinePlayers).thenReturn(List.of(player));
 
             new ChatModerationActionExecutor("NeoModeration", muteService).execute(player, List.of(
                     action("CLEAR_CHAT", Map.of()),
@@ -69,7 +70,7 @@ class ChatModerationActionExecutorTest {
                     action("BAN", Map.of("reason", "ban reason"))
             ));
 
-            bukkit.verify(() -> Bukkit.broadcastMessage(" "), times(90));
+            verify(player, times(20)).sendMessage(" ");
             verify(player).kickPlayer("kick reason");
             verify(banList).addBan(eq("TestPlayer"), eq("ban reason"), eq(null), eq("NeoModeration"));
             verify(player).kickPlayer("ban reason");

@@ -12,7 +12,7 @@ class ChatModerationPayloadBuilderTest {
     void escapesJsonControlCharacters() {
         assertEquals(
                 "line\\nnext\\ttab\\bback\\fform\\rcarriage\\u0001",
-                ChatModerationPayloadBuilder.escapeJsonString("line\nnext\ttab\bback\fform\rcarriage\u0001")
+                ModerationPayloadBuilder.escapeJsonString("line\nnext\ttab\bback\fform\rcarriage\u0001")
         );
     }
 
@@ -24,14 +24,14 @@ class ChatModerationPayloadBuilderTest {
         config.set("moderation.categories.harassment", true);
         ModerationCategorySettings categories = ModerationCategorySettings.from(config);
 
-        String json = ChatModerationPayloadBuilder.build("Player\"One", "uuid-123", "hello\\world", categories);
+        String json = ModerationPayloadBuilder.buildText("Player\"One", "uuid-123", "hello\\world", categories);
 
         assertTrue(json.contains("\"mode\":\"sync\""));
         assertTrue(json.contains("\"source\":\"minecraft\""));
         assertTrue(json.contains("\"adapter\":\"neomoderation\""));
         assertTrue(json.contains("\"eventType\":\"chat_message\""));
         assertTrue(json.contains("\"actor\":{\"externalId\":\"uuid-123\",\"username\":\"Player\\\"One\",\"displayName\":\"Player\\\"One\"}"));
-        assertTrue(json.contains("\"content\":{\"text\":\"hello\\\\world\",\"attachments\":[]}"));
+        assertTrue(json.contains("\"text\":\"hello\\\\world\""));
         assertTrue(json.contains("\"sexual\":0.7"));
         assertTrue(json.contains("\"hate\":1.0"));
         assertTrue(json.contains("\"harassment\":0.7"));

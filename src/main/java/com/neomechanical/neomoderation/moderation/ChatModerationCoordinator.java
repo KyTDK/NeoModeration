@@ -18,14 +18,14 @@ public final class ChatModerationCoordinator implements AutoCloseable {
 
     private final AtomicInteger workerSeq = new AtomicInteger();
     private final ModerationCircuitBreaker circuit;
-    private final ChatModerationApiClient apiClient;
+    private final ModerationApiClient apiClient;
     private final ExecutorService workers;
 
     public ChatModerationCoordinator(Logger logger) {
-        this(new ModerationCircuitBreaker(logger), new ChatModerationApiClient());
+        this(new ModerationCircuitBreaker(logger), new ModerationApiClient());
     }
 
-    ChatModerationCoordinator(ModerationCircuitBreaker circuit, ChatModerationApiClient apiClient) {
+    ChatModerationCoordinator(ModerationCircuitBreaker circuit, ModerationApiClient apiClient) {
         this.circuit = circuit;
         this.apiClient = apiClient;
         this.workers = Executors.newFixedThreadPool(POOL_SIZE, task -> {
@@ -37,6 +37,10 @@ public final class ChatModerationCoordinator implements AutoCloseable {
 
     public void resetCircuit() {
         circuit.reset();
+    }
+
+    public ModerationApiClient apiClient() {
+        return apiClient;
     }
 
     public boolean isRemoteCallAllowed() {
@@ -57,7 +61,7 @@ public final class ChatModerationCoordinator implements AutoCloseable {
                 MAX_WAIT_MS,
                 (long) settings.api().connectTimeoutMs() + settings.api().readTimeoutMs() + 400L
         );
-        Future<ModerationApiResult> future = workers.submit(() -> apiClient.moderate(
+        Future<ModerationApiResult> future = workers.submit(() -> apiClient.moderateText(
                 player.getName(),
                 player.getUniqueId().toString(),
                 message,
