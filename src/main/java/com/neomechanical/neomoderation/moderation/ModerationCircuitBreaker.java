@@ -44,7 +44,7 @@ public final class ModerationCircuitBreaker {
         synchronized (lock) {
             if (result.kind() == ModerationApiResult.Kind.CLIENT_AUTH) {
                 if (clientAuthLogged.compareAndSet(false, true)) {
-                    logger.warning("Moderation API rejected the request (HTTP 4xx). Check moderation.api.endpoint and apiKey.");
+                    logger.warning("Cloud moderation rejected the request. Check your API key with /nmod status.");
                 }
                 return;
             }
@@ -55,7 +55,7 @@ public final class ModerationCircuitBreaker {
                     pausedUntilNanos = System.nanoTime() + PAUSE_NANOS;
                     transientFailures = 0;
                     if (transientPauseLogged.compareAndSet(false, true)) {
-                        logger.warning("Moderation paused for 60s after repeated platform errors. Messages are not scanned until the pause ends or /neomod reload runs.");
+                        logger.warning("Cloud moderation paused for 60s after errors. Local rules still run. Use /nmod reload to resume early.");
                     }
                 }
                 return;

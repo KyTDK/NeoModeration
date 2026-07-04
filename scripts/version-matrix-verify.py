@@ -207,14 +207,14 @@ def run_container(version: str, image: str, index: int) -> Result:
 
         checks = {
             "plugin": "NeoModeration" in rcon("plugins", rcon_port),
-            "help": "neomod" in rcon("neomod help", rcon_port).lower(),
-            "status": "enabled" in rcon("neomod status", rcon_port).lower(),
+            "help": "setup" in rcon("neomod help", rcon_port).lower(),
+            "status": "status" in rcon("neomod status", rcon_port).lower(),
             "rules": "matrixbad" in (
-                rcon("neomod rules add-word matrixbad", rcon_port)
-                + rcon("neomod rules list", rcon_port)
+                rcon("neomod word add matrixbad", rcon_port)
+                + rcon("neomod word list", rcon_port)
             ).lower(),
-            "config": "updated moderation.enabled" in rcon("neomod config set moderation.enabled true", rcon_port).lower(),
-            "keyClear": "cleared moderation.api.apikey" in rcon("neomod config clear moderation.api.apiKey", rcon_port).lower(),
+            "on": "on" in rcon("neomod on", rcon_port).lower(),
+            "keyClear": "api key removed" in rcon("neomod key clear", rcon_port).lower(),
         }
         rcon("neomod reload", rcon_port)
         since = log_path.stat().st_size if log_path.exists() else 0

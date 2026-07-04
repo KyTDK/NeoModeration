@@ -10,7 +10,7 @@ softdepend: [ LuckPerms ]
 commands:
   neomod:
     description: Manage NeoModeration.
-    usage: /neomod help
+    usage: /nmod setup <apiKey>
     aliases: [ neomoderation, nmod ]
 permissions:
   neomoderation.admin:

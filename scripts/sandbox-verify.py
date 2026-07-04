@@ -137,8 +137,8 @@ const result = { sawHelp: false, sawSetup: false, errors: [] };
 const bot = mineflayer.createBot({ host: '127.0.0.1', port: 25566, username: 'FriedRizzler' });
 bot.once('spawn', () => setTimeout(() => bot.chat('/neomod help'), 1500));
 bot.on('messagestr', (message) => {
-  if (/NeoModeration|\\/neomod config set/i.test(message)) result.sawHelp = true;
-  if (/moderation\\.api\\.apiKey|Setup/i.test(message)) result.sawSetup = true;
+  if (/NeoModeration|\\/nmod setup/i.test(message)) result.sawHelp = true;
+  if (/setup <apiKey>|cloud moderation/i.test(message)) result.sawSetup = true;
 });
 setTimeout(() => {
   if (!result.sawHelp) result.errors.push('help did not appear');
@@ -172,30 +172,64 @@ def send_player_chat(message: str, username: str = CHAT_PLAYER) -> None:
     )
 
 
-def set_config(path: str, value: str) -> bool:
-    response = rcon_command(f"neomod config set {path} {value}").lower()
-    return path.lower() in response and ("updated" in response or "actualizado" in response)
+def restore_config(
+    enabled: bool = False,
+    api_key: str = "",
+    endpoint: str = "https://api.neomechanical.com/v1/events",
+    block_any_url: bool = False,
+    locale: str = "en_US",
+) -> None:
+    enabled_text = "true" if enabled else "false"
+    block_any_url_text = "true" if block_any_url else "false"
+    CONFIG.write_text(
+        f"""locale: "{locale}"
 
-
-def restore_config(enabled: str = "false", api_key: str = "", endpoint: str = "https://api.neomechanical.com/v1/events") -> None:
-    set_config("locale", "en_US")
-    set_config("moderation.enabled", enabled)
-    set_config("moderation.offline.enabled", "true")
-    set_config("moderation.offline.blockAnyUrl", "false")
-    set_config("moderation.offline.normalizeLeetspeak", "true")
-    if api_key:
-        set_config("moderation.api.apiKey", api_key)
-    else:
-        rcon_command("neomod config clear moderation.api.apiKey")
-    set_config("moderation.api.endpoint", endpoint)
+moderation:
+  enabled: {enabled_text}
+  offline:
+    enabled: true
+    blockAnyUrl: {block_any_url_text}
+    normalizeLeetspeak: true
+    bannedWords:
+      - "badword"
+      - "scam"
+    bannedUrls:
+      - "grabify.link"
+      - "discord.gg/free"
+  api:
+    endpoint: "{endpoint}"
+    apiKey: "{api_key}"
+    connectTimeoutMs: 3000
+    readTimeoutMs: 3000
+  categories:
+    sexual: true
+    hate: true
+    harassment: true
+    violence: true
+    scam: true
+    spam: true
+    illicit: true
+    selfHarm: true
+  actions:
+    - type: CLEAR_CHAT
+    - type: MUTE
+      durationSeconds: 300
+      reason: "Inappropriate chat message"
+  chat:
+    scanAsyncChat: true
+    failOpen: true
+""",
+        encoding="utf-8",
+    )
     rcon_command("neomod reload")
 
 
 def test_commands() -> tuple[bool, str]:
     cases = [
-        ("neomod help", ("neomod", "config", "setup")),
-        ("neomod status", ("enabled", "endpoint", "api key")),
-        ("neomod config get moderation.enabled", ("moderation.enabled", "false")),
+        ("neomod help", ("setup", "word", "url")),
+        ("neomod status", ("status", "cloud", "local rules")),
+        ("neomod off", ("off",)),
+        ("neomod on", ("on",)),
         ("neomod reload", ("reloaded",)),
     ]
     failures = []
@@ -203,56 +237,55 @@ def test_commands() -> tuple[bool, str]:
         response = rcon_command(command)
         if not all(part.lower() in response.lower() for part in expected):
             failures.append(f"{command}: {response.strip()}")
-    return not failures, "; ".join(failures) if failures else "help/status/config/reload OK"
+    return not failures, "; ".join(failures) if failures else "help/status/on/off/reload OK"
 
 
-def test_config_set_get_restore() -> tuple[bool, str]:
-    original = CONFIG.read_text(encoding="utf-8")
-    endpoint_match = re.search(r'(?m)^(\s*endpoint:\s*)"([^"]*)"', original)
-    original_endpoint = endpoint_match.group(2) if endpoint_match else "https://api.neomechanical.com/v1/events"
-    set_ok = set_config("moderation.api.endpoint", "http://127.0.0.1:9/config-verify")
-    get_ok = "http://127.0.0.1:9/config-verify" in rcon_command("neomod config get moderation.api.endpoint")
-    key_set_ok = set_config("moderation.api.apiKey", "secret-test-key")
-    key_mask_ok = "********" in rcon_command("neomod config get moderation.api.apiKey")
-    restore_config("false", "", original_endpoint)
-    return set_ok and get_ok and key_set_ok and key_mask_ok, f"set={set_ok}; get={get_ok}; keySet={key_set_ok}; keyMask={key_mask_ok}"
+def test_setup_and_key_commands() -> tuple[bool, str]:
+    setup_ok = "cloud moderation is on" in rcon_command("neomod setup secret-test-key").lower()
+    status_cloud = "cloud: yes" in rcon_command("neomod status").lower()
+    key_clear_ok = "api key removed" in rcon_command("neomod key clear").lower()
+    status_local = "local rules only" in rcon_command("neomod status").lower()
+    key_set_ok = "api key saved" in rcon_command("neomod key secret-test-key").lower()
+    restore_config(False, "", "https://api.neomechanical.com/v1/events")
+    ok = setup_ok and status_cloud and key_clear_ok and status_local and key_set_ok
+    return ok, (
+        f"setup={setup_ok}; cloud={status_cloud}; clear={key_clear_ok}; "
+        f"local={status_local}; key={key_set_ok}"
+    )
 
 
-def test_rules_and_locale_commands() -> tuple[bool, str]:
-    add_word = "Updated moderation.offline.bannedWords" in rcon_command("neomod rules add-word sandboxbad")
-    list_word = "sandboxbad" in rcon_command("neomod rules list")
-    remove_word = "Updated moderation.offline.bannedWords" in rcon_command("neomod rules remove-word sandboxbad")
-    add_url = "Updated moderation.offline.bannedUrls" in rcon_command("neomod rules add-url sandbox.invalid")
-    list_url = "sandbox.invalid" in rcon_command("neomod rules list")
-    remove_url = "Updated moderation.offline.bannedUrls" in rcon_command("neomod rules remove-url sandbox.invalid")
-    locale_set = set_config("locale", "es_ES")
-    localized = "Estado de NeoModeration" in rcon_command("neomod status")
-    set_config("locale", "en_US")
-    rcon_command("neomod reload")
-    ok = add_word and list_word and remove_word and add_url and list_url and remove_url and locale_set and localized
+def test_word_and_url_commands() -> tuple[bool, str]:
+    add_word = "add word" in rcon_command("neomod word add sandboxbad").lower()
+    list_word = "sandboxbad" in rcon_command("neomod word list")
+    remove_word = "remove word" in rcon_command("neomod word remove sandboxbad").lower()
+    add_url = "add url" in rcon_command("neomod url add sandbox.invalid").lower()
+    list_url = "sandbox.invalid" in rcon_command("neomod url list")
+    remove_url = "remove url" in rcon_command("neomod url remove sandbox.invalid").lower()
+    restore_config(False, "", locale="es_ES")
+    localized = "Estado:" in rcon_command("neomod status") or "Nube:" in rcon_command("neomod status")
+    restore_config(False, "", locale="en_US")
+    ok = add_word and list_word and remove_word and add_url and list_url and remove_url and localized
     return ok, (
         f"wordAdd={add_word}; wordList={list_word}; wordRemove={remove_word}; "
-        f"urlAdd={add_url}; urlList={list_url}; urlRemove={remove_url}; locale={locale_set}; localized={localized}"
+        f"urlAdd={add_url}; urlList={list_url}; urlRemove={remove_url}; localized={localized}"
     )
 
 
 def test_command_stress_loop() -> tuple[bool, str]:
     failures = []
-    set_config("locale", "en_US")
     for index in range(12):
         word = f"stressword{index}"
         url = f"stress{index}.invalid"
         checks = {
-            "help": "neomod" in rcon_command("neomod help").lower(),
-            "status": "enabled" in rcon_command("neomod status").lower(),
-            "get": "moderation.offline.enabled" in rcon_command("neomod config get moderation.offline.enabled"),
-            "set": set_config("moderation.offline.normalizeLeetspeak", "true"),
-            "addWord": "Updated moderation.offline.bannedWords" in rcon_command(f"neomod rules add-word {word}"),
-            "listWord": word in rcon_command("neomod rules list"),
-            "removeWord": "Updated moderation.offline.bannedWords" in rcon_command(f"neomod rules remove-word {word}"),
-            "addUrl": "Updated moderation.offline.bannedUrls" in rcon_command(f"neomod rules add-url {url}"),
-            "listUrl": url in rcon_command("neomod rules list"),
-            "removeUrl": "Updated moderation.offline.bannedUrls" in rcon_command(f"neomod rules remove-url {url}"),
+            "help": "setup" in rcon_command("neomod help").lower(),
+            "status": "status" in rcon_command("neomod status").lower(),
+            "on": "on" in rcon_command("neomod on").lower(),
+            "addWord": "add word" in rcon_command(f"neomod word add {word}").lower(),
+            "listWord": word in rcon_command("neomod word list"),
+            "removeWord": "remove word" in rcon_command(f"neomod word remove {word}").lower(),
+            "addUrl": "add url" in rcon_command(f"neomod url add {url}").lower(),
+            "listUrl": url in rcon_command("neomod url list"),
+            "removeUrl": "remove url" in rcon_command(f"neomod url remove {url}").lower(),
         }
         failed = [name for name, ok in checks.items() if not ok]
         if failed:
@@ -279,7 +312,7 @@ def test_help_clickable_text_visible() -> tuple[bool, str]:
 
 
 def test_disabled_chat_works() -> tuple[bool, str]:
-    restore_config("false", "", "https://api.neomechanical.com/v1/events")
+    restore_config(False, "", "https://api.neomechanical.com/v1/events")
     since = LOG.stat().st_size if LOG.exists() else 0
     message = f"{MARKER}-disabled-{int(time.time())}"
     send_player_chat(message, CLEAN_PLAYER)
@@ -289,11 +322,11 @@ def test_disabled_chat_works() -> tuple[bool, str]:
 
 def test_offline_rules_without_api_key() -> tuple[bool, str]:
     rcon_command(f"deop {WORD_PLAYER}")
-    restore_config("true", "", "https://api.neomechanical.com/v1/events")
+    restore_config(True, "", "https://api.neomechanical.com/v1/events")
     word = "sandboxwordlive"
-    rcon_command(f"neomod rules remove-word {word}")
-    rcon_command(f"neomod rules add-word {word}")
-    list_ok = word in rcon_command("neomod rules list")
+    rcon_command(f"neomod word remove {word}")
+    rcon_command(f"neomod word add {word}")
+    list_ok = word in rcon_command("neomod word list")
     rcon_command("neomod reload")
     since = LOG.stat().st_size if LOG.exists() else 0
     blocked_word = f"{MARKER}-offline-word-{int(time.time())}"
@@ -301,29 +334,28 @@ def test_offline_rules_without_api_key() -> tuple[bool, str]:
     word_ok, word_chunk = wait_for(rf"Flagged chat from NeoModWord via blocked_word:{re.escape(word)}", timeout=45, since=since)
 
     rcon_command(f"deop {URL_PLAYER}")
-    set_config("moderation.offline.blockAnyUrl", "true")
-    rcon_command("neomod reload")
+    restore_config(True, "", "https://api.neomechanical.com/v1/events", block_any_url=True)
     since = LOG.stat().st_size if LOG.exists() else 0
     blocked_url = f"{MARKER}-offline-url-{int(time.time())}"
     send_player_chat(f"{blocked_url} example.com", URL_PLAYER)
     url_ok, url_chunk = wait_for(r"Flagged chat from NeoModUrl via blocked_url:any", timeout=35, since=since)
 
-    rcon_command(f"neomod rules remove-word {word}")
-    restore_config("false", "", "https://api.neomechanical.com/v1/events")
+    rcon_command(f"neomod word remove {word}")
+    restore_config(False, "", "https://api.neomechanical.com/v1/events")
     return list_ok and word_ok and url_ok, f"list={list_ok}; word={word_ok}; url={url_ok}; log={(url_chunk or word_chunk)[-400:]}"
 
 
 def test_bad_endpoint_fail_open_and_breaker() -> tuple[bool, str]:
     rcon_command(f"deop {CHAT_PLAYER}")
-    restore_config("true", "invalid-test-key", "http://127.0.0.1:9/unreachable-moderation")
+    restore_config(True, "invalid-test-key", "http://127.0.0.1:9/unreachable-moderation")
     since = LOG.stat().st_size if LOG.exists() else 0
     prefix = f"{MARKER}-badapi-{int(time.time())}"
     for index in range(5):
         send_player_chat(f"{prefix}-{index}", f"NeoModApi{index}")
         time.sleep(0.8)
     chat_ok, chat_chunk = wait_for(re.escape(f"{prefix}-4"), timeout=35, since=since)
-    breaker_ok, breaker_chunk = wait_for(r"Moderation paused|Moderation API rejected", timeout=40, since=since)
-    restore_config("false", "", "https://api.neomechanical.com/v1/events")
+    breaker_ok, breaker_chunk = wait_for(r"Cloud moderation paused|Cloud moderation rejected", timeout=40, since=since)
+    restore_config(False, "", "https://api.neomechanical.com/v1/events")
     return chat_ok and breaker_ok, f"chat={chat_ok}; breaker={breaker_ok}; log={(breaker_chunk or chat_chunk)[-400:]}"
 
 
@@ -388,7 +420,7 @@ def main() -> int:
         report.save()
         return 2
 
-    restore_config("false", "", "https://api.neomechanical.com/v1/events")
+    restore_config(False, "", "https://api.neomechanical.com/v1/events")
     ensure_bot()
 
     jar_ok = JAR.exists()
@@ -402,15 +434,15 @@ def main() -> int:
     )
 
     ok, detail = test_commands()
-    report.add("Core /neomod commands", ok, detail)
-    ok, detail = test_config_set_get_restore()
-    report.add("/neomod config set/get/mask/restore", ok, detail)
-    ok, detail = test_rules_and_locale_commands()
-    report.add("/neomod rules + locale commands", ok, detail)
+    report.add("Core /nmod commands", ok, detail)
+    ok, detail = test_setup_and_key_commands()
+    report.add("/nmod setup + key commands", ok, detail)
+    ok, detail = test_word_and_url_commands()
+    report.add("/nmod word + url commands", ok, detail)
     ok, detail = test_command_stress_loop()
-    report.add("/neomod command stress loop", ok, detail)
+    report.add("/nmod command stress loop", ok, detail)
     ok, detail = test_help_clickable_text_visible()
-    report.add("/neomod help visible setup text", ok, detail)
+    report.add("/nmod help visible setup text", ok, detail)
     ok, detail = probe_live_api()
     report.add("Neomechanical /v1/events endpoint", ok, detail)
     ok, detail = test_disabled_chat_works()
