@@ -150,8 +150,13 @@ def wait_log(pattern: str, since: int, timeout: float = 40.0) -> tuple[bool, str
     return False, chunk
 
 
+def strip_colors(text: str) -> str:
+    return re.sub(r"§.", "", text).lower()
+
+
 def post_events(key: str, text: str) -> tuple[int, str]:
-    body = json.dumps(
+    # Run from the Minecraft container network so Cloudflare accepts the request.
+    payload = json.dumps(
         {
             "mode": "sync",
             "event": {
@@ -187,18 +192,34 @@ def post_events(key: str, text: str) -> tuple[int, str]:
                 "learning": {"enabled": False, "mode": "off"},
             },
         }
-    ).encode()
-    req = urllib.request.Request(
-        "https://api.neomechanical.com/v1/events",
-        data=body,
-        method="POST",
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"},
     )
-    try:
-        with urllib.request.urlopen(req, timeout=20) as response:
-            return response.status, response.read(800).decode("utf-8", errors="replace")
-    except urllib.error.HTTPError as error:
-        return error.code, error.read(800).decode("utf-8", errors="replace")
+    subprocess.run(
+        ["docker", "exec", "-i", CONTAINER, "bash", "-lc", "cat > /tmp/nm-payload.json"],
+        input=payload,
+        text=True,
+        check=True,
+        timeout=10,
+    )
+    code = subprocess.check_output(
+        [
+            "docker",
+            "exec",
+            CONTAINER,
+            "bash",
+            "-lc",
+            "curl -sS -o /tmp/nm-body.txt -w '%{http_code}' -X POST https://api.neomechanical.com/v1/events "
+            f"-H 'Content-Type: application/json' -H 'Authorization: Bearer {key}' "
+            "--data-binary @/tmp/nm-payload.json",
+        ],
+        text=True,
+        timeout=30,
+    ).strip()
+    body = subprocess.check_output(
+        ["docker", "exec", CONTAINER, "cat", "/tmp/nm-body.txt"],
+        text=True,
+        timeout=10,
+    )
+    return int(code), body
 
 
 def main() -> int:
@@ -227,23 +248,23 @@ def main() -> int:
     )
     report.add("Help has no YAML paths", "moderation.api" not in help_text and "config set" not in help_text.lower(), help_text[:120])
 
-    off = rcon("neomod off", host, port, password).lower()
+    off = strip_colors(rcon("neomod off", host, port, password))
     report.add("Off command", "off" in off, off)
-    status_off = rcon("neomod status", host, port, password).lower()
-    report.add("Status OFF", "status: off" in status_off or "status: §foff" in status_off.replace("§f", ""), status_off)
+    status_off = strip_colors(rcon("neomod status", host, port, password))
+    report.add("Status OFF", "status: off" in status_off, status_off)
 
-    on = rcon("neomod on", host, port, password).lower()
+    on = strip_colors(rcon("neomod on", host, port, password))
     report.add("On command", "on" in on, on)
-    status_on = rcon("neomod status", host, port, password).lower()
-    report.add("Status ON", "status: on" in status_on or "on" in status_on, status_on)
+    status_on = strip_colors(rcon("neomod status", host, port, password))
+    report.add("Status ON", "status: on" in status_on, status_on)
 
     key = api_key()
     report.add("API key present in config", bool(key) and key.startswith("nmt_"), f"len={len(key)}")
 
     # Re-apply key via new command path without printing it.
-    key_save = rcon(f"neomod key {key}", host, port, password).lower()
+    key_save = strip_colors(rcon(f"neomod key {key}", host, port, password))
     report.add("Key save command", "api key saved" in key_save, key_save)
-    status_cloud = rcon("neomod status", host, port, password).lower()
+    status_cloud = strip_colors(rcon("neomod status", host, port, password))
     report.add("Status cloud yes", "cloud: yes" in status_cloud, status_cloud)
 
     word = f"livebad{int(time.time()) % 100000}"
@@ -309,12 +330,12 @@ def main() -> int:
         report.add("Container can reach api.neomechanical.com", False, str(exc))
 
     # Ensure setup command enables + sets key.
-    setup = rcon(f"neomod setup {key}", host, port, password).lower()
+    setup = strip_colors(rcon(f"neomod setup {key}", host, port, password))
     report.add("Setup command", "cloud moderation is on" in setup, setup)
-    status_final = rcon("neomod status", host, port, password).lower()
+    status_final = strip_colors(rcon("neomod status", host, port, password))
     report.add(
         "Final status ready",
-        "status: on" in status_final.replace("§f", "") and "cloud: yes" in status_final,
+        "status: on" in status_final and "cloud: yes" in status_final,
         status_final,
     )
 

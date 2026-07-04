@@ -122,8 +122,8 @@ bot.once('spawn', () => {
   setTimeout(() => {
     bot.chat(msg);
     sent = true;
-    setTimeout(() => bot.quit(), 1000);
-  }, 1000);
+    setTimeout(() => bot.quit(), 2500);
+  }, 2000);
 });
 bot.on('end', () => process.exit(sent ? 0 : 3));
 bot.on('error', (e) => { console.error('ERR', e.message); process.exit(1); });
@@ -260,12 +260,16 @@ def test_action_commands() -> tuple[bool, str]:
     )
 
 
+def strip_colors(text: str) -> str:
+    return re.sub(r"§.", "", text).lower()
+
+
 def test_setup_and_key_commands() -> tuple[bool, str]:
-    setup_ok = "cloud moderation is on" in rcon_command("neomod setup secret-test-key").lower()
-    status_cloud = "cloud: yes" in rcon_command("neomod status").lower()
-    key_clear_ok = "api key removed" in rcon_command("neomod key clear").lower()
-    status_local = "local rules only" in rcon_command("neomod status").lower()
-    key_set_ok = "api key saved" in rcon_command("neomod key secret-test-key").lower()
+    setup_ok = "cloud moderation is on" in strip_colors(rcon_command("neomod setup secret-test-key"))
+    status_cloud = "cloud: yes" in strip_colors(rcon_command("neomod status"))
+    key_clear_ok = "api key removed" in strip_colors(rcon_command("neomod key clear"))
+    status_local = "local rules only" in strip_colors(rcon_command("neomod status"))
+    key_set_ok = "api key saved" in strip_colors(rcon_command("neomod key secret-test-key"))
     restore_config(False, "", "https://api.neomechanical.com/v1/events")
     ok = setup_ok and status_cloud and key_clear_ok and status_local and key_set_ok
     return ok, (
