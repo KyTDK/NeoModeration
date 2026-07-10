@@ -141,20 +141,25 @@ async function cmdDescribe(file, bannerPng) {
 
 /** Upload an image into the description's attachment area and return its attachment id. */
 async function uploadDescriptionImage(page, png) {
-  const before = await page.evaluate(() =>
-    Array.from(document.querySelectorAll("input.AttachmentInsertAll, [id^=attachment_]")).map((e) => e.id));
   const imgInput = await page.$('input[type=file]');
   if (!imgInput) return null;
   await imgInput.setInputFiles(png);
-  await page.waitForTimeout(3500);
-  return page.evaluate((prev) => {
-    // XenForo assigns attachment ids like insertAttachment_12345 / a data-attachmentid
-    const el = document.querySelector("[data-attachmentid]");
-    if (el) return el.getAttribute("data-attachmentid");
-    const ins = Array.from(document.querySelectorAll("[id^=insertAttachment_], [id^=attachment_]")).find((e) => !prev.includes(e.id));
-    if (ins) return ins.id.replace(/\D+/g, "");
-    return null;
-  }, before);
+  await page.waitForTimeout(4000);
+  const base = path.basename(png);
+  return page.evaluate((fileName) => {
+    // Match the freshly-uploaded attachment <li> by its filename, then read its id.
+    const li = Array.from(document.querySelectorAll("li.AttachedFile, [id^=attachment]")).find((n) =>
+      (n.innerText || "").includes(fileName));
+    if (li) {
+      const link = li.querySelector("[data-attachmentid]");
+      if (link) return link.getAttribute("data-attachmentid");
+      const m = (li.id || "").match(/(\d+)/);
+      if (m) return m[1];
+    }
+    // Fallback: the last data-attachmentid on the page (newest upload).
+    const all = Array.from(document.querySelectorAll("[data-attachmentid]"));
+    return all.length ? all[all.length - 1].getAttribute("data-attachmentid") : null;
+  }, base);
 }
 
 async function cmdIcon(png) {
