@@ -33,8 +33,10 @@ moderation:
   api:
     endpoint: "https://api.neomechanical.com/v1/events"
     apiKey: ""
-    connectTimeoutMs: 3000
-    readTimeoutMs: 3000
+    # Chat never waits more than ~2.5s total for the cloud, regardless of these
+    # values; raise them only if your network genuinely needs it.
+    connectTimeoutMs: 2000
+    readTimeoutMs: 2000
 
   # Which content categories the cloud should flag. Turn off any you don't
   # want enforced. Ignored when no API key is set.

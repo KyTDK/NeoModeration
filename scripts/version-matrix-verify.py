@@ -21,7 +21,7 @@ VERSIONS = [
     ("1.21.11", "ghcr.io/pterodactyl/yolks:java_21"),
 ]
 BASE_DIR = Path("/tmp/neomod-version-matrix")
-JAR = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("target/NeoModeration-1.2.0.jar")
+JAR = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("target/NeoModeration-1.2.1.jar")
 BOT_DIR = BASE_DIR / "mineflayer"
 RCON_PASSWORD = "neomod-version-local"
 USER_AGENT = "NeoModerationVerifier/1.0 (https://github.com/KyTDK/NeoModeration)"

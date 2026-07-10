@@ -30,15 +30,20 @@ public final class NeoModerationPlugin extends JavaPlugin {
                 new ChatModerationActionExecutor("NeoModeration", muteService),
                 muteService
         );
-        getServer().getPluginManager().registerEvents(
-                new ChatModerationListener(this, processor),
-                this
-        );
+        // Paper fires the legacy AsyncPlayerChatEvent whenever a legacy listener is
+        // registered, so registering both would moderate every message twice
+        // (double API usage, double punishments). Prefer the modern Paper event and
+        // fall back to the legacy listener only on Spigot.
+        if (!PaperAsyncChatBridge.registerIfAvailable(this, processor)) {
+            getServer().getPluginManager().registerEvents(
+                    new ChatModerationListener(this, processor),
+                    this
+            );
+        }
         getServer().getPluginManager().registerEvents(
                 new com.neomechanical.neomoderation.listener.MapArtListener(this),
                 this
         );
-        PaperAsyncChatBridge.registerIfAvailable(this, processor);
         PluginCommand command = getCommand("neomod");
         if (command != null) {
             NeoModerationCommand executor = new NeoModerationCommand(this);

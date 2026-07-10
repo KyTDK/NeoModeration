@@ -15,8 +15,8 @@ public record ModerationApiSettings(
         return new ModerationApiSettings(
                 normalizeEndpoint(config.getString("moderation.api.endpoint", DEFAULT_ENDPOINT)),
                 config.getString("moderation.api.apiKey", ""),
-                config.getInt("moderation.api.connectTimeoutMs", 3000),
-                config.getInt("moderation.api.readTimeoutMs", 3000)
+                config.getInt("moderation.api.connectTimeoutMs", 2000),
+                config.getInt("moderation.api.readTimeoutMs", 2000)
         );
     }
 
