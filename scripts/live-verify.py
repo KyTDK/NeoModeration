@@ -20,6 +20,7 @@ LOG = VOLUME / "logs/latest.log"
 CONFIG = VOLUME / "plugins/NeoModeration/config.yml"
 OUT = Path("/tmp/neomod-live-verify.json")
 MARKER = "neomod-live"
+EXPECTED_VERSION = sys.argv[1] if len(sys.argv) > 1 else None
 
 
 @dataclass
@@ -238,7 +239,11 @@ def main() -> int:
     report.add("Plugin loaded", "NeoModeration" in plugins, plugins[:160])
 
     version = rcon("version NeoModeration", host, port, password)
-    report.add("Plugin version 1.1.0", "1.1.0" in version, version[:160])
+    version_ok = "NeoModeration" in version and (
+        EXPECTED_VERSION is None or EXPECTED_VERSION in version
+    )
+    label = f"Plugin version {EXPECTED_VERSION}" if EXPECTED_VERSION else "Plugin version detected"
+    report.add(label, version_ok, version[:160])
 
     help_text = rcon("neomod help", host, port, password)
     report.add(

@@ -4,7 +4,7 @@ Chat **and map-art** moderation for Minecraft. Blocks bad words and links locall
 
 ## Setup
 
-1. Drop `NeoModeration-1.2.1.jar` into `plugins/` and restart.
+1. Drop `NeoModeration-1.2.2.jar` into `plugins/` and restart.
 2. Local rules work immediately.
 3. For cloud moderation, create an API key at [platform.neomechanical.com](https://platform.neomechanical.com) (scopes: `events:write` + `usage:read`), then run:
 

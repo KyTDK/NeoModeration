@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import socket
@@ -21,7 +22,18 @@ VERSIONS = [
     ("1.21.11", "ghcr.io/pterodactyl/yolks:java_21"),
 ]
 BASE_DIR = Path("/tmp/neomod-version-matrix")
-JAR = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("target/NeoModeration-1.2.1.jar")
+def default_jar() -> Path:
+    candidates = sorted(
+        Path("target").glob("NeoModeration-*.jar"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    return candidates[0] if candidates else Path("target/NeoModeration.jar")
+
+
+JAR = Path(sys.argv[1]) if len(sys.argv) > 1 else default_jar()
+VERSION_MATCH = re.search(r"NeoModeration-(.+)\.jar$", JAR.name)
+EXPECTED_VERSION = VERSION_MATCH.group(1) if VERSION_MATCH else None
 BOT_DIR = BASE_DIR / "mineflayer"
 RCON_PASSWORD = "neomod-version-local"
 USER_AGENT = "NeoModerationVerifier/1.0 (https://github.com/KyTDK/NeoModeration)"
@@ -146,6 +158,8 @@ def run_container(version: str, image: str, index: int) -> Result:
     work.mkdir(parents=True, exist_ok=True)
     (work / "plugins").mkdir(exist_ok=True)
     download_server(version, server_jar)
+    for generated in ("world", "world_nether", "world_the_end", "logs", "plugins/NeoModeration"):
+        shutil.rmtree(work / generated, ignore_errors=True)
     shutil.copy2(JAR, work / "plugins" / JAR.name)
     (work / "eula.txt").write_text("eula=true\n", encoding="utf-8")
     (work / "server.properties").write_text(
@@ -155,6 +169,10 @@ def run_container(version: str, image: str, index: int) -> Result:
                 "online-mode=false",
                 "white-list=false",
                 "spawn-protection=0",
+                "level-type=flat",
+                "generate-structures=false",
+                "view-distance=3",
+                "simulation-distance=3",
                 "max-players=4",
                 "enable-rcon=true",
                 f"rcon.port={rcon_port}",
@@ -166,7 +184,8 @@ def run_container(version: str, image: str, index: int) -> Result:
         + "\n",
         encoding="utf-8",
     )
-    subprocess.run(["chown", "-R", "999:987", str(work)], check=False)
+    if sys.platform.startswith("linux") and os.geteuid() == 0:
+        subprocess.run(["chown", "-R", "999:987", str(work)], check=True)
     startup = "java -Xms768M -Xmx1536M -Dterminal.jline=false -Dterminal.ansi=true -jar server.jar nogui"
     subprocess.run(
         [
@@ -211,6 +230,7 @@ def run_container(version: str, image: str, index: int) -> Result:
 
         checks = {
             "plugin": "NeoModeration" in rcon("plugins", rcon_port),
+            "version": EXPECTED_VERSION is None or EXPECTED_VERSION in rcon("version NeoModeration", rcon_port),
             "help": "setup" in plain(rcon("neomod help", rcon_port)) and "action" in plain(rcon("neomod help", rcon_port)),
             "status": "status" in plain(rcon("neomod status", rcon_port)),
             "rules": "matrixbad" in plain(
@@ -226,14 +246,19 @@ def run_container(version: str, image: str, index: int) -> Result:
         since = log_path.stat().st_size if log_path.exists() else 0
         subprocess.run(["node", str(BOT_DIR / "chat.mjs"), str(server_port), f"matrixbad {version}"], cwd=BOT_DIR, check=True, timeout=80)
         deadline = time.time() + 45
-        chat_ok = False
+        moderation_log = "Flagged chat from NeoMatrix via blocked_word:matrixbad"
+        moderation_count = 0
         while time.time() < deadline:
             chunk = log_path.read_bytes()[since:].decode("utf-8", errors="replace") if log_path.exists() else ""
-            if "Flagged chat from NeoMatrix via blocked_word:matrixbad" in chunk:
-                chat_ok = True
+            moderation_count = chunk.count(moderation_log)
+            if moderation_count:
                 break
             time.sleep(0.5)
-        checks["offlineChat"] = chat_ok
+        if moderation_count:
+            time.sleep(2)
+            chunk = log_path.read_bytes()[since:].decode("utf-8", errors="replace") if log_path.exists() else ""
+            moderation_count = chunk.count(moderation_log)
+        checks["offlineChatOnce"] = moderation_count == 1
         return Result(version, all(checks.values()), json.dumps(checks, sort_keys=True))
     finally:
         subprocess.run(["docker", "rm", "-f", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

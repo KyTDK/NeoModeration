@@ -60,5 +60,18 @@ class OfflineModerationEngineTest {
         assertTrue(OfflineModerationEngine.evaluate("example.com is blocked in any-url mode", anyUrl).flagged());
         assertTrue(OfflineModerationEngine.evaluate("join 1.2.3.4 now", anyUrl).flagged());
     }
-}
 
+    @Test
+    void ignoresBlankConfiguredUrlFragments() {
+        OfflineModerationSettings settings = new OfflineModerationSettings(
+                true,
+                false,
+                true,
+                List.of(),
+                List.of("", "   ", "grabify.link")
+        );
+
+        assertFalse(OfflineModerationEngine.evaluate("ordinary clean chat", settings).flagged());
+        assertTrue(OfflineModerationEngine.evaluate("visit grabify.link/demo", settings).flagged());
+    }
+}

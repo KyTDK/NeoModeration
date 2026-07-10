@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Full NeoModeration sandbox verification for np-test-sandbox.
-Run on the Pterodactyl host after installing NeoModeration-1.0.0.jar.
+Optionally pass the expected plugin version as the first argument.
 """
 from __future__ import annotations
 
@@ -22,9 +22,10 @@ from np_test_rcon import rcon_command  # noqa: E402
 
 CONTAINER = "np-test-sandbox"
 LOG = Path("/var/lib/pterodactyl/volumes/np-test-sandbox/logs/latest.log")
-CONFIG = Path("/var/lib/pterodactyl/volumes/np-test-sandbox/plugins/NeoModeration/config.yml")
+PLUGIN_DIR = Path("/var/lib/pterodactyl/volumes/np-test-sandbox/plugins")
+CONFIG = PLUGIN_DIR / "NeoModeration/config.yml"
 PROPS = Path("/var/lib/pterodactyl/volumes/np-test-sandbox/server.properties")
-JAR = Path("/var/lib/pterodactyl/volumes/np-test-sandbox/plugins/NeoModeration-1.1.0.jar")
+EXPECTED_VERSION = sys.argv[1] if len(sys.argv) > 1 else None
 OUT = Path("/tmp/neomod-sandbox-verify.json")
 HELP_PLAYER = "FriedRizzler"
 CHAT_PLAYER = "NeoModChat"
@@ -35,6 +36,17 @@ MARKER = "neomod-verify"
 BOT_DIR = Path("/tmp/neomod-mineflayer")
 CHAT_BOT = BOT_DIR / "neomod-chat-send.mjs"
 CONFIG_BOT = BOT_DIR / "neomod-config-test.mjs"
+
+
+def installed_jar() -> Path | None:
+    if EXPECTED_VERSION:
+        return PLUGIN_DIR / f"NeoModeration-{EXPECTED_VERSION}.jar"
+    candidates = sorted(
+        PLUGIN_DIR.glob("NeoModeration-*.jar"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    return candidates[0] if candidates else None
 
 
 @dataclass
@@ -447,13 +459,19 @@ def main() -> int:
     restore_config(False, "", "https://api.neomechanical.com/v1/events")
     ensure_bot()
 
-    jar_ok = JAR.exists()
-    report.add("NeoModeration-1.1.0.jar present", jar_ok, f"{JAR.stat().st_size if jar_ok else 0} bytes")
+    jar = installed_jar()
+    jar_ok = jar is not None and jar.exists()
+    jar_label = jar.name if jar is not None else "NeoModeration jar"
+    report.add(f"{jar_label} present", jar_ok, f"{jar.stat().st_size if jar_ok else 0} bytes")
     plugins_output = rcon_command("plugins")
     version_output = rcon_command("version NeoModeration")
+    version_ok = "NeoModeration" in plugins_output and (
+        EXPECTED_VERSION is None or EXPECTED_VERSION in version_output
+    )
+    version_label = f"Plugin loaded v{EXPECTED_VERSION}" if EXPECTED_VERSION else "Plugin loaded"
     report.add(
-        "Plugin loaded v1.1.0",
-        "NeoModeration" in plugins_output and "1.1.0" in version_output,
+        version_label,
+        version_ok,
         version_output.strip()[:180],
     )
 

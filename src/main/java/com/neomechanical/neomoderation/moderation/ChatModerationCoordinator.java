@@ -54,7 +54,7 @@ public final class ChatModerationCoordinator implements AutoCloseable {
 
     public boolean isMessageFlagged(Player player, String message, ModerationSettings settings) {
         if (!circuit.isRemoteCallAllowed()) {
-            return false;
+            return !settings.failOpen();
         }
 
         long waitMs = Math.min(
@@ -72,19 +72,20 @@ public final class ChatModerationCoordinator implements AutoCloseable {
         try {
             ModerationApiResult result = future.get(Math.max(1L, waitMs), TimeUnit.MILLISECONDS);
             circuit.record(result);
-            return result.isFlagged();
+            return result.isFlagged()
+                    || (result.kind() != ModerationApiResult.Kind.CLEAR && !settings.failOpen());
         } catch (TimeoutException e) {
             future.cancel(true);
             circuit.record(ModerationApiResult.transientTransport());
-            return false;
+            return !settings.failOpen();
         } catch (InterruptedException e) {
             future.cancel(true);
             Thread.currentThread().interrupt();
             circuit.record(ModerationApiResult.transientTransport());
-            return false;
+            return !settings.failOpen();
         } catch (ExecutionException e) {
             circuit.record(ModerationApiResult.transientTransport());
-            return false;
+            return !settings.failOpen();
         }
     }
 }

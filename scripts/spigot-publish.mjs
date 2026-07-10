@@ -177,14 +177,29 @@ async function cmdIcon(png) {
 
 async function cmdVersion(jar, versionString, notesFile) {
   const notes = readFileSync(notesFile, "utf8");
+  const updateTitle = `NeoModeration ${versionString}`;
   const { browser, page } = await connect();
   try {
     await assertLoggedIn(page);
     await page.goto(`${BASE}/add-version`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(2500);
-    await page.evaluate((v) => {
-      const vs = document.querySelector("#ctrl_version_string"); if (vs) { vs.value = v; vs.dispatchEvent(new Event("input", { bubbles: true })); }
-    }, versionString);
+    const fields = await page.evaluate(({ version, title }) => {
+      const setValue = (selector, value) => {
+        const field = document.querySelector(selector);
+        if (!field) return false;
+        field.value = value;
+        field.dispatchEvent(new Event("input", { bubbles: true }));
+        field.dispatchEvent(new Event("change", { bubbles: true }));
+        return true;
+      };
+      return {
+        version: setValue("#ctrl_version_string", version),
+        title: setValue("#ctrl_title", title),
+      };
+    }, { version: versionString, title: updateTitle });
+    if (!fields.version || !fields.title) {
+      throw new Error(`required update fields missing: ${JSON.stringify(fields)}`);
+    }
     await uploadToFileInput(page, 'input[type=file]', jar); // "Updated Resource File" is the first file input
     await setRedactorBBCode(page, notes, 0);
     const saved = await clickButton(page, /Save Update/);

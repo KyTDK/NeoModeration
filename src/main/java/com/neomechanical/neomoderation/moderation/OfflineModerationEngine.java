@@ -27,10 +27,13 @@ public final class OfflineModerationEngine {
     private record CompiledWord(String original, String normalized, Pattern exact, Pattern spaced) {
     }
 
+    private record CompiledUrl(String original, String normalized) {
+    }
+
     private record CompiledRules(
             OfflineModerationSettings source,
             List<CompiledWord> words,
-            List<String> lowerUrls
+            List<CompiledUrl> urls
     ) {
     }
 
@@ -47,10 +50,9 @@ public final class OfflineModerationEngine {
         CompiledRules rules = rulesFor(settings);
 
         String lowerMessage = lower(message);
-        List<String> bannedUrls = settings.bannedUrls();
-        for (int i = 0; i < rules.lowerUrls().size(); i++) {
-            if (lowerMessage.contains(rules.lowerUrls().get(i))) {
-                return OfflineModerationResult.flagged("blocked_url:" + bannedUrls.get(i));
+        for (CompiledUrl url : rules.urls()) {
+            if (lowerMessage.contains(url.normalized())) {
+                return OfflineModerationResult.flagged("blocked_url:" + url.original());
             }
         }
 
@@ -103,10 +105,14 @@ public final class OfflineModerationEngine {
                     Pattern.compile(spacedPattern(normalized))
             ));
         }
-        List<String> lowerUrls = settings.bannedUrls().stream()
-                .map(OfflineModerationEngine::lower)
-                .toList();
-        return new CompiledRules(settings, List.copyOf(words), lowerUrls);
+        List<CompiledUrl> urls = new ArrayList<>(settings.bannedUrls().size());
+        for (String bannedUrl : settings.bannedUrls()) {
+            String normalized = lower(bannedUrl).trim();
+            if (!normalized.isEmpty()) {
+                urls.add(new CompiledUrl(bannedUrl, normalized));
+            }
+        }
+        return new CompiledRules(settings, List.copyOf(words), List.copyOf(urls));
     }
 
     private static String spacedPattern(String normalizedWord) {

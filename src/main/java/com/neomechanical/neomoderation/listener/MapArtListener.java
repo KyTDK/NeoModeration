@@ -30,6 +30,8 @@ import java.util.Set;
  * modern Paper.
  */
 public final class MapArtListener implements Listener {
+    private static final String BYPASS_PERMISSION = "neomoderation.bypass";
+
     private final NeoModerationPlugin plugin;
     private final Set<Integer> scannedMaps;
     private final Set<Integer> flaggedMaps;
@@ -77,7 +79,10 @@ public final class MapArtListener implements Listener {
     }
 
     private void handleMapItem(Player player, ItemStack mapItem) {
-        if (!plugin.settings().enabled() || mapItem == null || !mapItem.hasItemMeta()) {
+        if (shouldBypass(player)
+                || !plugin.settings().enabled()
+                || mapItem == null
+                || !mapItem.hasItemMeta()) {
             return;
         }
         if (plugin.settings().api().apiKey().isBlank()) {
@@ -103,6 +108,7 @@ public final class MapArtListener implements Listener {
             public void run() {
                 String base64Image = MapArtScanner.getBase64Image(mapId);
                 if (base64Image == null) {
+                    scannedMaps.remove(mapId);
                     return;
                 }
                 ModerationApiResult result = plugin.apiClient().moderateImage(
@@ -112,6 +118,10 @@ public final class MapArtListener implements Listener {
                         plugin.settings().api(),
                         plugin.settings().categories()
                 );
+                if (!isCacheableResult(result)) {
+                    scannedMaps.remove(mapId);
+                    return;
+                }
                 if (!result.isFlagged()) {
                     return;
                 }
@@ -135,6 +145,15 @@ public final class MapArtListener implements Listener {
 
     private MapArtSettings config() {
         return plugin.settings().mapArt();
+    }
+
+    static boolean shouldBypass(Player player) {
+        return player.hasPermission(BYPASS_PERMISSION);
+    }
+
+    static boolean isCacheableResult(ModerationApiResult result) {
+        return result.kind() == ModerationApiResult.Kind.CLEAR
+                || result.kind() == ModerationApiResult.Kind.FLAGGED;
     }
 
     private boolean isFilledMap(ItemStack item) {
