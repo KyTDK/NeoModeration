@@ -1,0 +1,27 @@
+[B]NeoModeration 1.2.2[/B]
+
+This reliability and performance update is recommended for every server.
+
+[B]Fixed[/B]
+[LIST]
+[*]Paper chat is now moderated exactly once, preventing duplicate API usage and duplicate punishments.
+[*]Map-art scanning now reads the real nested map data used by Minecraft.
+[*][FONT=Courier New]failOpen: false[/FONT] now works for cloud timeouts, authentication failures, and circuit-breaker pauses.
+[*]The bypass permission now applies to map-art checks too.
+[*]Failed map-art scans are retried instead of being cached as successful.
+[*]Empty URL rules can no longer match every chat message.
+[*]Cloud timeout defaults now match the 2.5-second maximum chat wait.
+[/LIST]
+
+[B]Faster[/B]
+[LIST]
+[*]The offline word filter now compiles its rules once per configuration.
+[*]A real 403-word test corpus runs at about 8.5 microseconds per message — over 100x faster than the previous path.
+[/LIST]
+
+[B]Verified[/B]
+[LIST]
+[*]44 automated tests passed.
+[*]Paper 1.18.2, 1.19.4, 1.20.6, and 1.21.11 all passed the release matrix.
+[*]Every tested Paper version confirmed exactly one moderation action per flagged message.
+[/LIST]

@@ -22,6 +22,7 @@ VERSIONS = [
     ("1.21.11", "ghcr.io/pterodactyl/yolks:java_21"),
 ]
 BASE_DIR = Path("/tmp/neomod-version-matrix")
+REPORT_PATH = BASE_DIR / "results.json"
 def default_jar() -> Path:
     candidates = sorted(
         Path("target").glob("NeoModeration-*.jar"),
@@ -269,10 +270,19 @@ def main() -> int:
         print(f"Missing jar: {JAR}", file=sys.stderr)
         return 2
     ensure_bot()
-    results = [run_container(version, image, index) for index, (version, image) in enumerate(VERSIONS)]
+    results = []
+    for index, (version, image) in enumerate(VERSIONS):
+        result = run_container(version, image, index)
+        results.append(result)
+        log(f"[{'PASS' if result.ok else 'FAIL'}] Paper {result.version}: {result.detail}")
+        REPORT_PATH.write_text(
+            json.dumps([result.__dict__ for result in results], indent=2),
+            encoding="utf-8",
+        )
     print("\n=== NEOMOD VERSION MATRIX ===")
     for result in results:
         print(f"[{'PASS' if result.ok else 'FAIL'}] Paper {result.version}: {result.detail}")
+    print(f"Wrote {REPORT_PATH}")
     return 0 if all(result.ok for result in results) else 1
 
 
