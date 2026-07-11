@@ -23,6 +23,7 @@ help:
     mode: "Cambiar entre monitor (solo observar) y enforce"
     allow: "Gestionar frases y enlaces permitidos (excepciones)"
     test: "Previsualizar cómo se moderaría un mensaje"
+    doctor: "Diagnosticar configuración y conectividad de nube"
 setup:
   usage: "&8[&x&0&0&F&F&A&ANeoMod&8] &cUso: &e/{label} setup <apiKey>"
   done: "&8[&x&0&0&F&F&A&ANeoMod&8] &a&lListo! &7Moderación en la nube &aactiva&7."
@@ -92,6 +93,12 @@ test:
   cloud-skipped-circuit: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Nube: &8omitida (pausada por errores; /nmod reload para reintentar)"
   would: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Si se detecta, este mensaje: &e{would}"
   note: "&8[&x&0&0&F&F&A&ANeoMod&8] &8Esta prueba usó una solicitud de nube. No se ejecutaron acciones."
+doctor:
+  title: "&8&m=========&r &x&0&0&F&F&A&A&lNeoModeration Doctor &8&m========="
+  pass: "&a[OK] &7{check}&8: &f{detail}"
+  warn: "&e[!!] &7{check}&8: &f{detail}"
+  fail: "&c[XX] &7{check}&8: &f{detail}"
+  checking-cloud: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Comprobando conectividad de nube..."
 mode:
   usage: "&8[&x&0&0&F&F&A&ANeoMod&8] &cUso: &e/{label} mode <monitor|enforce>"
   current: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Modo: &f{value}"
