@@ -7,11 +7,9 @@ import org.bukkit.command.CommandSender;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.stream.Stream;
 
 public class ModeCmd implements SubCommand {
     private final NeoModerationPlugin plugin;
@@ -36,16 +34,6 @@ public class ModeCmd implements SubCommand {
     }
 
     @Override
-    public String getPermission() {
-        return "neomoderation.admin";
-    }
-
-    @Override
-    public List<String> getAliases() {
-        return Collections.emptyList();
-    }
-
-    @Override
     public void execute(CommandSender sender, String label, String[] args) {
         if (args.length < 2) {
             showStatus(sender);
@@ -57,8 +45,7 @@ public class ModeCmd implements SubCommand {
             return;
         }
         plugin.getConfig().set("moderation.mode", requested);
-        plugin.saveConfig();
-        plugin.reloadModerationConfig();
+        plugin.saveAndReload();
         plugin.messages().send(sender, "monitor".equals(requested) ? "mode.set-monitor" : "mode.set-enforce");
     }
 
@@ -67,9 +54,8 @@ public class ModeCmd implements SubCommand {
         plugin.messages().send(sender, "mode.current", Map.of(
                 "value", monitor ? "MONITOR (observe only)" : "ENFORCE"
         ));
-        long total = plugin.monitorStats().total();
         plugin.messages().send(sender, "mode.stats", Map.of(
-                "total", String.valueOf(total),
+                "total", String.valueOf(plugin.monitorStats().total()),
                 "hours", String.valueOf(hoursSince(plugin.monitorStats().since()))
         ));
         for (Map.Entry<String, Long> entry : plugin.monitorStats().byReason().entrySet()) {
@@ -87,9 +73,8 @@ public class ModeCmd implements SubCommand {
     @Override
     public List<String> onTabComplete(CommandSender sender, String[] args) {
         if (args.length == 2) {
-            String prefix = args[1].toLowerCase(Locale.ROOT);
-            return Stream.of("monitor", "enforce").filter(v -> v.startsWith(prefix)).toList();
+            return SubCommand.filterPrefix(args[1], "monitor", "enforce");
         }
-        return Collections.emptyList();
+        return List.of();
     }
 }

@@ -6,14 +6,13 @@ import com.neomechanical.neomoderation.commands.SubCommand;
 import org.bukkit.command.CommandSender;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 public class KeyCmd implements SubCommand {
-    private final NeoModerationPlugin plugin;
     private static final String KEY_PATH = "moderation.api.apiKey";
+
+    private final NeoModerationPlugin plugin;
 
     public KeyCmd(NeoModerationPlugin plugin) {
         this.plugin = plugin;
@@ -35,16 +34,6 @@ public class KeyCmd implements SubCommand {
     }
 
     @Override
-    public String getPermission() {
-        return "neomoderation.admin";
-    }
-
-    @Override
-    public List<String> getAliases() {
-        return Collections.emptyList();
-    }
-
-    @Override
     public void execute(CommandSender sender, String label, String[] args) {
         if (args.length < 2) {
             plugin.messages().send(sender, "key.usage", Map.of("label", label));
@@ -52,8 +41,7 @@ public class KeyCmd implements SubCommand {
         }
         if ("clear".equalsIgnoreCase(args[1])) {
             plugin.getConfig().set(KEY_PATH, "");
-            plugin.saveConfig();
-            plugin.reloadModerationConfig();
+            plugin.saveAndReload();
             plugin.messages().send(sender, "key.cleared");
             return;
         }
@@ -79,17 +67,15 @@ public class KeyCmd implements SubCommand {
             return;
         }
         plugin.getConfig().set(KEY_PATH, apiKey);
-        plugin.saveConfig();
-        plugin.reloadModerationConfig();
+        plugin.saveAndReload();
         plugin.messages().send(sender, "key.saved");
     }
 
     @Override
     public List<String> onTabComplete(CommandSender sender, String[] args) {
         if (args.length == 2) {
-            String prefix = args[1].toLowerCase(Locale.ROOT);
-            return List.of("set", "clear").stream().filter(v -> v.startsWith(prefix)).toList();
+            return SubCommand.filterPrefix(args[1], "set", "clear");
         }
-        return Collections.emptyList();
+        return List.of();
     }
 }

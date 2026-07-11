@@ -67,19 +67,12 @@ public final class RuleListEditor {
         List<String> values = new ArrayList<>(plugin.getConfig().getStringList(path));
         boolean changed = "add".equals(action) ? addRule(values, value) : removeRule(values, value);
         plugin.getConfig().set(path, values);
-        plugin.saveConfig();
-        plugin.reloadModerationConfig();
+        plugin.saveAndReload();
         plugin.messages().send(sender, changed ? "rules.updated" : "rules.unchanged", Map.of(
                 "action", action,
                 "kind", kind,
                 "value", value
         ));
-    }
-
-    public static List<String> completeActions(String prefix) {
-        return List.of("add", "remove", "list").stream()
-                .filter(v -> v.startsWith(prefix.toLowerCase(Locale.ROOT)))
-                .toList();
     }
 
     private static boolean addRule(List<String> values, String value) {

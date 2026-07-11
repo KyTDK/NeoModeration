@@ -3,6 +3,7 @@ package com.neomechanical.neomoderation;
 import com.neomechanical.neomoderation.commands.NeoModerationCommand;
 import com.neomechanical.neomoderation.config.ModerationSettings;
 import com.neomechanical.neomoderation.listener.ChatModerationListener;
+import com.neomechanical.neomoderation.listener.MapArtListener;
 import com.neomechanical.neomoderation.listener.PaperAsyncChatBridge;
 import com.neomechanical.neomoderation.messages.MessageService;
 import com.neomechanical.neomoderation.moderation.ChatModerationActionExecutor;
@@ -51,10 +52,7 @@ public final class NeoModerationPlugin extends JavaPlugin {
                     this
             );
         }
-        getServer().getPluginManager().registerEvents(
-                new com.neomechanical.neomoderation.listener.MapArtListener(this),
-                this
-        );
+        getServer().getPluginManager().registerEvents(new MapArtListener(this), this);
         PluginCommand command = getCommand("neomod");
         if (command != null) {
             NeoModerationCommand executor = new NeoModerationCommand(this);
@@ -79,6 +77,20 @@ public final class NeoModerationPlugin extends JavaPlugin {
         if (coordinator != null) {
             coordinator.resetCircuit();
         }
+    }
+
+    /** Persist in-memory config edits and re-apply them atomically. */
+    public void saveAndReload() {
+        saveConfig();
+        reloadModerationConfig();
+    }
+
+    public void runAsync(Runnable task) {
+        getServer().getScheduler().runTaskAsynchronously(this, task);
+    }
+
+    public void runSync(Runnable task) {
+        getServer().getScheduler().runTask(this, task);
     }
 
     public ModerationSettings settings() {

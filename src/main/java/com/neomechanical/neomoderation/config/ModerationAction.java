@@ -10,6 +10,24 @@ public record ModerationAction(
         int durationSeconds,
         String reason
 ) {
+    /** Human summary of an action list, shared by status, alerts, test, and doctor. */
+    public static String describe(java.util.List<ModerationAction> actions) {
+        if (actions.isEmpty()) {
+            return "block only";
+        }
+        java.util.List<String> parts = new java.util.ArrayList<>(actions.size());
+        for (ModerationAction action : actions) {
+            parts.add(switch (action.type()) {
+                case CLEAR_CHAT -> "clear";
+                case MUTE -> "mute " + com.neomechanical.neomoderation.commands.DurationParser.format(action.durationSeconds());
+                case KICK -> "kick";
+                case BAN -> "ban";
+                default -> action.type().name().toLowerCase(java.util.Locale.ROOT);
+            });
+        }
+        return String.join(", ", parts);
+    }
+
     public static Optional<ModerationAction> tryFrom(Map<?, ?> raw) {
         Optional<ModerationActionType> type = ModerationActionType.parse(stringValue(raw.get("type")));
         if (type.isEmpty()) {

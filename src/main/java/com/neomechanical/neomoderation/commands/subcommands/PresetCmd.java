@@ -2,17 +2,15 @@ package com.neomechanical.neomoderation.commands.subcommands;
 
 import com.neomechanical.neomoderation.NeoModerationPlugin;
 import com.neomechanical.neomoderation.commands.SubCommand;
+import com.neomechanical.neomoderation.config.ModerationAction;
 import com.neomechanical.neomoderation.config.ModerationCategorySettings;
-import com.neomechanical.neomoderation.moderation.DetectionNotifier;
 import org.bukkit.command.CommandSender;
 
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Stream;
 
 /**
  * One-command policy bundles. A preset sets cloud category thresholds and the
@@ -76,16 +74,6 @@ public class PresetCmd implements SubCommand {
     }
 
     @Override
-    public String getPermission() {
-        return "neomoderation.admin";
-    }
-
-    @Override
-    public List<String> getAliases() {
-        return Collections.emptyList();
-    }
-
-    @Override
     public void execute(CommandSender sender, String label, String[] args) {
         if (args.length < 2 || "list".equalsIgnoreCase(args[1])) {
             plugin.messages().send(sender, "preset.list-title");
@@ -112,13 +100,12 @@ public class PresetCmd implements SubCommand {
             plugin.getConfig().set("moderation.categories." + category, value);
         }
         plugin.getConfig().set("moderation.actions", toConfigMaps(preset.actions()));
-        plugin.saveConfig();
-        plugin.reloadModerationConfig();
+        plugin.saveAndReload();
 
         plugin.messages().send(sender, "preset.applied", Map.of(
                 "name", preset.name(),
                 "categories", String.valueOf(plugin.settings().categories().enabledCount()),
-                "actions", DetectionNotifier.describeActions(plugin.settings().actions())
+                "actions", ModerationAction.describe(plugin.settings().actions())
         ));
     }
 
@@ -132,12 +119,8 @@ public class PresetCmd implements SubCommand {
     @Override
     public List<String> onTabComplete(CommandSender sender, String[] args) {
         if (args.length == 2) {
-            String prefix = args[1].toLowerCase(Locale.ROOT);
-            return Stream.concat(PRESETS.stream().map(Preset::name), Stream.of("list"))
-                    .filter(v -> v.startsWith(prefix))
-                    .sorted()
-                    .toList();
+            return SubCommand.filterPrefix(args[1], "community", "family", "list", "minimal");
         }
-        return Collections.emptyList();
+        return List.of();
     }
 }

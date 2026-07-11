@@ -2,16 +2,14 @@ package com.neomechanical.neomoderation.commands.subcommands;
 
 import com.neomechanical.neomoderation.NeoModerationPlugin;
 import com.neomechanical.neomoderation.commands.SubCommand;
+import com.neomechanical.neomoderation.config.ModerationAction;
 import com.neomechanical.neomoderation.config.ModerationMode;
 import com.neomechanical.neomoderation.config.ModerationSettings;
-import com.neomechanical.neomoderation.moderation.DetectionNotifier;
 import com.neomechanical.neomoderation.moderation.NeoMechanicalUsageClient;
 import com.neomechanical.neomoderation.moderation.UsageSummary;
 import org.bukkit.command.CommandSender;
-import org.bukkit.scheduler.BukkitRunnable;
 
 import java.net.URI;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -42,11 +40,6 @@ public class DoctorCmd implements SubCommand {
     @Override
     public String getUsage() {
         return "/nmod doctor";
-    }
-
-    @Override
-    public String getPermission() {
-        return "neomoderation.admin";
     }
 
     @Override
@@ -85,7 +78,7 @@ public class DoctorCmd implements SubCommand {
         if (settings.actions().isEmpty()) {
             warn(sender, "Actions", "none - flagged chat is blocked without punishment");
         } else {
-            pass(sender, "Actions", DetectionNotifier.describeActions(settings.actions()));
+            pass(sender, "Actions", ModerationAction.describe(settings.actions()));
         }
 
         pass(sender, "Fail policy", settings.failOpen()
@@ -118,24 +111,21 @@ public class DoctorCmd implements SubCommand {
         }
 
         plugin.messages().send(sender, "doctor.checking-cloud");
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                long start = System.nanoTime();
-                try {
-                    UsageSummary usage = usageClient.fetchUsage(settings.api());
-                    long ms = (System.nanoTime() - start) / 1_000_000L;
-                    runSync(() -> pass(sender, "Cloud connectivity",
-                            "OK in " + ms + "ms - workspace " + usage.workspace()
-                                    + ", plan " + usage.tier()
-                                    + ", " + usage.creditsRemaining() + " credits left"));
-                } catch (NeoMechanicalUsageClient.UsageException e) {
-                    long ms = (System.nanoTime() - start) / 1_000_000L;
-                    runSync(() -> fail(sender, "Cloud connectivity",
-                            "failed in " + ms + "ms (" + e.getMessage() + ") - check the key and endpoint"));
-                }
+        plugin.runAsync(() -> {
+            long start = System.nanoTime();
+            try {
+                UsageSummary usage = usageClient.fetchUsage(settings.api());
+                long ms = (System.nanoTime() - start) / 1_000_000L;
+                plugin.runSync(() -> pass(sender, "Cloud connectivity",
+                        "OK in " + ms + "ms - workspace " + usage.workspace()
+                                + ", plan " + usage.tier()
+                                + ", " + usage.creditsRemaining() + " credits left"));
+            } catch (NeoMechanicalUsageClient.UsageException e) {
+                long ms = (System.nanoTime() - start) / 1_000_000L;
+                plugin.runSync(() -> fail(sender, "Cloud connectivity",
+                        "failed in " + ms + "ms (" + e.getMessage() + ") - check the key and endpoint"));
             }
-        }.runTaskAsynchronously(plugin);
+        });
     }
 
     private static boolean isHttpUri(String endpoint) {
@@ -157,19 +147,5 @@ public class DoctorCmd implements SubCommand {
 
     private void fail(CommandSender sender, String check, String detail) {
         plugin.messages().send(sender, "doctor.fail", Map.of("check", check, "detail", detail));
-    }
-
-    private void runSync(Runnable runnable) {
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                runnable.run();
-            }
-        }.runTask(plugin);
-    }
-
-    @Override
-    public List<String> onTabComplete(CommandSender sender, String[] args) {
-        return Collections.emptyList();
     }
 }

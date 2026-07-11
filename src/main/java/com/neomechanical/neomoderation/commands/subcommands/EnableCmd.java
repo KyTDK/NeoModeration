@@ -4,12 +4,12 @@ import com.neomechanical.neomoderation.NeoModerationPlugin;
 import com.neomechanical.neomoderation.commands.SubCommand;
 import org.bukkit.command.CommandSender;
 
-import java.util.Collections;
 import java.util.List;
 
 public class EnableCmd implements SubCommand {
-    private final NeoModerationPlugin plugin;
     private static final String ENABLED_PATH = "moderation.enabled";
+
+    private final NeoModerationPlugin plugin;
 
     public EnableCmd(NeoModerationPlugin plugin) {
         this.plugin = plugin;
@@ -31,11 +31,6 @@ public class EnableCmd implements SubCommand {
     }
 
     @Override
-    public String getPermission() {
-        return "neomoderation.admin";
-    }
-
-    @Override
     public List<String> getAliases() {
         return List.of("enable");
     }
@@ -43,13 +38,7 @@ public class EnableCmd implements SubCommand {
     @Override
     public void execute(CommandSender sender, String label, String[] args) {
         plugin.getConfig().set(ENABLED_PATH, true);
-        plugin.saveConfig();
-        plugin.reloadModerationConfig();
+        plugin.saveAndReload();
         plugin.messages().send(sender, "toggle.on");
-    }
-
-    @Override
-    public List<String> onTabComplete(CommandSender sender, String[] args) {
-        return Collections.emptyList();
     }
 }

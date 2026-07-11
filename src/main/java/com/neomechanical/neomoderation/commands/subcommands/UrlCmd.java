@@ -5,7 +5,6 @@ import com.neomechanical.neomoderation.commands.RuleListEditor;
 import com.neomechanical.neomoderation.commands.SubCommand;
 import org.bukkit.command.CommandSender;
 
-import java.util.Collections;
 import java.util.List;
 
 public class UrlCmd implements SubCommand {
@@ -33,16 +32,6 @@ public class UrlCmd implements SubCommand {
     }
 
     @Override
-    public String getPermission() {
-        return "neomoderation.admin";
-    }
-
-    @Override
-    public List<String> getAliases() {
-        return Collections.emptyList();
-    }
-
-    @Override
     public void execute(CommandSender sender, String label, String[] args) {
         RuleListEditor.handle(plugin, sender, label, args, 1, PATH, "url");
     }
@@ -50,8 +39,8 @@ public class UrlCmd implements SubCommand {
     @Override
     public List<String> onTabComplete(CommandSender sender, String[] args) {
         if (args.length == 2) {
-            return RuleListEditor.completeActions(args[1]);
+            return SubCommand.filterPrefix(args[1], "add", "remove", "list");
         }
-        return Collections.emptyList();
+        return List.of();
     }
 }

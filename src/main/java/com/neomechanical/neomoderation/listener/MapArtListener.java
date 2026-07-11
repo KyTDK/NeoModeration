@@ -2,6 +2,8 @@ package com.neomechanical.neomoderation.listener;
 
 import com.neomechanical.neomoderation.NeoModerationPlugin;
 import com.neomechanical.neomoderation.config.MapArtSettings;
+import com.neomechanical.neomoderation.config.ModerationMode;
+import com.neomechanical.neomoderation.config.ModerationSettings;
 import com.neomechanical.neomoderation.moderation.MapArtScanner;
 import com.neomechanical.neomoderation.moderation.ModerationApiResult;
 import org.bukkit.Material;
@@ -138,8 +140,8 @@ public final class MapArtListener implements Listener {
 
     /** Main thread only. Monitor mode alerts staff instead of messaging/confiscating. */
     private void handleFlaggedMap(Player player, ItemStack mapItem, int mapId, String messageKey) {
-        var settings = plugin.settings();
-        if (settings.mode() == com.neomechanical.neomoderation.config.ModerationMode.MONITOR) {
+        ModerationSettings settings = plugin.settings();
+        if (settings.mode() == ModerationMode.MONITOR) {
             plugin.monitorStats().record("map_art:" + mapId);
             plugin.notifier().notifyDetection(player, "map_art:" + mapId, "(map " + mapId + ")", settings);
             plugin.getLogger().info("MONITOR: map " + mapId + " held by " + player.getName()

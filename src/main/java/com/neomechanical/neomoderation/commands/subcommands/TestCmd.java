@@ -2,19 +2,16 @@ package com.neomechanical.neomoderation.commands.subcommands;
 
 import com.neomechanical.neomoderation.NeoModerationPlugin;
 import com.neomechanical.neomoderation.commands.SubCommand;
+import com.neomechanical.neomoderation.config.ModerationAction;
 import com.neomechanical.neomoderation.config.ModerationMode;
 import com.neomechanical.neomoderation.config.ModerationSettings;
-import com.neomechanical.neomoderation.moderation.DetectionNotifier;
 import com.neomechanical.neomoderation.moderation.ModerationApiResult;
 import com.neomechanical.neomoderation.moderation.OfflineModerationEngine;
 import com.neomechanical.neomoderation.moderation.OfflineModerationResult;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -50,16 +47,6 @@ public class TestCmd implements SubCommand {
     @Override
     public String getUsage() {
         return "/nmod test <message>";
-    }
-
-    @Override
-    public String getPermission() {
-        return "neomoderation.admin";
-    }
-
-    @Override
-    public List<String> getAliases() {
-        return Collections.emptyList();
     }
 
     @Override
@@ -106,30 +93,24 @@ public class TestCmd implements SubCommand {
         plugin.messages().send(sender, "test.cloud-checking");
         String senderName = sender.getName();
         String senderUuid = sender instanceof Player player ? player.getUniqueId().toString() : CONSOLE_UUID;
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                long start = System.nanoTime();
-                ModerationApiResult result = plugin.apiClient().moderateText(
-                        senderName, senderUuid, message, settings.api(), settings.categories());
-                String ms = String.valueOf((System.nanoTime() - start) / 1_000_000L);
-                new BukkitRunnable() {
-                    @Override
-                    public void run() {
-                        switch (result.kind()) {
-                            case FLAGGED -> plugin.messages().send(sender, "test.cloud-flagged", Map.of("ms", ms));
-                            case CLEAR -> plugin.messages().send(sender, "test.cloud-clear", Map.of("ms", ms));
-                            default -> plugin.messages().send(sender, "test.cloud-error", Map.of(
-                                    "ms", ms,
-                                    "detail", result.kind().name().toLowerCase(Locale.ROOT).replace('_', ' ')
-                            ));
-                        }
-                        sendOutcome(sender, settings, cloudDetected(result, settings.failOpen()));
-                        plugin.messages().send(sender, "test.note");
-                    }
-                }.runTask(plugin);
-            }
-        }.runTaskAsynchronously(plugin);
+        plugin.runAsync(() -> {
+            long start = System.nanoTime();
+            ModerationApiResult result = plugin.apiClient().moderateText(
+                    senderName, senderUuid, message, settings.api(), settings.categories());
+            String ms = String.valueOf((System.nanoTime() - start) / 1_000_000L);
+            plugin.runSync(() -> {
+                switch (result.kind()) {
+                    case FLAGGED -> plugin.messages().send(sender, "test.cloud-flagged", Map.of("ms", ms));
+                    case CLEAR -> plugin.messages().send(sender, "test.cloud-clear", Map.of("ms", ms));
+                    default -> plugin.messages().send(sender, "test.cloud-error", Map.of(
+                            "ms", ms,
+                            "detail", result.kind().name().toLowerCase(Locale.ROOT).replace('_', ' ')
+                    ));
+                }
+                sendOutcome(sender, settings, cloudDetected(result, settings.failOpen()));
+                plugin.messages().send(sender, "test.note");
+            });
+        });
     }
 
     private void sendOutcome(CommandSender sender, ModerationSettings settings, boolean detected) {
@@ -137,7 +118,7 @@ public class TestCmd implements SubCommand {
             case ALLOWED -> plugin.messages().send(sender, "test.would-allowed");
             case MONITORED -> plugin.messages().send(sender, "test.would-monitor");
             case ENFORCED -> plugin.messages().send(sender, "test.would-enforce", Map.of(
-                    "actions", DetectionNotifier.describeActions(settings.actions())
+                    "actions", ModerationAction.describe(settings.actions())
             ));
         }
     }
@@ -156,10 +137,5 @@ public class TestCmd implements SubCommand {
             return Outcome.ALLOWED;
         }
         return mode == ModerationMode.MONITOR ? Outcome.MONITORED : Outcome.ENFORCED;
-    }
-
-    @Override
-    public List<String> onTabComplete(CommandSender sender, String[] args) {
-        return Collections.emptyList();
     }
 }

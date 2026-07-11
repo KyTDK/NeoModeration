@@ -5,10 +5,7 @@ import com.neomechanical.neomoderation.commands.SubCommand;
 import com.neomechanical.neomoderation.moderation.NeoMechanicalUsageClient;
 import com.neomechanical.neomoderation.moderation.UsageSummary;
 import org.bukkit.command.CommandSender;
-import org.bukkit.scheduler.BukkitRunnable;
 
-import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 
 public class UsageCmd implements SubCommand {
@@ -35,16 +32,6 @@ public class UsageCmd implements SubCommand {
     }
 
     @Override
-    public String getPermission() {
-        return "neomoderation.admin";
-    }
-
-    @Override
-    public List<String> getAliases() {
-        return Collections.emptyList();
-    }
-
-    @Override
     public void execute(CommandSender sender, String label, String[] args) {
         if (plugin.settings().api().apiKey().isBlank()) {
             plugin.messages().send(sender, "error.no-api-key");
@@ -52,18 +39,14 @@ public class UsageCmd implements SubCommand {
         }
 
         plugin.messages().send(sender, "usage.fetching");
-
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                try {
-                    UsageSummary summary = usageClient.fetchUsage(plugin.settings().api());
-                    runSync(() -> render(sender, summary));
-                } catch (NeoMechanicalUsageClient.UsageException e) {
-                    runSync(() -> plugin.messages().send(sender, "usage.error"));
-                }
+        plugin.runAsync(() -> {
+            try {
+                UsageSummary summary = usageClient.fetchUsage(plugin.settings().api());
+                plugin.runSync(() -> render(sender, summary));
+            } catch (NeoMechanicalUsageClient.UsageException e) {
+                plugin.runSync(() -> plugin.messages().send(sender, "usage.error"));
             }
-        }.runTaskAsynchronously(plugin);
+        });
     }
 
     private void render(CommandSender sender, UsageSummary s) {
@@ -87,19 +70,5 @@ public class UsageCmd implements SubCommand {
 
     private static String nsfw(long remaining, long cap) {
         return remaining + "/" + cap;
-    }
-
-    private void runSync(Runnable runnable) {
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                runnable.run();
-            }
-        }.runTask(plugin);
-    }
-
-    @Override
-    public List<String> onTabComplete(CommandSender sender, String[] args) {
-        return Collections.emptyList();
     }
 }

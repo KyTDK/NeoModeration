@@ -1,15 +1,11 @@
 package com.neomechanical.neomoderation.moderation;
 
 import com.neomechanical.neomoderation.NeoModerationPlugin;
-import com.neomechanical.neomoderation.commands.DurationParser;
 import com.neomechanical.neomoderation.config.ModerationAction;
 import com.neomechanical.neomoderation.config.ModerationMode;
 import com.neomechanical.neomoderation.config.ModerationSettings;
 import org.bukkit.entity.Player;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -36,30 +32,13 @@ public final class DetectionNotifier {
                 "player", offender.getName(),
                 "reason", reason,
                 "message", settings.alerts().includeMessage() ? preview(message) : "(hidden)",
-                "actions", describeActions(settings.actions())
+                "actions", ModerationAction.describe(settings.actions())
         ));
         for (Player online : plugin.getServer().getOnlinePlayers()) {
             if (online.hasPermission(NOTIFY_PERMISSION)) {
                 online.sendMessage(line);
             }
         }
-    }
-
-    public static String describeActions(List<ModerationAction> actions) {
-        if (actions.isEmpty()) {
-            return "block only";
-        }
-        List<String> parts = new ArrayList<>(actions.size());
-        for (ModerationAction action : actions) {
-            parts.add(switch (action.type()) {
-                case CLEAR_CHAT -> "clear";
-                case MUTE -> "mute " + DurationParser.format(action.durationSeconds());
-                case KICK -> "kick";
-                case BAN -> "ban";
-                default -> action.type().name().toLowerCase(Locale.ROOT);
-            });
-        }
-        return String.join(", ", parts);
     }
 
     static String preview(String message) {

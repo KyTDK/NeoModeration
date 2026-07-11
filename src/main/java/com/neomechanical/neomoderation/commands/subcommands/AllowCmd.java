@@ -5,11 +5,9 @@ import com.neomechanical.neomoderation.commands.RuleListEditor;
 import com.neomechanical.neomoderation.commands.SubCommand;
 import org.bukkit.command.CommandSender;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.stream.Stream;
 
 public class AllowCmd implements SubCommand {
     private static final String WORDS_PATH = "moderation.offline.allowedWords";
@@ -37,16 +35,6 @@ public class AllowCmd implements SubCommand {
     }
 
     @Override
-    public String getPermission() {
-        return "neomoderation.admin";
-    }
-
-    @Override
-    public List<String> getAliases() {
-        return Collections.emptyList();
-    }
-
-    @Override
     public void execute(CommandSender sender, String label, String[] args) {
         if (args.length < 2) {
             plugin.messages().send(sender, "allow.usage", Map.of("label", label));
@@ -62,12 +50,11 @@ public class AllowCmd implements SubCommand {
     @Override
     public List<String> onTabComplete(CommandSender sender, String[] args) {
         if (args.length == 2) {
-            String prefix = args[1].toLowerCase(Locale.ROOT);
-            return Stream.of("word", "url").filter(v -> v.startsWith(prefix)).toList();
+            return SubCommand.filterPrefix(args[1], "word", "url");
         }
         if (args.length == 3) {
-            return RuleListEditor.completeActions(args[2]);
+            return SubCommand.filterPrefix(args[2], "add", "remove", "list");
         }
-        return Collections.emptyList();
+        return List.of();
     }
 }

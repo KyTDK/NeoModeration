@@ -50,6 +50,9 @@ public final class MessageService {
         for (Map.Entry<String, String> entry : placeholders.entrySet()) {
             message = message.replace("{" + entry.getKey() + "}", entry.getValue());
         }
+        // The shared chat prefix is a locale entry so every line stays consistent
+        // and rebrandable from one place.
+        message = message.replace("{prefix}", active.getString("prefix", fallback.getString("prefix", "")));
         return ChatColor.translateAlternateColorCodes('&', message);
     }
 

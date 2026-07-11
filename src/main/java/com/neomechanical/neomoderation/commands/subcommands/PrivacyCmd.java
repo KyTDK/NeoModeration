@@ -6,8 +6,6 @@ import com.neomechanical.neomoderation.config.ModerationMode;
 import com.neomechanical.neomoderation.config.ModerationSettings;
 import org.bukkit.command.CommandSender;
 
-import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 
 /** One-screen explanation of exactly what data stays local, what leaves, and how. */
@@ -31,16 +29,6 @@ public class PrivacyCmd implements SubCommand {
     @Override
     public String getUsage() {
         return "/nmod privacy";
-    }
-
-    @Override
-    public String getPermission() {
-        return "neomoderation.admin";
-    }
-
-    @Override
-    public List<String> getAliases() {
-        return Collections.emptyList();
     }
 
     @Override
@@ -68,10 +56,5 @@ public class PrivacyCmd implements SubCommand {
                 "value", settings.mode() == ModerationMode.MONITOR ? "monitor (observe only)" : "enforce"
         ));
         plugin.messages().send(sender, "privacy.metrics");
-    }
-
-    @Override
-    public List<String> onTabComplete(CommandSender sender, String[] args) {
-        return Collections.emptyList();
     }
 }
