@@ -17,7 +17,12 @@ public record ModerationSettings(
         List<ModerationAction> actions,
         boolean scanAsyncChat,
         boolean failOpen,
-        AlertSettings alerts
+        AlertSettings alerts,
+        SpamSettings spam,
+        StrikeSettings strikes,
+        SurfaceSettings surfaces,
+        CaseSettings cases,
+        boolean chatCensorLocal
 ) {
     public record AlertSettings(boolean enabled, boolean includeMessage) {
         public static AlertSettings from(FileConfiguration config) {
@@ -43,7 +48,12 @@ public record ModerationSettings(
                 loadActions(config, logger),
                 config.getBoolean("moderation.chat.scanAsyncChat", true),
                 config.getBoolean("moderation.chat.failOpen", true),
-                AlertSettings.from(config)
+                AlertSettings.from(config),
+                SpamSettings.from(config),
+                StrikeSettings.from(config),
+                SurfaceSettings.from(config),
+                CaseSettings.from(config),
+                config.getBoolean("moderation.chat.censorLocalDetections", false)
         );
     }
 

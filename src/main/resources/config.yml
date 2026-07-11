@@ -93,6 +93,54 @@ moderation:
       durationSeconds: 300
       reason: "Inappropriate chat message"
 
+  # ---- Local anti-spam (no API key needed, runs before everything) --------
+  # Set any limit to 0 to disable that single check.
+  spam:
+    enabled: true
+    # Max chat messages per player per 10 seconds.
+    messagesPer10s: 5
+    # Same/similar message this many times in a row gets flagged.
+    duplicateLimit: 3
+    similarityThreshold: 0.9
+    # Flag messages over this % uppercase (only when at least capsMinLength
+    # letters). Player names don't count.
+    capsPercent: 70
+    capsMinLength: 8
+    # Flag runs of the same character longer than this (aaaaaaaaa...).
+    maxCharRun: 8
+    # Max scanned commands per player per 10 seconds (see surfaces.command).
+    commandsPer10s: 8
+
+  # ---- Progressive enforcement (strikes) -----------------------------------
+  # Every detection adds a strike. Stay clean for decayMinutes and the counter
+  # resets. When a player's count reaches a rung below, that action also runs.
+  strikes:
+    enabled: true
+    decayMinutes: 30
+    escalation:
+      - atStrikes: 4
+        type: KICK
+        reason: "Repeated inappropriate chat"
+
+  # ---- Extra surfaces (local rules only; the cloud is never blocking here) --
+  # Each can be: off | monitor | censor | block
+  surfaces:
+    sign: "off"
+    book: "off"
+    anvil: "off"
+    command: "off"
+    # Which commands' arguments get scanned when command != off.
+    scannedCommands: [ "msg", "tell", "w", "whisper", "me", "r", "reply" ]
+
+  # ---- Local case history ---------------------------------------------------
+  # SQLite log of detections at plugins/NeoModeration/cases.db.
+  # View in-game with /nmod cases [player] and /nmod case <id>.
+  cases:
+    enabled: true
+    # Store a short preview of the offending content. Off by default so the
+    # log stays privacy-clean (metadata only).
+    storeContent: false
+
   # ---- Staff alerts --------------------------------------------------------
   # Players with the neomoderation.notify permission (ops by default) get an
   # in-game alert whenever content is flagged, in both monitor and enforce mode.
@@ -108,3 +156,7 @@ moderation:
     # If the cloud is unreachable, let the message through (true) instead of
     # blocking it (false).
     failOpen: true
+    # Replace locally-matched words/links with **** instead of blocking the
+    # whole message. Censored messages still count strikes and alert staff,
+    # but skip the punishment actions. Cloud detections always block.
+    censorLocalDetections: false

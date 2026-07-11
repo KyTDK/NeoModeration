@@ -1,11 +1,15 @@
 package com.neomechanical.neomoderation.moderation;
 
+import com.neomechanical.neomoderation.config.CaseSettings;
+import com.neomechanical.neomoderation.config.MapArtSettings;
 import com.neomechanical.neomoderation.config.ModerationApiSettings;
 import com.neomechanical.neomoderation.config.ModerationCategorySettings;
-import com.neomechanical.neomoderation.config.MapArtSettings;
 import com.neomechanical.neomoderation.config.ModerationMode;
 import com.neomechanical.neomoderation.config.ModerationSettings;
 import com.neomechanical.neomoderation.config.OfflineModerationSettings;
+import com.neomechanical.neomoderation.config.SpamSettings;
+import com.neomechanical.neomoderation.config.StrikeSettings;
+import com.neomechanical.neomoderation.config.SurfaceSettings;
 import com.sun.net.httpserver.HttpServer;
 import org.bukkit.entity.Player;
 import org.junit.jupiter.api.Test;
@@ -97,7 +101,17 @@ class ChatModerationCoordinatorTest {
                 List.of(),
                 true,
                 failOpen,
-                new ModerationSettings.AlertSettings(true, true)
+                new ModerationSettings.AlertSettings(true, true),
+                new SpamSettings(false, 0, 0, 0.9D, 0, 0, 0, 0),
+                new StrikeSettings(false, 30, List.of()),
+                new SurfaceSettings(
+                        SurfaceSettings.SurfaceMode.OFF,
+                        SurfaceSettings.SurfaceMode.OFF,
+                        SurfaceSettings.SurfaceMode.OFF,
+                        SurfaceSettings.SurfaceMode.OFF,
+                        List.of()),
+                new CaseSettings(false, false),
+                false
         );
     }
 }
