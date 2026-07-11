@@ -27,7 +27,7 @@ class OfflineModerationEngineBenchmarkTest {
         assertTrue(words.size() > 300, "expected the real word list, got " + words.size());
 
         OfflineModerationSettings settings = new OfflineModerationSettings(
-                true, false, true, words, List.of("grabify.link", "discord.gg/free"));
+                true, false, true, words, List.of("grabify.link", "discord.gg/free"), List.of(), List.of());
 
         List<String> corpus = corpus(words);
 

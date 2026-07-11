@@ -34,6 +34,12 @@ moderation:
     bannedUrls:
       - "grabify.link"
       - "discord.gg/free"
+    # Exceptions that always win over the rules above (manage with /nmod allow).
+    # allowedWords are whole phrases: a banned word inside an allowed phrase is
+    # ignored. allowedUrls are substring matches, exactly like bannedUrls, and
+    # also exempt matching links from blockAnyUrl.
+    allowedWords: []
+    allowedUrls: []
 
   # ---- Cloud moderation (requires a NeoMechanical API key) -----------------
   # Create a key at https://platform.neomechanical.com (scope: events:write),

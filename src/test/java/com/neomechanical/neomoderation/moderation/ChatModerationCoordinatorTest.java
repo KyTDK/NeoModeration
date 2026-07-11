@@ -91,7 +91,7 @@ class ChatModerationCoordinatorTest {
                 true,
                 ModerationMode.ENFORCE,
                 new ModerationApiSettings(endpoint, "test-key", 100, 100),
-                new OfflineModerationSettings(true, false, true, List.of(), List.of()),
+                new OfflineModerationSettings(true, false, true, List.of(), List.of(), List.of(), List.of()),
                 new ModerationCategorySettings(Map.of()),
                 new MapArtSettings(true, true, true, true, 1000),
                 List.of(),

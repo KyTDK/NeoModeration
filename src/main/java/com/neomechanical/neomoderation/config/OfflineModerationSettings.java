@@ -9,7 +9,9 @@ public record OfflineModerationSettings(
         boolean blockAnyUrl,
         boolean normalizeLeetspeak,
         List<String> bannedWords,
-        List<String> bannedUrls
+        List<String> bannedUrls,
+        List<String> allowedWords,
+        List<String> allowedUrls
 ) {
     public static OfflineModerationSettings from(FileConfiguration config) {
         return new OfflineModerationSettings(
@@ -17,7 +19,9 @@ public record OfflineModerationSettings(
                 config.getBoolean("moderation.offline.blockAnyUrl", false),
                 config.getBoolean("moderation.offline.normalizeLeetspeak", true),
                 normalizeList(config.getStringList("moderation.offline.bannedWords")),
-                normalizeList(config.getStringList("moderation.offline.bannedUrls"))
+                normalizeList(config.getStringList("moderation.offline.bannedUrls")),
+                normalizeList(config.getStringList("moderation.offline.allowedWords")),
+                normalizeList(config.getStringList("moderation.offline.allowedUrls"))
         );
     }
 

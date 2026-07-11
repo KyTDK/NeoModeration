@@ -9,50 +9,45 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OfflineModerationEngineTest {
+    private static OfflineModerationSettings settings(
+            boolean blockAnyUrl,
+            List<String> bannedWords,
+            List<String> bannedUrls,
+            List<String> allowedWords,
+            List<String> allowedUrls
+    ) {
+        return new OfflineModerationSettings(
+                true,
+                blockAnyUrl,
+                true,
+                bannedWords,
+                bannedUrls,
+                allowedWords,
+                allowedUrls
+        );
+    }
+
     @Test
     void flagsBannedWordsCaseInsensitivelyWithoutMatchingInsideSafeWords() {
-        OfflineModerationSettings settings = new OfflineModerationSettings(
-                true,
-                false,
-                true,
-                List.of("scam"),
-                List.of()
-        );
+        OfflineModerationSettings s = settings(false, List.of("scam"), List.of(), List.of(), List.of());
 
-        assertTrue(OfflineModerationEngine.evaluate("this is a SCAM", settings).flagged());
-        assertFalse(OfflineModerationEngine.evaluate("watch the scampi cook", settings).flagged());
+        assertTrue(OfflineModerationEngine.evaluate("this is a SCAM", s).flagged());
+        assertFalse(OfflineModerationEngine.evaluate("watch the scampi cook", s).flagged());
     }
 
     @Test
     void flagsLeetspeakWhenNormalizationIsEnabled() {
-        OfflineModerationSettings settings = new OfflineModerationSettings(
-                true,
-                false,
-                true,
-                List.of("scam"),
-                List.of()
-        );
+        OfflineModerationSettings s = settings(false, List.of("scam"), List.of(), List.of(), List.of());
 
-        assertTrue(OfflineModerationEngine.evaluate("free s c a m", settings).flagged());
-        assertTrue(OfflineModerationEngine.evaluate("free $c4m", settings).flagged());
+        assertTrue(OfflineModerationEngine.evaluate("free s c a m", s).flagged());
+        assertTrue(OfflineModerationEngine.evaluate("free $c4m", s).flagged());
     }
 
     @Test
     void flagsConfiguredUrlFragmentsAndOptionalAnyUrlMode() {
-        OfflineModerationSettings fragmentOnly = new OfflineModerationSettings(
-                true,
-                false,
-                true,
-                List.of(),
-                List.of("grabify.link", "discord.gg/free")
-        );
-        OfflineModerationSettings anyUrl = new OfflineModerationSettings(
-                true,
-                true,
-                true,
-                List.of(),
-                List.of()
-        );
+        OfflineModerationSettings fragmentOnly =
+                settings(false, List.of(), List.of("grabify.link", "discord.gg/free"), List.of(), List.of());
+        OfflineModerationSettings anyUrl = settings(true, List.of(), List.of(), List.of(), List.of());
 
         assertTrue(OfflineModerationEngine.evaluate("go to https://grabify.link/a", fragmentOnly).flagged());
         assertTrue(OfflineModerationEngine.evaluate("discord.gg/free-nitro", fragmentOnly).flagged());
@@ -63,15 +58,42 @@ class OfflineModerationEngineTest {
 
     @Test
     void ignoresBlankConfiguredUrlFragments() {
-        OfflineModerationSettings settings = new OfflineModerationSettings(
-                true,
-                false,
-                true,
-                List.of(),
-                List.of("", "   ", "grabify.link")
-        );
+        OfflineModerationSettings s =
+                settings(false, List.of(), List.of("", "   ", "grabify.link"), List.of(), List.of());
 
-        assertFalse(OfflineModerationEngine.evaluate("ordinary clean chat", settings).flagged());
-        assertTrue(OfflineModerationEngine.evaluate("visit grabify.link/demo", settings).flagged());
+        assertFalse(OfflineModerationEngine.evaluate("ordinary clean chat", s).flagged());
+        assertTrue(OfflineModerationEngine.evaluate("visit grabify.link/demo", s).flagged());
+    }
+
+    @Test
+    void allowedPhrasesSuppressBannedWordsInsideThem() {
+        OfflineModerationSettings s =
+                settings(false, List.of("scam"), List.of(), List.of("scam awareness"), List.of());
+
+        assertFalse(OfflineModerationEngine.evaluate("join our scam awareness event", s).flagged());
+        assertFalse(OfflineModerationEngine.evaluate("join our SCAM AWARENESS event", s).flagged());
+        assertTrue(OfflineModerationEngine.evaluate("this is a scam", s).flagged());
+        assertTrue(OfflineModerationEngine.evaluate("scam awareness is a scam", s).flagged());
+    }
+
+    @Test
+    void allowedUrlsSuppressBannedUrlFragments() {
+        OfflineModerationSettings s =
+                settings(false, List.of(), List.of("discord.gg"), List.of(), List.of("discord.gg/myserver"));
+
+        assertFalse(OfflineModerationEngine.evaluate("join discord.gg/myserver", s).flagged());
+        assertFalse(OfflineModerationEngine.evaluate("join DISCORD.GG/myserver", s).flagged());
+        assertTrue(OfflineModerationEngine.evaluate("join discord.gg/free", s).flagged());
+    }
+
+    @Test
+    void allowedUrlsSuppressBlockAnyUrlMode() {
+        OfflineModerationSettings s =
+                settings(true, List.of(), List.of(), List.of(), List.of("example.com"));
+
+        assertFalse(OfflineModerationEngine.evaluate("example.com is fine here", s).flagged());
+        assertFalse(OfflineModerationEngine.evaluate("see https://example.com/wiki", s).flagged());
+        assertTrue(OfflineModerationEngine.evaluate("example.com and evil.net too", s).flagged());
+        assertTrue(OfflineModerationEngine.evaluate("join 1.2.3.4 now", s).flagged());
     }
 }

@@ -30,10 +30,15 @@ public final class OfflineModerationEngine {
     private record CompiledUrl(String original, String normalized) {
     }
 
+    private record CompiledAllowedPhrase(Pattern phrase) {
+    }
+
     private record CompiledRules(
             OfflineModerationSettings source,
             List<CompiledWord> words,
-            List<CompiledUrl> urls
+            List<CompiledUrl> urls,
+            List<CompiledAllowedPhrase> allowedPhrases,
+            List<String> allowedUrls
     ) {
     }
 
@@ -49,7 +54,13 @@ public final class OfflineModerationEngine {
 
         CompiledRules rules = rulesFor(settings);
 
+        // Allowed URLs are masked out first so neither the banned-URL fragments nor
+        // blockAnyUrl can match inside them (explicit allow wins, like bannedUrls
+        // these are plain substring matches).
         String lowerMessage = lower(message);
+        for (String allowedUrl : rules.allowedUrls()) {
+            lowerMessage = lowerMessage.replace(allowedUrl, " ");
+        }
         for (CompiledUrl url : rules.urls()) {
             if (lowerMessage.contains(url.normalized())) {
                 return OfflineModerationResult.flagged("blocked_url:" + url.original());
@@ -57,7 +68,7 @@ public final class OfflineModerationEngine {
         }
 
         if (settings.blockAnyUrl()
-                && (URL_PATTERN.matcher(message).find() || IPV4_PATTERN.matcher(message).find())) {
+                && (URL_PATTERN.matcher(lowerMessage).find() || IPV4_PATTERN.matcher(lowerMessage).find())) {
             return OfflineModerationResult.flagged("blocked_url:any");
         }
 
@@ -66,6 +77,9 @@ public final class OfflineModerationEngine {
         }
 
         String normalizedMessage = normalizeText(message, settings.normalizeLeetspeak());
+        for (CompiledAllowedPhrase allowed : rules.allowedPhrases()) {
+            normalizedMessage = allowed.phrase().matcher(normalizedMessage).replaceAll(" ");
+        }
         String collapsedMessage = normalizedMessage.replace(" ", "");
         for (CompiledWord word : rules.words()) {
             // Necessary condition for both the exact and spaced-letter matches;
@@ -112,7 +126,40 @@ public final class OfflineModerationEngine {
                 urls.add(new CompiledUrl(bannedUrl, normalized));
             }
         }
-        return new CompiledRules(settings, List.copyOf(words), List.copyOf(urls));
+        List<CompiledAllowedPhrase> allowedPhrases = new ArrayList<>(settings.allowedWords().size());
+        for (String allowedWord : settings.allowedWords()) {
+            String normalized = normalizeText(allowedWord, settings.normalizeLeetspeak());
+            if (!normalized.isBlank()) {
+                allowedPhrases.add(new CompiledAllowedPhrase(Pattern.compile(phrasePattern(normalized))));
+            }
+        }
+        List<String> allowedUrls = new ArrayList<>(settings.allowedUrls().size());
+        for (String allowedUrl : settings.allowedUrls()) {
+            String normalized = lower(allowedUrl).trim();
+            if (!normalized.isEmpty()) {
+                allowedUrls.add(normalized);
+            }
+        }
+        return new CompiledRules(
+                settings,
+                List.copyOf(words),
+                List.copyOf(urls),
+                List.copyOf(allowedPhrases),
+                List.copyOf(allowedUrls)
+        );
+    }
+
+    /** Whole-phrase pattern over normalized text; word gaps tolerate any whitespace run. */
+    private static String phrasePattern(String normalizedPhrase) {
+        StringBuilder pattern = new StringBuilder("(^|\\s)");
+        String[] tokens = normalizedPhrase.split(" ");
+        for (int i = 0; i < tokens.length; i++) {
+            if (i > 0) {
+                pattern.append("\\s+");
+            }
+            pattern.append(Pattern.quote(tokens[i]));
+        }
+        return pattern.append("($|\\s)").toString();
     }
 
     private static String spacedPattern(String normalizedWord) {
