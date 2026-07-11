@@ -301,7 +301,7 @@ def run_container(version: str, image: str, index: int) -> Result:
         # and the enforce detection above must have been persisted to the SQLite
         # case history. The /nmod cases render is async, so verify the DB directly.
         doctor_out = plain(rcon("neomod doctor", rcon_port))
-        checks["doctorCoverage"] = "Anti-spam" in doctor_out and "Case history" in doctor_out
+        checks["doctorCoverage"] = "anti-spam" in doctor_out and "case history" in doctor_out
         checks["caseLogged"] = case_logged(work / "plugins/NeoModeration/cases.db")
         return Result(version, all(checks.values()), json.dumps(checks, sort_keys=True))
     finally:
