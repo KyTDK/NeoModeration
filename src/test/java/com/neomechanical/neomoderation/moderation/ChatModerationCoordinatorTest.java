@@ -96,7 +96,8 @@ class ChatModerationCoordinatorTest {
                 new MapArtSettings(true, true, true, true, 1000),
                 List.of(),
                 true,
-                failOpen
+                failOpen,
+                new ModerationSettings.AlertSettings(true, true)
         );
     }
 }

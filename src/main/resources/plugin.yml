@@ -19,3 +19,6 @@ permissions:
   neomoderation.bypass:
     description: Skips moderation checks.
     default: false
+  neomoderation.notify:
+    description: Receives in-game alerts when content is flagged.
+    default: op

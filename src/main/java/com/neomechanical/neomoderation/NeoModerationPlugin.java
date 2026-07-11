@@ -8,6 +8,8 @@ import com.neomechanical.neomoderation.messages.MessageService;
 import com.neomechanical.neomoderation.moderation.ChatModerationActionExecutor;
 import com.neomechanical.neomoderation.moderation.ChatModerationCoordinator;
 import com.neomechanical.neomoderation.moderation.ChatModerationProcessor;
+import com.neomechanical.neomoderation.moderation.DetectionNotifier;
+import com.neomechanical.neomoderation.moderation.MonitorStats;
 import com.neomechanical.neomoderation.moderation.PlayerMuteService;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.command.PluginCommand;
@@ -20,6 +22,8 @@ public final class NeoModerationPlugin extends JavaPlugin {
     private ModerationSettings settings;
     private MessageService messages;
     private PlayerMuteService muteService;
+    private MonitorStats monitorStats;
+    private DetectionNotifier notifier;
 
     @Override
     public void onEnable() {
@@ -27,11 +31,15 @@ public final class NeoModerationPlugin extends JavaPlugin {
         reloadModerationConfig();
         muteService = new PlayerMuteService(this);
         coordinator = new ChatModerationCoordinator(getLogger());
+        monitorStats = new MonitorStats();
+        notifier = new DetectionNotifier(this);
         ChatModerationProcessor processor = new ChatModerationProcessor(
                 this,
                 coordinator,
                 new ChatModerationActionExecutor("NeoModeration", muteService),
-                muteService
+                muteService,
+                monitorStats,
+                notifier
         );
         // Paper fires the legacy AsyncPlayerChatEvent whenever a legacy listener is
         // registered, so registering both would moderate every message twice
@@ -87,6 +95,14 @@ public final class NeoModerationPlugin extends JavaPlugin {
 
     public PlayerMuteService muteService() {
         return muteService;
+    }
+
+    public MonitorStats monitorStats() {
+        return monitorStats;
+    }
+
+    public DetectionNotifier notifier() {
+        return notifier;
     }
 
     public com.neomechanical.neomoderation.moderation.ModerationApiClient apiClient() {

@@ -93,6 +93,15 @@ moderation:
       durationSeconds: 300
       reason: "Inappropriate chat message"
 
+  # ---- Staff alerts --------------------------------------------------------
+  # Players with the neomoderation.notify permission (ops by default) get an
+  # in-game alert whenever content is flagged, in both monitor and enforce mode.
+  alerts:
+    enabled: true
+    # Include a short preview of the offending message in the alert. Set to
+    # false to redact content from staff chat.
+    includeMessage: true
+
   chat:
     # Hook Paper's async chat event for lower-latency scanning.
     scanAsyncChat: true

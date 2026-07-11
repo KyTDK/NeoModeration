@@ -71,3 +71,6 @@ mapart:
   blocked: "&8[&x&0&0&F&F&A&ANeoMod&8] &cEse mapa está marcado como inapropiado y no se puede usar."
 mute:
   blocked: "&cEstás silenciado por &f{duration}&c."
+alert:
+  monitor: "&8[&x&0&0&F&F&A&ANeoMod&8] &e&lMONITOR &7{player}&8: &f{message} &8(&7{reason}&8) &7activaría: &e{actions}"
+  enforce: "&8[&x&0&0&F&F&A&ANeoMod&8] &c&lDETECTADO &7{player}&8: &f{message} &8(&7{reason}&8) &7acciones: &c{actions}"

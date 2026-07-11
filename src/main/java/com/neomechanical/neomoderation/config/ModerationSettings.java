@@ -16,8 +16,18 @@ public record ModerationSettings(
         MapArtSettings mapArt,
         List<ModerationAction> actions,
         boolean scanAsyncChat,
-        boolean failOpen
+        boolean failOpen,
+        AlertSettings alerts
 ) {
+    public record AlertSettings(boolean enabled, boolean includeMessage) {
+        public static AlertSettings from(FileConfiguration config) {
+            return new AlertSettings(
+                    config.getBoolean("moderation.alerts.enabled", true),
+                    config.getBoolean("moderation.alerts.includeMessage", true)
+            );
+        }
+    }
+
     public static ModerationSettings from(FileConfiguration config) {
         return from(config, null);
     }
@@ -32,7 +42,8 @@ public record ModerationSettings(
                 MapArtSettings.from(config),
                 loadActions(config, logger),
                 config.getBoolean("moderation.chat.scanAsyncChat", true),
-                config.getBoolean("moderation.chat.failOpen", true)
+                config.getBoolean("moderation.chat.failOpen", true),
+                AlertSettings.from(config)
         );
     }
 
