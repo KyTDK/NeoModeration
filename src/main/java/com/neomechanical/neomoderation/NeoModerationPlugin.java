@@ -9,10 +9,13 @@ import com.neomechanical.neomoderation.moderation.ChatModerationActionExecutor;
 import com.neomechanical.neomoderation.moderation.ChatModerationCoordinator;
 import com.neomechanical.neomoderation.moderation.ChatModerationProcessor;
 import com.neomechanical.neomoderation.moderation.PlayerMuteService;
+import org.bstats.bukkit.Metrics;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class NeoModerationPlugin extends JavaPlugin {
+    private static final int BSTATS_PLUGIN_ID = 32542;
+
     private ChatModerationCoordinator coordinator;
     private ModerationSettings settings;
     private MessageService messages;
@@ -50,6 +53,7 @@ public final class NeoModerationPlugin extends JavaPlugin {
             command.setExecutor(executor);
             command.setTabCompleter(executor);
         }
+        new Metrics(this, BSTATS_PLUGIN_ID);
         getLogger().info("NeoModeration enabled.");
     }
 
