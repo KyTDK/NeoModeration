@@ -21,6 +21,7 @@ help:
     action: "Configurar clear/mute/kick/ban al detectar"
     usage: "Ver créditos y límites de NeoMechanical"
     mode: "Cambiar entre monitor (solo observar) y enforce"
+    allow: "Gestionar frases y enlaces permitidos (excepciones)"
 setup:
   usage: "&8[&x&0&0&F&F&A&ANeoMod&8] &cUso: &e/{label} setup <apiKey>"
   done: "&8[&x&0&0&F&F&A&ANeoMod&8] &a&lListo! &7Moderación en la nube &aactiva&7."
@@ -75,6 +76,8 @@ mute:
 alert:
   monitor: "&8[&x&0&0&F&F&A&ANeoMod&8] &e&lMONITOR &7{player}&8: &f{message} &8(&7{reason}&8) &7activaría: &e{actions}"
   enforce: "&8[&x&0&0&F&F&A&ANeoMod&8] &c&lDETECTADO &7{player}&8: &f{message} &8(&7{reason}&8) &7acciones: &c{actions}"
+allow:
+  usage: "&8[&x&0&0&F&F&A&ANeoMod&8] &cUso: &e/{label} allow <word|url> <add|remove|list> [valor]"
 mode:
   usage: "&8[&x&0&0&F&F&A&ANeoMod&8] &cUso: &e/{label} mode <monitor|enforce>"
   current: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Modo: &f{value}"
