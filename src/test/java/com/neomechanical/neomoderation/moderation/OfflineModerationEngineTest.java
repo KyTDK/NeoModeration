@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -84,6 +85,38 @@ class OfflineModerationEngineTest {
         assertFalse(OfflineModerationEngine.evaluate("join discord.gg/myserver", s).flagged());
         assertFalse(OfflineModerationEngine.evaluate("join DISCORD.GG/myserver", s).flagged());
         assertTrue(OfflineModerationEngine.evaluate("join discord.gg/free", s).flagged());
+    }
+
+    @Test
+    void censorMasksBannedWordsWhilePreservingTheRest() {
+        OfflineModerationSettings s = settings(false, List.of("scam"), List.of(), List.of(), List.of());
+
+        assertEquals("this is a ****", OfflineModerationEngine.censor("this is a SCAM", s));
+        assertEquals("free **** now", OfflineModerationEngine.censor("free $c4m now", s));
+        assertEquals("free * * * *", OfflineModerationEngine.censor("free s c a m", s));
+        assertEquals("clean message", OfflineModerationEngine.censor("clean message", s));
+    }
+
+    @Test
+    void censorRespectsAllowedPhrases() {
+        OfflineModerationSettings s =
+                settings(false, List.of("scam"), List.of(), List.of("scam awareness"), List.of());
+
+        assertEquals("scam awareness is a ****",
+                OfflineModerationEngine.censor("scam awareness is a scam", s));
+    }
+
+    @Test
+    void censorMasksUrls() {
+        OfflineModerationSettings fragment =
+                settings(false, List.of(), List.of("grabify.link"), List.of(), List.of());
+        assertEquals("go to https://************/a",
+                OfflineModerationEngine.censor("go to https://grabify.link/a", fragment));
+
+        OfflineModerationSettings anyUrl =
+                settings(true, List.of(), List.of(), List.of(), List.of("example.com"));
+        assertEquals("see example.com not ********",
+                OfflineModerationEngine.censor("see example.com not evil.net", anyUrl));
     }
 
     @Test
