@@ -2,7 +2,6 @@ package com.neomechanical.neomoderation.moderation;
 
 import com.neomechanical.neomoderation.config.ModerationCategorySettings;
 
-import java.util.Map;
 import java.util.regex.Pattern;
 
 public final class ChatModerationResponseParser {
@@ -19,8 +18,8 @@ public final class ChatModerationResponseParser {
         if (FLAGGED_TRUE.matcher(responseBody).find() || DECISION_BLOCKED.matcher(responseBody).find()) {
             return true;
         }
-        for (Map.Entry<String, Boolean> entry : categorySettings.enabledCategories().entrySet()) {
-            if (entry.getValue() && categoryTrue(entry.getKey(), responseBody)) {
+        for (String category : categorySettings.thresholds().keySet()) {
+            if (categorySettings.isEnabled(category) && categoryTrue(category, responseBody)) {
                 return true;
             }
         }

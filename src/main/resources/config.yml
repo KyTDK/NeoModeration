@@ -52,8 +52,12 @@ moderation:
     connectTimeoutMs: 2000
     readTimeoutMs: 2000
 
-  # Which content categories the cloud should flag. Turn off any you don't
-  # want enforced. Ignored when no API key is set.
+  # Which content categories the cloud should flag. Ignored when no API key
+  # is set. Each category accepts:
+  #   true  = on at the default sensitivity (0.7)
+  #   false = off
+  #   0.05 - 0.99 = custom score threshold (lower = stricter)
+  # Or apply a bundle with /nmod preset <family|community|minimal>.
   categories:
     sexual: true
     hate: true

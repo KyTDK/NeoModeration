@@ -7,8 +7,6 @@ import java.util.Map;
 public final class ModerationPayloadBuilder {
     private static final String ADAPTER = "neomoderation";
     private static final String SOURCE = "minecraft";
-    private static final double ENABLED_THRESHOLD = 0.7D;
-    private static final double DISABLED_THRESHOLD = 1.0D;
 
     private ModerationPayloadBuilder() {
     }
@@ -40,7 +38,7 @@ public final class ModerationPayloadBuilder {
     ) {
         StringBuilder thresholds = new StringBuilder();
         boolean first = true;
-        for (Map.Entry<String, Boolean> entry : categorySettings.enabledCategories().entrySet()) {
+        for (Map.Entry<String, Double> entry : categorySettings.thresholds().entrySet()) {
             if (!first) {
                 thresholds.append(',');
             }
@@ -48,7 +46,7 @@ public final class ModerationPayloadBuilder {
             thresholds.append('"')
                     .append(escapeJsonString(platformKey(entry.getKey())))
                     .append("\":")
-                    .append(entry.getValue() ? ENABLED_THRESHOLD : DISABLED_THRESHOLD);
+                    .append((double) entry.getValue());
         }
 
         String escapedPlayerName = escapeJsonString(playerName);
