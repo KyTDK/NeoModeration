@@ -9,6 +9,7 @@ import java.util.logging.Logger;
 
 public record ModerationSettings(
         boolean enabled,
+        ModerationMode mode,
         ModerationApiSettings api,
         OfflineModerationSettings offline,
         ModerationCategorySettings categories,
@@ -24,6 +25,7 @@ public record ModerationSettings(
     public static ModerationSettings from(FileConfiguration config, Logger logger) {
         return new ModerationSettings(
                 config.getBoolean("moderation.enabled", false),
+                ModerationMode.parse(config.getString("moderation.mode", "enforce")),
                 ModerationApiSettings.from(config),
                 OfflineModerationSettings.from(config),
                 ModerationCategorySettings.from(config),

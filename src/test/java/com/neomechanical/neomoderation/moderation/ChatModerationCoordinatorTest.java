@@ -3,6 +3,7 @@ package com.neomechanical.neomoderation.moderation;
 import com.neomechanical.neomoderation.config.ModerationApiSettings;
 import com.neomechanical.neomoderation.config.ModerationCategorySettings;
 import com.neomechanical.neomoderation.config.MapArtSettings;
+import com.neomechanical.neomoderation.config.ModerationMode;
 import com.neomechanical.neomoderation.config.ModerationSettings;
 import com.neomechanical.neomoderation.config.OfflineModerationSettings;
 import com.sun.net.httpserver.HttpServer;
@@ -88,6 +89,7 @@ class ChatModerationCoordinatorTest {
     private ModerationSettings settings(String endpoint, boolean failOpen) {
         return new ModerationSettings(
                 true,
+                ModerationMode.ENFORCE,
                 new ModerationApiSettings(endpoint, "test-key", 100, 100),
                 new OfflineModerationSettings(true, false, true, List.of(), List.of()),
                 new ModerationCategorySettings(Map.of()),

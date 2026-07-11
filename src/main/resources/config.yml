@@ -13,6 +13,14 @@ moderation:
   # Master switch. When false, NeoModeration does nothing.
   enabled: true
 
+  # How detections are handled:
+  #   monitor = detect, alert staff, and count what WOULD happen, but never
+  #             block a message or punish a player. Great for evaluating.
+  #   enforce = block flagged content and run the actions configured below.
+  # New installations start in monitor mode so you can trial NeoModeration
+  # safely. When you're happy with the decisions, run:  /nmod mode enforce
+  mode: "monitor"
+
   # ---- Local rules (no API key required, run instantly) -------------------
   offline:
     enabled: true
