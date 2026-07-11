@@ -5,3 +5,6 @@ target/
 dependency-reduced-pom.xml
 __pycache__/
 *.pyc
+
+# Local agent instructions (not for public repo)
+CLAUDE.md
