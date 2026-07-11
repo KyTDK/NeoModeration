@@ -24,6 +24,7 @@ help:
     allow: "Manage allowed phrases and links (exceptions)"
     test: "Preview how a message would be moderated"
     doctor: "Diagnose configuration and cloud connectivity"
+    preset: "Apply a policy preset (family, community, minimal)"
 setup:
   usage: "&8[&x&0&0&F&F&A&ANeoMod&8] &cUsage: &e/{label} setup <apiKey>"
   done: "&8[&x&0&0&F&F&A&ANeoMod&8] &a&lSuccess! &7Cloud moderation is now &aactive&7. Chat is being scanned."
@@ -99,6 +100,11 @@ doctor:
   warn: "&e[!!] &7{check}&8: &f{detail}"
   fail: "&c[XX] &7{check}&8: &f{detail}"
   checking-cloud: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Checking cloud connectivity..."
+preset:
+  usage: "&8[&x&0&0&F&F&A&ANeoMod&8] &cUsage: &e/{label} preset <family|community|minimal>"
+  list-title: "&8&m=========&r &x&0&0&F&F&A&A&lPolicy Presets &8&m========="
+  list-item: "&b{name} &8- &7{summary}"
+  applied: "&8[&x&0&0&F&F&A&ANeoMod&8] &aApplied preset &f{name}&a. &7Cloud categories on: &b{categories}&7, actions: &c{actions}&7. Mode and local rules were not changed."
 mode:
   usage: "&8[&x&0&0&F&F&A&ANeoMod&8] &cUsage: &e/{label} mode <monitor|enforce>"
   current: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Mode: &f{value}"
