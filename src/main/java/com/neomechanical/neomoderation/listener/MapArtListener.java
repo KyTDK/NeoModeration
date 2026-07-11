@@ -96,7 +96,7 @@ public final class MapArtListener implements Listener {
             return;
         }
         if (flaggedMaps.contains(mapId)) {
-            confiscateIfEnabled(player, mapItem, "mapart.blocked");
+            handleFlaggedMap(player, mapItem, mapId, "mapart.blocked");
             return;
         }
         if (!scannedMaps.add(mapId)) {
@@ -129,11 +129,24 @@ public final class MapArtListener implements Listener {
                     @Override
                     public void run() {
                         flaggedMaps.add(mapId);
-                        confiscateIfEnabled(player, mapItem, "mapart.confiscated");
+                        handleFlaggedMap(player, mapItem, mapId, "mapart.confiscated");
                     }
                 }.runTask(plugin);
             }
         }.runTaskAsynchronously(plugin);
+    }
+
+    /** Main thread only. Monitor mode alerts staff instead of messaging/confiscating. */
+    private void handleFlaggedMap(Player player, ItemStack mapItem, int mapId, String messageKey) {
+        var settings = plugin.settings();
+        if (settings.mode() == com.neomechanical.neomoderation.config.ModerationMode.MONITOR) {
+            plugin.monitorStats().record("map_art:" + mapId);
+            plugin.notifier().notifyDetection(player, "map_art:" + mapId, "(map " + mapId + ")", settings);
+            plugin.getLogger().info("MONITOR: map " + mapId + " held by " + player.getName()
+                    + " would be flagged; no action taken.");
+            return;
+        }
+        confiscateIfEnabled(player, mapItem, messageKey);
     }
 
     private void confiscateIfEnabled(Player player, ItemStack mapItem, String messageKey) {
