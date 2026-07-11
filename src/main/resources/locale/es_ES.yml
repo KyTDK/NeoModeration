@@ -22,6 +22,7 @@ help:
     usage: "Ver créditos y límites de NeoMechanical"
     mode: "Cambiar entre monitor (solo observar) y enforce"
     allow: "Gestionar frases y enlaces permitidos (excepciones)"
+    test: "Previsualizar cómo se moderaría un mensaje"
 setup:
   usage: "&8[&x&0&0&F&F&A&ANeoMod&8] &cUso: &e/{label} setup <apiKey>"
   done: "&8[&x&0&0&F&F&A&ANeoMod&8] &a&lListo! &7Moderación en la nube &aactiva&7."
@@ -78,6 +79,19 @@ alert:
   enforce: "&8[&x&0&0&F&F&A&ANeoMod&8] &c&lDETECTADO &7{player}&8: &f{message} &8(&7{reason}&8) &7acciones: &c{actions}"
 allow:
   usage: "&8[&x&0&0&F&F&A&ANeoMod&8] &cUso: &e/{label} allow <word|url> <add|remove|list> [valor]"
+test:
+  usage: "&8[&x&0&0&F&F&A&ANeoMod&8] &cUso: &e/{label} test <mensaje>"
+  title: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Probando: &f{message}"
+  local-flagged: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Reglas locales: &cDETECTADO &8(&7{reason}&8)"
+  local-clear: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Reglas locales: &alimpio"
+  cloud-checking: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Nube: &7comprobando..."
+  cloud-flagged: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Nube: &cDETECTADO &8(&7{ms}ms&8)"
+  cloud-clear: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Nube: &alimpio &8(&7{ms}ms&8)"
+  cloud-error: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Nube: &cerror &8(&7{detail}, {ms}ms&8)"
+  cloud-skipped-key: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Nube: &8omitida (sin clave API; solo reglas locales)"
+  cloud-skipped-circuit: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Nube: &8omitida (pausada por errores; /nmod reload para reintentar)"
+  would: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Si se detecta, este mensaje: &e{would}"
+  note: "&8[&x&0&0&F&F&A&ANeoMod&8] &8Esta prueba usó una solicitud de nube. No se ejecutaron acciones."
 mode:
   usage: "&8[&x&0&0&F&F&A&ANeoMod&8] &cUso: &e/{label} mode <monitor|enforce>"
   current: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Modo: &f{value}"

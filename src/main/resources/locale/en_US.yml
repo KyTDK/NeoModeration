@@ -22,6 +22,7 @@ help:
     usage: "Show NeoMechanical credits and limits"
     mode: "Switch between monitor (observe only) and enforce"
     allow: "Manage allowed phrases and links (exceptions)"
+    test: "Preview how a message would be moderated"
 setup:
   usage: "&8[&x&0&0&F&F&A&ANeoMod&8] &cUsage: &e/{label} setup <apiKey>"
   done: "&8[&x&0&0&F&F&A&ANeoMod&8] &a&lSuccess! &7Cloud moderation is now &aactive&7. Chat is being scanned."
@@ -78,6 +79,19 @@ alert:
   enforce: "&8[&x&0&0&F&F&A&ANeoMod&8] &c&lFLAGGED &7{player}&8: &f{message} &8(&7{reason}&8) &7actions: &c{actions}"
 allow:
   usage: "&8[&x&0&0&F&F&A&ANeoMod&8] &cUsage: &e/{label} allow <word|url> <add|remove|list> [value]"
+test:
+  usage: "&8[&x&0&0&F&F&A&ANeoMod&8] &cUsage: &e/{label} test <message>"
+  title: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Testing: &f{message}"
+  local-flagged: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Local rules: &cFLAGGED &8(&7{reason}&8)"
+  local-clear: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Local rules: &aclear"
+  cloud-checking: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Cloud: &7checking..."
+  cloud-flagged: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Cloud: &cFLAGGED &8(&7{ms}ms&8)"
+  cloud-clear: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Cloud: &aclear &8(&7{ms}ms&8)"
+  cloud-error: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Cloud: &cerror &8(&7{detail}, {ms}ms&8)"
+  cloud-skipped-key: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Cloud: &8skipped (no API key; local rules only)"
+  cloud-skipped-circuit: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Cloud: &8skipped (paused after errors; /nmod reload to retry)"
+  would: "&8[&x&0&0&F&F&A&ANeoMod&8] &7If flagged, this message would: &e{would}"
+  note: "&8[&x&0&0&F&F&A&ANeoMod&8] &8This test used one cloud request. No actions were executed."
 mode:
   usage: "&8[&x&0&0&F&F&A&ANeoMod&8] &cUsage: &e/{label} mode <monitor|enforce>"
   current: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Mode: &f{value}"
