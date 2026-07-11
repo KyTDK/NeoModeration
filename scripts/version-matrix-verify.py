@@ -265,7 +265,7 @@ def run_container(version: str, image: str, index: int) -> Result:
         since = log_path.stat().st_size if log_path.exists() else 0
         subprocess.run(["node", str(BOT_DIR / "chat.mjs"), str(server_port), f"matrixbad {version}"], cwd=BOT_DIR, check=True, timeout=80)
         deadline = time.time() + 45
-        monitor_log = "MONITOR: chat from NeoMatrix would be flagged via blocked_word:matrixbad"
+        monitor_log = "MONITOR: chat content from NeoMatrix flagged via blocked_word:matrixbad"
         monitor_count = 0
         while time.time() < deadline:
             chunk = log_path.read_bytes()[since:].decode("utf-8", errors="replace") if log_path.exists() else ""
@@ -283,7 +283,7 @@ def run_container(version: str, image: str, index: int) -> Result:
         enforce_since = log_path.stat().st_size if log_path.exists() else 0
         subprocess.run(["node", str(BOT_DIR / "chat.mjs"), str(server_port), f"matrixbad enforce {version}"], cwd=BOT_DIR, check=True, timeout=80)
         deadline = time.time() + 45
-        enforce_log = "Flagged chat from NeoMatrix via blocked_word:matrixbad"
+        enforce_log = "chat content from NeoMatrix flagged via blocked_word:matrixbad"
         enforce_count = 0
         while time.time() < deadline:
             chunk = log_path.read_bytes()[enforce_since:].decode("utf-8", errors="replace") if log_path.exists() else ""
@@ -296,9 +296,37 @@ def run_container(version: str, image: str, index: int) -> Result:
             chunk = log_path.read_bytes()[enforce_since:].decode("utf-8", errors="replace") if log_path.exists() else ""
             enforce_count = chunk.count(enforce_log)
         checks["enforceChatOnce"] = enforce_count == 1
+
+        # 1.4.0 coverage: doctor exposes the new modules (rendered synchronously),
+        # and the enforce detection above must have been persisted to the SQLite
+        # case history. The /nmod cases render is async, so verify the DB directly.
+        doctor_out = plain(rcon("neomod doctor", rcon_port))
+        checks["doctorCoverage"] = "Anti-spam" in doctor_out and "Case history" in doctor_out
+        checks["caseLogged"] = case_logged(work / "plugins/NeoModeration/cases.db")
         return Result(version, all(checks.values()), json.dumps(checks, sort_keys=True))
     finally:
         subprocess.run(["docker", "rm", "-f", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def case_logged(db_path: Path) -> bool:
+    """True if the SQLite case history recorded a chat detection for NeoMatrix."""
+    import sqlite3
+
+    deadline = time.time() + 10
+    while time.time() < deadline:
+        if db_path.exists():
+            try:
+                with sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=2) as conn:
+                    row = conn.execute(
+                        "SELECT COUNT(*) FROM cases WHERE player = ? AND surface = 'chat'",
+                        ("NeoMatrix",),
+                    ).fetchone()
+                if row and row[0] >= 1:
+                    return True
+            except sqlite3.Error:
+                pass
+        time.sleep(0.5)
+    return False
 
 
 def main() -> int:
