@@ -6,7 +6,7 @@ Chat **and map-art** moderation for Minecraft. Blocks bad words and links locall
 
 ## Setup
 
-1. Drop `NeoModeration-1.3.1.jar` into `plugins/` and restart.
+1. Drop `NeoModeration-1.4.0.jar` into `plugins/` and restart.
 2. Local rules work immediately (in monitor mode on fresh installs).
 3. For cloud moderation, create an API key at [platform.neomechanical.com](https://platform.neomechanical.com) (scopes: `events:write` + `usage:read`), then run:
 
@@ -21,6 +21,16 @@ Chat **and map-art** moderation for Minecraft. Blocks bad words and links locall
 ```text
 /nmod mode enforce
 ```
+
+## Coverage (1.4.0)
+
+Beyond chat, all running on local rules (no API key needed):
+
+- **Anti-spam** — message rate, duplicate/similar messages, caps, character floods, command-rate. On by default; tune under `moderation.spam` or disable per-check.
+- **Censor** — set `moderation.chat.censorLocalDetections: true` to replace matched words with `****` instead of blocking the whole message.
+- **Strikes** — detections accumulate and decay; reaching a rung runs an extra action (default kick at 4). Configure `moderation.strikes`.
+- **More surfaces** — signs, books, anvil renames, and `/msg`-style commands. Each independently `off`/`monitor`/`censor`/`block` under `moderation.surfaces` (all off by default).
+- **Case history** — `/nmod cases [player]` and `/nmod case <id>` browse a local SQLite log of detections.
 
 ## Trust & control
 
@@ -58,6 +68,7 @@ Mute durations: `30s`, `5m`, `1h`, `1d` (or bare seconds).
 | `/nmod mode [monitor\|enforce]` | Show or switch enforcement mode |
 | `/nmod test <message>` | Preview how a message would be moderated |
 | `/nmod doctor` | Diagnose configuration and cloud connectivity |
+| `/nmod cases [player]` / `/nmod case <id>` | Browse the local detection history |
 | `/nmod preset <family\|community\|minimal>` | Apply a policy preset |
 | `/nmod allow word\|url add\|remove\|list` | Manage exceptions (always win) |
 | `/nmod privacy` | Show what data stays local vs. cloud |

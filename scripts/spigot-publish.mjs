@@ -162,6 +162,31 @@ async function uploadDescriptionImage(page, png) {
   }, base);
 }
 
+/** Update the short tag line shown under the resource title in listings. */
+async function cmdTagline(tagline) {
+  if (!tagline) throw new Error("tagline text is required");
+  const { browser, page } = await connect();
+  try {
+    await assertLoggedIn(page);
+    await page.goto(`${BASE}/edit`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(2500);
+    if (/^Error/.test(await page.title())) throw new Error("Edit page returned Error (permission/login).");
+    const set = await page.evaluate((value) => {
+      // XenForo resource tag line field (a.k.a. custom_title / tag_line).
+      const field = document.querySelector("#ctrl_tag_line, input[name=tag_line], input[name=custom_title]");
+      if (!field) return false;
+      field.value = value;
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+      field.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    }, tagline);
+    if (!set) throw new Error("could not find the tag line field on the edit page.");
+    const saved = await clickButton(page, /^Save$/);
+    await page.waitForTimeout(4000);
+    console.log(saved ? `Tag line set to: ${tagline}` : "Save button not found.");
+  } finally { await browser.close(); }
+}
+
 async function cmdIcon(png) {
   const { browser, page } = await connect();
   try {
@@ -216,10 +241,11 @@ const positional = args.filter((a, i) => a !== "--banner" && args[i - 1] !== "--
 try {
   if (cmd === "check") await cmdCheck();
   else if (cmd === "describe") await cmdDescribe(positional[0], banner);
+  else if (cmd === "tagline") await cmdTagline(positional.join(" "));
   else if (cmd === "icon") await cmdIcon(positional[0]);
   else if (cmd === "version") await cmdVersion(positional[0], positional[1], positional[2]);
   else {
-    console.log("commands: check | describe <bbcode.txt> [--banner <png>] | icon <png> | version <jar> <ver> <notes.txt>");
+    console.log("commands: check | describe <bbcode.txt> [--banner <png>] | tagline <text> | icon <png> | version <jar> <ver> <notes.txt>");
     process.exit(1);
   }
 } catch (e) {

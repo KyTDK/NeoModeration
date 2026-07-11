@@ -1,0 +1,26 @@
+[B]NeoModeration 1.4.0 — Coverage[/B]
+
+This update makes NeoModeration useful every day, not just for cloud moderation. Everything new runs locally first — no API key required — so it costs nothing and never waits on the network.
+
+[B]New[/B]
+[LIST]
+[*][B]Local anti-spam[/B]: message rate, duplicate/similar messages, excessive caps (player names exempt), character floods, and command-rate limiting. Runs before any cloud call.
+[*][B]Censor action[/B]: replace matched words/links with **** and let the rest of the message through, instead of blocking the whole line.
+[*][B]Progressive strikes[/B]: detections add strikes that decay over time; reaching a rung runs an extra action (default kick at 4). Shown in staff alerts.
+[*][B]More surfaces[/B]: signs, books, anvil renames, and configured commands ([FONT=Courier New]/msg[/FONT], [FONT=Courier New]/tell[/FONT], …) run the local rules too. Each is independently off / monitor / censor / block, all off by default.
+[*][B]Local case history[/B]: a SQLite log of every detection. Browse with [FONT=Courier New]/nmod cases [player][/FONT] and [FONT=Courier New]/nmod case <id>[/FONT]. Content previews are off by default.
+[*]Staff alerts now show the surface and strike count; [FONT=Courier New]/nmod status[/FONT] and [FONT=Courier New]/nmod doctor[/FONT] report all of the above.
+[/LIST]
+
+[B]Compatibility[/B]
+[LIST]
+[*]Existing configs upgrade with no behavior change — new surfaces default off. Anti-spam and strikes turn on with conservative defaults; disable them in config if you prefer chat exactly as before.
+[/LIST]
+
+[B]Verified[/B]
+[LIST]
+[*]74 automated tests pass; Paper 1.18.2, 1.19.4, 1.20.6, and 1.21.11 all pass the live matrix.
+[*]Smoke-tested on a live Paper server: spam, sign flag, censor, strike escalation, cases, doctor.
+[/LIST]
+
+Updating is recommended for every server.
