@@ -1,0 +1,22 @@
+[
+  {
+    "version": "1.18.2",
+    "ok": true,
+    "detail": "{\"actions\": true, \"allow\": true, \"doctor\": true, \"enforceChatOnce\": true, \"help\": true, \"keyClear\": true, \"kick\": true, \"modeEnforce\": true, \"monitorChatOnce\": true, \"on\": true, \"plugin\": true, \"preset\": true, \"privacy\": true, \"rules\": true, \"status\": true, \"test\": true, \"version\": true}"
+  },
+  {
+    "version": "1.19.4",
+    "ok": true,
+    "detail": "{\"actions\": true, \"allow\": true, \"doctor\": true, \"enforceChatOnce\": true, \"help\": true, \"keyClear\": true, \"kick\": true, \"modeEnforce\": true, \"monitorChatOnce\": true, \"on\": true, \"plugin\": true, \"preset\": true, \"privacy\": true, \"rules\": true, \"status\": true, \"test\": true, \"version\": true}"
+  },
+  {
+    "version": "1.20.6",
+    "ok": true,
+    "detail": "{\"actions\": true, \"allow\": true, \"doctor\": true, \"enforceChatOnce\": true, \"help\": true, \"keyClear\": true, \"kick\": true, \"modeEnforce\": true, \"monitorChatOnce\": true, \"on\": true, \"plugin\": true, \"preset\": true, \"privacy\": true, \"rules\": true, \"status\": true, \"test\": true, \"version\": true}"
+  },
+  {
+    "version": "1.21.11",
+    "ok": true,
+    "detail": "{\"actions\": true, \"allow\": true, \"doctor\": true, \"enforceChatOnce\": true, \"help\": true, \"keyClear\": true, \"kick\": true, \"modeEnforce\": true, \"monitorChatOnce\": true, \"on\": true, \"plugin\": true, \"preset\": true, \"privacy\": true, \"rules\": true, \"status\": true, \"test\": true, \"version\": true}"
+  }
+]
