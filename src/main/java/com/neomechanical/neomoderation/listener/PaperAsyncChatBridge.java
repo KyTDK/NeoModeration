@@ -1,6 +1,7 @@
 package com.neomechanical.neomoderation.listener;
 
 import com.neomechanical.neomoderation.NeoModerationPlugin;
+import com.neomechanical.neomoderation.moderation.ChatDecision;
 import com.neomechanical.neomoderation.moderation.ChatModerationProcessor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Cancellable;
@@ -61,13 +62,38 @@ public final class PaperAsyncChatBridge {
             try {
                 Player player = (Player) event.getClass().getMethod("getPlayer").invoke(event);
                 Object component = event.getClass().getMethod("message").invoke(event);
-                boolean flagged = processor.handleAsyncChat(player, plainText(component));
-                if (flagged && event instanceof Cancellable cancellable) {
+                ChatDecision decision = processor.handleAsyncChat(player, plainText(component));
+                if (decision.type() == ChatDecision.Type.BLOCK && event instanceof Cancellable cancellable) {
+                    cancellable.setCancelled(true);
+                } else if (decision.type() == ChatDecision.Type.CENSOR
+                        && !setMessage(event, decision.message())
+                        && event instanceof Cancellable cancellable) {
+                    // If Adventure isn't reachable for some reason, blocking is the
+                    // safe fallback for a flagged message.
                     cancellable.setCancelled(true);
                 }
             } catch (ReflectiveOperationException exception) {
                 throw new EventException(exception);
             }
+        }
+
+        /** Replaces the chat Component with plain censored text via reflection. */
+        private static boolean setMessage(Event event, String censored) {
+            try {
+                Class<?> componentClass = Class.forName("net.kyori.adventure.text.Component");
+                Object component = componentClass.getMethod("text", String.class).invoke(null, censored);
+                for (Method method : event.getClass().getMethods()) {
+                    if ("message".equals(method.getName())
+                            && method.getParameterCount() == 1
+                            && method.getParameterTypes()[0].isInstance(component)) {
+                        method.invoke(event, component);
+                        return true;
+                    }
+                }
+            } catch (ReflectiveOperationException ignored) {
+                // Fall through: caller cancels the event instead.
+            }
+            return false;
         }
     }
 

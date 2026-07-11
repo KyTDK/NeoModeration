@@ -81,6 +81,24 @@ public class DoctorCmd implements SubCommand {
             pass(sender, "Actions", ModerationAction.describe(settings.actions()));
         }
 
+        pass(sender, "Anti-spam", settings.spam().enabled()
+                ? settings.spam().messagesPer10s() + " msgs/10s, dup x" + settings.spam().duplicateLimit()
+                        + ", caps " + settings.spam().capsPercent() + "%"
+                : "off");
+        pass(sender, "Strikes", settings.strikes().enabled()
+                ? settings.strikes().escalation().size() + " rung(s), decay "
+                        + settings.strikes().decayMinutes() + "m"
+                : "off");
+        pass(sender, "Surfaces", settings.surfaces().enabledCount()
+                + " of 4 active (local rules only; cloud never blocks sync events)");
+        if (settings.cases().enabled() && !plugin.caseLog().isAvailable()) {
+            warn(sender, "Case history", "enabled but SQLite driver missing - not logging");
+        } else {
+            pass(sender, "Case history", settings.cases().enabled()
+                    ? "on (" + (settings.cases().storeContent() ? "with previews" : "metadata only") + ")"
+                    : "off");
+        }
+
         pass(sender, "Fail policy", settings.failOpen()
                 ? "fail-open (chat passes if the cloud is unreachable)"
                 : "fail-closed (chat blocks if the cloud is unreachable)");

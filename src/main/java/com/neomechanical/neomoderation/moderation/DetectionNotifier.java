@@ -1,8 +1,6 @@
 package com.neomechanical.neomoderation.moderation;
 
 import com.neomechanical.neomoderation.NeoModerationPlugin;
-import com.neomechanical.neomoderation.config.ModerationAction;
-import com.neomechanical.neomoderation.config.ModerationMode;
 import com.neomechanical.neomoderation.config.ModerationSettings;
 import org.bukkit.entity.Player;
 
@@ -23,16 +21,18 @@ public final class DetectionNotifier {
     }
 
     /** Must run on the main server thread. */
-    public void notifyDetection(Player offender, String reason, String message, ModerationSettings settings) {
+    public void notifyDetection(Player offender, String surface, String reason, String message,
+                                ModerationSettings settings, String actionsText, boolean monitorStyle) {
         if (!settings.alerts().enabled()) {
             return;
         }
-        String key = settings.mode() == ModerationMode.MONITOR ? "alert.monitor" : "alert.enforce";
+        String key = monitorStyle ? "alert.monitor" : "alert.enforce";
         String line = plugin.messages().format(key, Map.of(
                 "player", offender.getName(),
+                "surface", surface,
                 "reason", reason,
                 "message", settings.alerts().includeMessage() ? preview(message) : "(hidden)",
-                "actions", ModerationAction.describe(settings.actions())
+                "actions", actionsText
         ));
         for (Player online : plugin.getServer().getOnlinePlayers()) {
             if (online.hasPermission(NOTIFY_PERMISSION)) {

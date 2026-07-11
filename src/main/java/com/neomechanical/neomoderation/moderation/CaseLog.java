@@ -1,0 +1,166 @@
+package com.neomechanical.neomoderation.moderation;
+
+import java.nio.file.Path;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.logging.Logger;
+
+/**
+ * Local SQLite case history. Spigot/Paper bundle the SQLite driver, so nothing
+ * is shaded; if the driver is ever missing the log degrades to a no-op with a
+ * single warning. All access serializes on one connection — writes are small
+ * and callers already invoke {@link #record} off the main thread.
+ */
+public final class CaseLog implements AutoCloseable {
+    public record CaseRecord(
+            long id,
+            long timestamp,
+            String uuid,
+            String player,
+            String surface,
+            String reason,
+            String action,
+            String mode,
+            String preview
+    ) {
+    }
+
+    private final Object lock = new Object();
+    private final Connection connection;
+
+    private CaseLog(Connection connection) {
+        this.connection = connection;
+    }
+
+    public static CaseLog open(Path databasePath, Logger logger) {
+        try {
+            Class.forName("org.sqlite.JDBC");
+            Connection connection = DriverManager.getConnection("jdbc:sqlite:" + databasePath);
+            try (Statement statement = connection.createStatement()) {
+                statement.executeUpdate("""
+                        CREATE TABLE IF NOT EXISTS cases (
+                          id INTEGER PRIMARY KEY AUTOINCREMENT,
+                          ts INTEGER NOT NULL,
+                          uuid TEXT NOT NULL,
+                          player TEXT NOT NULL,
+                          surface TEXT NOT NULL,
+                          reason TEXT NOT NULL,
+                          action TEXT NOT NULL,
+                          mode TEXT NOT NULL,
+                          preview TEXT NOT NULL DEFAULT ''
+                        )""");
+                statement.executeUpdate(
+                        "CREATE INDEX IF NOT EXISTS cases_player ON cases(player COLLATE NOCASE)");
+            }
+            return new CaseLog(connection);
+        } catch (ClassNotFoundException | SQLException e) {
+            logger.warning("Case history unavailable (" + e.getMessage() + "); detections will not be logged to disk.");
+            return new CaseLog(null);
+        }
+    }
+
+    public boolean isAvailable() {
+        return connection != null;
+    }
+
+    public void record(long timestamp, String uuid, String player, String surface,
+                       String reason, String action, String mode, String preview) {
+        if (connection == null) {
+            return;
+        }
+        synchronized (lock) {
+            try (PreparedStatement insert = connection.prepareStatement(
+                    "INSERT INTO cases (ts, uuid, player, surface, reason, action, mode, preview) VALUES (?,?,?,?,?,?,?,?)")) {
+                insert.setLong(1, timestamp);
+                insert.setString(2, uuid);
+                insert.setString(3, player);
+                insert.setString(4, surface);
+                insert.setString(5, reason);
+                insert.setString(6, action);
+                insert.setString(7, mode);
+                insert.setString(8, preview == null ? "" : preview);
+                insert.executeUpdate();
+            } catch (SQLException ignored) {
+                // A failed audit row must never break moderation.
+            }
+        }
+    }
+
+    public List<CaseRecord> recent(String playerFilter, int limit) {
+        if (connection == null) {
+            return List.of();
+        }
+        String sql = playerFilter == null
+                ? "SELECT * FROM cases ORDER BY id DESC LIMIT ?"
+                : "SELECT * FROM cases WHERE player = ? COLLATE NOCASE ORDER BY id DESC LIMIT ?";
+        synchronized (lock) {
+            try (PreparedStatement query = connection.prepareStatement(sql)) {
+                int index = 1;
+                if (playerFilter != null) {
+                    query.setString(index++, playerFilter);
+                }
+                query.setInt(index, Math.max(1, limit));
+                try (ResultSet rows = query.executeQuery()) {
+                    List<CaseRecord> result = new ArrayList<>();
+                    while (rows.next()) {
+                        result.add(read(rows));
+                    }
+                    return result;
+                }
+            } catch (SQLException ignored) {
+                return List.of();
+            }
+        }
+    }
+
+    public Optional<CaseRecord> byId(long id) {
+        if (connection == null) {
+            return Optional.empty();
+        }
+        synchronized (lock) {
+            try (PreparedStatement query = connection.prepareStatement("SELECT * FROM cases WHERE id = ?")) {
+                query.setLong(1, id);
+                try (ResultSet rows = query.executeQuery()) {
+                    return rows.next() ? Optional.of(read(rows)) : Optional.empty();
+                }
+            } catch (SQLException ignored) {
+                return Optional.empty();
+            }
+        }
+    }
+
+    private static CaseRecord read(ResultSet rows) throws SQLException {
+        return new CaseRecord(
+                rows.getLong("id"),
+                rows.getLong("ts"),
+                rows.getString("uuid"),
+                rows.getString("player"),
+                rows.getString("surface"),
+                rows.getString("reason"),
+                rows.getString("action"),
+                rows.getString("mode"),
+                rows.getString("preview")
+        );
+    }
+
+    @Override
+    public void close() {
+        if (connection == null) {
+            return;
+        }
+        synchronized (lock) {
+            try {
+                connection.close();
+            } catch (SQLException ignored) {
+                // Shutdown path; nothing useful to do.
+            }
+        }
+    }
+}

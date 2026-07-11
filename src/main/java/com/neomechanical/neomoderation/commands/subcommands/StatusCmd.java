@@ -70,6 +70,12 @@ public class StatusCmd implements SubCommand {
                         ? (settings.alerts().includeMessage() ? "on (with message preview)" : "on (content hidden)")
                         : "off"
         ));
+        plugin.messages().send(sender, "status.coverage", Map.of(
+                "spam", settings.spam().enabled() ? "on" : "off",
+                "strikes", settings.strikes().enabled() ? "on" : "off",
+                "surfaces", String.valueOf(settings.surfaces().enabledCount()),
+                "cases", settings.cases().enabled() && plugin.caseLog().isAvailable() ? "on" : "off"
+        ));
         plugin.messages().send(sender, "status.detections", Map.of(
                 "value", String.valueOf(plugin.monitorStats().total())
         ));

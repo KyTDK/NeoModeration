@@ -25,6 +25,7 @@ help:
     action: "/nmod action"
     test: "/nmod test <msj>"
     doctor: "/nmod doctor"
+    cases: "/nmod cases"
     usage: "/nmod usage"
     privacy: "/nmod privacy"
     key: "/nmod key"
@@ -43,6 +44,7 @@ help:
     action: "castigos al detectar"
     test: "previsualizar una decisión"
     doctor: "diagnosticar la configuración"
+    cases: "historial de detecciones"
     usage: "créditos y límites de nube"
     privacy: "qué datos van a dónde"
     key: "guardar o borrar la clave API"
@@ -68,6 +70,7 @@ status:
   allow: "&7Excepciones: &b{words} &7frases permitidas, &b{urls} &7enlaces permitidos"
   actions: "&7Al detectar: &c{value}"
   alerts: "&7Alertas al staff: &f{value}"
+  coverage: "&7Anti-spam: &f{spam} &8| &7Strikes: &f{strikes} &8| &7Superficies: &f{surfaces}/4 &8| &7Casos: &f{cases}"
   detections: "&7Detecciones desde el inicio: &b{value}"
 reload:
   done: "{prefix} &aConfiguración recargada."
@@ -105,8 +108,10 @@ mapart:
 mute:
   blocked: "&cEstás silenciado por &f{duration}&c."
 alert:
-  monitor: "{prefix} &e&lMONITOR &7{player}&8: &f{message} &8(&7{reason}&8) &7activaría: &e{actions}"
-  enforce: "{prefix} &c&lDETECTADO &7{player}&8: &f{message} &8(&7{reason}&8) &7acciones: &c{actions}"
+  monitor: "{prefix} &e&lMONITOR &7{player} &8[&7{surface}&8] &f{message} &8(&7{reason}&8) &7activaría: &e{actions}"
+  enforce: "{prefix} &c&lDETECTADO &7{player} &8[&7{surface}&8] &f{message} &8(&7{reason}&8) &7-> &c{actions}"
+surface:
+  blocked: "{prefix} &cEse texto contiene contenido bloqueado."
 allow:
   usage: "{prefix} &cUso: &e/{label} allow <word|url> <add|remove|list> [valor]"
 mode:
@@ -149,6 +154,14 @@ privacy:
   timeout: "&7Esperas de nube: &f{connect}ms &7conexión, &f{read}ms &7lectura (tope 2,5s). Si no responde: &f{policy}&7."
   mode: "&7Modo: &f{value}"
   metrics: "&7Las métricas técnicas de bStats no contienen chats y se pueden desactivar en &fplugins/bStats/config.yml&7."
+cases:
+  title: "&8&m----------&r &x&0&0&F&F&A&A&lCasos Recientes &8&m----------"
+  line: "&8#&b{id} &7{player} &8[&7{surface}&8] &7{reason} &8-> &c{actions} &8({mode}, hace {ago})"
+  preview: " &8> &f{value}"
+  empty: "{prefix} &7Aún no hay casos registrados."
+  not-found: "{prefix} &cNo existe el caso &f{id}&c."
+  disabled: "{prefix} &7El historial de casos está desactivado (moderation.cases.enabled)."
+  unavailable: "{prefix} &cEl historial de casos no está disponible (sin controlador SQLite)."
 preset:
   usage: "{prefix} &cUso: &e/{label} preset <family|community|minimal>"
   list-title: "&8&m----------&r &x&0&0&F&F&A&A&lPreajustes &8&m----------"

@@ -26,6 +26,7 @@ help:
     action: "/nmod action"
     test: "/nmod test <msg>"
     doctor: "/nmod doctor"
+    cases: "/nmod cases"
     usage: "/nmod usage"
     privacy: "/nmod privacy"
     key: "/nmod key"
@@ -44,6 +45,7 @@ help:
     action: "punishments on detect"
     test: "preview a decision"
     doctor: "diagnose your setup"
+    cases: "detection history"
     usage: "cloud credits and limits"
     privacy: "what data goes where"
     key: "set or clear the API key"
@@ -69,6 +71,7 @@ status:
   allow: "&7Exceptions: &b{words} &7allowed phrases, &b{urls} &7allowed links"
   actions: "&7On detect: &c{value}"
   alerts: "&7Staff alerts: &f{value}"
+  coverage: "&7Anti-spam: &f{spam} &8| &7Strikes: &f{strikes} &8| &7Surfaces: &f{surfaces}/4 &8| &7Cases: &f{cases}"
   detections: "&7Detections since startup: &b{value}"
 reload:
   done: "{prefix} &aConfiguration reloaded successfully."
@@ -106,8 +109,10 @@ mapart:
 mute:
   blocked: "&cYou are muted for &f{duration}&c."
 alert:
-  monitor: "{prefix} &e&lMONITOR &7{player}&8: &f{message} &8(&7{reason}&8) &7would trigger: &e{actions}"
-  enforce: "{prefix} &c&lFLAGGED &7{player}&8: &f{message} &8(&7{reason}&8) &7actions: &c{actions}"
+  monitor: "{prefix} &e&lMONITOR &7{player} &8[&7{surface}&8] &f{message} &8(&7{reason}&8) &7would trigger: &e{actions}"
+  enforce: "{prefix} &c&lFLAGGED &7{player} &8[&7{surface}&8] &f{message} &8(&7{reason}&8) &7-> &c{actions}"
+surface:
+  blocked: "{prefix} &cThat text contains blocked content."
 allow:
   usage: "{prefix} &cUsage: &e/{label} allow <word|url> <add|remove|list> [value]"
 mode:
@@ -150,6 +155,14 @@ privacy:
   timeout: "&7Cloud waits: &f{connect}ms &7connect, &f{read}ms &7read (2.5s hard cap). If unreachable: &f{policy}&7."
   mode: "&7Mode: &f{value}"
   metrics: "&7bStats technical metrics contain no chat content and can be disabled in &fplugins/bStats/config.yml&7."
+cases:
+  title: "&8&m----------&r &x&0&0&F&F&A&A&lRecent Cases &8&m----------"
+  line: "&8#&b{id} &7{player} &8[&7{surface}&8] &7{reason} &8-> &c{actions} &8({mode}, {ago} ago)"
+  preview: " &8> &f{value}"
+  empty: "{prefix} &7No cases recorded yet."
+  not-found: "{prefix} &cNo case with id &f{id}&c."
+  disabled: "{prefix} &7Case history is disabled (moderation.cases.enabled)."
+  unavailable: "{prefix} &cCase history is unavailable on this server (no SQLite driver)."
 preset:
   usage: "{prefix} &cUsage: &e/{label} preset <family|community|minimal>"
   list-title: "&8&m----------&r &x&0&0&F&F&A&A&lPolicy Presets &8&m----------"

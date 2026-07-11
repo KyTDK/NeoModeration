@@ -39,6 +39,7 @@ public final class NeoModerationCommand implements CommandExecutor, TabCompleter
         registerCommand(new DoctorCmd(plugin));
         registerCommand(new PresetCmd(plugin));
         registerCommand(new PrivacyCmd(plugin));
+        registerCommand(new CasesCmd(plugin));
 
         // Help command needs reference to other commands
         registerCommand(new HelpCmd(plugin, subCommands));

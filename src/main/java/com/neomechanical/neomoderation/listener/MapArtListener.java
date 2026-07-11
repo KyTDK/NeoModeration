@@ -143,7 +143,8 @@ public final class MapArtListener implements Listener {
         ModerationSettings settings = plugin.settings();
         if (settings.mode() == ModerationMode.MONITOR) {
             plugin.monitorStats().record("map_art:" + mapId);
-            plugin.notifier().notifyDetection(player, "map_art:" + mapId, "(map " + mapId + ")", settings);
+            plugin.notifier().notifyDetection(player, "map_art", "map_art:" + mapId,
+                    "(map " + mapId + ")", settings, "confiscate", true);
             plugin.getLogger().info("MONITOR: map " + mapId + " held by " + player.getName()
                     + " would be flagged; no action taken.");
             return;

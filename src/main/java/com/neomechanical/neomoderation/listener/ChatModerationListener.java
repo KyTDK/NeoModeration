@@ -1,8 +1,8 @@
 package com.neomechanical.neomoderation.listener;
 
 import com.neomechanical.neomoderation.NeoModerationPlugin;
+import com.neomechanical.neomoderation.moderation.ChatDecision;
 import com.neomechanical.neomoderation.moderation.ChatModerationProcessor;
-import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -33,7 +33,12 @@ public final class ChatModerationListener implements Listener {
             return;
         }
 
-        Player player = event.getPlayer();
-        event.setCancelled(processor.handleAsyncChat(player, event.getMessage()));
+        ChatDecision decision = processor.handleAsyncChat(event.getPlayer(), event.getMessage());
+        switch (decision.type()) {
+            case BLOCK -> event.setCancelled(true);
+            case CENSOR -> event.setMessage(decision.message());
+            case ALLOW -> {
+            }
+        }
     }
 }

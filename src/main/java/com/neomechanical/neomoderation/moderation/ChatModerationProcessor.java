@@ -2,39 +2,36 @@ package com.neomechanical.neomoderation.moderation;
 
 import com.neomechanical.neomoderation.NeoModerationPlugin;
 import com.neomechanical.neomoderation.commands.DurationParser;
-import com.neomechanical.neomoderation.config.ModerationMode;
 import com.neomechanical.neomoderation.config.ModerationSettings;
 import org.bukkit.entity.Player;
 
 import java.util.Map;
+import java.util.Optional;
 
 public final class ChatModerationProcessor {
     private final NeoModerationPlugin plugin;
     private final ChatModerationCoordinator coordinator;
-    private final ChatModerationActionExecutor actionExecutor;
     private final PlayerMuteService muteService;
-    private final MonitorStats monitorStats;
-    private final DetectionNotifier notifier;
+    private final SpamDetector spamDetector;
+    private final DetectionHandler handler;
 
     public ChatModerationProcessor(
             NeoModerationPlugin plugin,
             ChatModerationCoordinator coordinator,
-            ChatModerationActionExecutor actionExecutor,
             PlayerMuteService muteService,
-            MonitorStats monitorStats,
-            DetectionNotifier notifier
+            SpamDetector spamDetector,
+            DetectionHandler handler
     ) {
         this.plugin = plugin;
         this.coordinator = coordinator;
-        this.actionExecutor = actionExecutor;
         this.muteService = muteService;
-        this.monitorStats = monitorStats;
-        this.notifier = notifier;
+        this.spamDetector = spamDetector;
+        this.handler = handler;
     }
 
-    public boolean handleAsyncChat(Player player, String message) {
+    public ChatDecision handleAsyncChat(Player player, String message) {
         if (player.hasPermission("neomoderation.bypass")) {
-            return false;
+            return ChatDecision.allow();
         }
 
         if (muteService.isMuted(player.getUniqueId())) {
@@ -42,46 +39,54 @@ public final class ChatModerationProcessor {
             plugin.messages().send(player, "mute.blocked", Map.of(
                     "duration", DurationParser.format(remaining)
             ));
-            return true;
+            return ChatDecision.block();
         }
 
         ModerationSettings settings = plugin.settings();
         if (!settings.enabled() || !settings.scanAsyncChat()) {
-            return false;
+            return ChatDecision.allow();
+        }
+
+        Optional<String> spamReason = spamDetector.checkMessage(
+                player.getUniqueId(), player.getName(), message, settings.spam(), System.currentTimeMillis());
+        if (spamReason.isPresent()) {
+            return toDecision(
+                    handler.handle(player, "chat", spamReason.get(), message, DetectionHandler.Disposition.BLOCK),
+                    null);
         }
 
         OfflineModerationResult offlineResult = OfflineModerationEngine.evaluate(message, settings.offline());
         if (offlineResult.flagged()) {
-            return handleDetection(player, settings, offlineResult.reason(), message);
+            String censored = null;
+            DetectionHandler.Disposition requested = DetectionHandler.Disposition.BLOCK;
+            if (settings.chatCensorLocal()) {
+                String masked = OfflineModerationEngine.censor(message, settings.offline());
+                if (!masked.equals(message)) {
+                    censored = masked;
+                    requested = DetectionHandler.Disposition.CENSOR;
+                }
+            }
+            return toDecision(
+                    handler.handle(player, "chat", offlineResult.reason(), message, requested),
+                    censored);
         }
 
         if (settings.api().apiKey().isBlank()) {
-            return false;
+            return ChatDecision.allow();
         }
-
-        boolean flagged = coordinator.isMessageFlagged(player, message, settings);
-        if (!flagged) {
-            return false;
+        if (!coordinator.isMessageFlagged(player, message, settings)) {
+            return ChatDecision.allow();
         }
-
-        return handleDetection(player, settings, "platform", message);
+        return toDecision(
+                handler.handle(player, "chat", "platform", message, DetectionHandler.Disposition.BLOCK),
+                null);
     }
 
-    /** Returns whether the chat event should be cancelled. */
-    private boolean handleDetection(Player player, ModerationSettings settings, String reason, String message) {
-        monitorStats.record(reason);
-        boolean enforce = settings.mode() == ModerationMode.ENFORCE;
-        plugin.runSync(() -> {
-            if (enforce) {
-                actionExecutor.execute(player, settings.actions());
-            }
-            notifier.notifyDetection(player, reason, message, settings);
-            plugin.getLogger().info(enforce
-                    ? "Flagged chat from " + player.getName() + " via " + reason
-                            + " and executed " + settings.actions().size() + " action(s)."
-                    : "MONITOR: chat from " + player.getName() + " would be flagged via " + reason
-                            + "; no action taken. Run /nmod mode enforce to act on detections.");
-        });
-        return enforce;
+    private static ChatDecision toDecision(DetectionHandler.Disposition effective, String censored) {
+        return switch (effective) {
+            case ALLOW -> ChatDecision.allow();
+            case BLOCK -> ChatDecision.block();
+            case CENSOR -> censored != null ? ChatDecision.censor(censored) : ChatDecision.block();
+        };
     }
 }

@@ -19,7 +19,7 @@ public class HelpCmd implements SubCommand {
     static {
         SECTIONS.put("start", List.of("setup", "status", "mode", "preset"));
         SECTIONS.put("rules", List.of("word", "url", "allow", "action"));
-        SECTIONS.put("tools", List.of("test", "doctor", "usage", "privacy"));
+        SECTIONS.put("tools", List.of("test", "doctor", "cases", "usage", "privacy"));
         SECTIONS.put("admin", List.of("key", "reload", "on", "off"));
     }
 
