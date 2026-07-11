@@ -1,0 +1,31 @@
+[B]NeoModeration 1.3.0 — Trust and Control[/B]
+
+This update makes NeoModeration safe to evaluate, easier to tune, and much clearer about every decision it makes.
+
+[B]Safe rollout[/B]
+[LIST]
+[*]New installations start in monitor mode: detections are logged and shown to staff, but players are not blocked or punished.
+[*]Existing 1.2.x servers keep enforcing exactly as before.
+[*]Use [FONT=Courier New]/nmod mode monitor|enforce[/FONT] to switch at any time and see detection totals since startup.
+[/LIST]
+
+[B]Trust and control[/B]
+[LIST]
+[*][FONT=Courier New]/nmod test <message>[/FONT] previews the real local/cloud decision and outcome without executing actions.
+[*][FONT=Courier New]/nmod doctor[/FONT] checks configuration, actions, timeouts, endpoint, circuit state, connectivity, quota, and latency.
+[*][FONT=Courier New]/nmod allow word|url ...[/FONT] adds false-positive exceptions that take priority over banned rules.
+[*][FONT=Courier New]/nmod preset family|community|minimal[/FONT] applies a ready-made policy without changing mode or local rules.
+[*]Every cloud category now supports a custom 0.05–0.99 threshold.
+[*]Staff with [FONT=Courier New]neomoderation.notify[/FONT] receive detection alerts; message previews can be redacted.
+[*][FONT=Courier New]/nmod privacy[/FONT] explains local processing, cloud payloads, retention, failure policy, and bStats technical metrics.
+[*][FONT=Courier New]/nmod status[/FONT] now shows protection level, mode, exceptions, alerts, and detection totals.
+[/LIST]
+
+[B]Verified[/B]
+[LIST]
+[*]61 automated tests passed.
+[*]Paper 1.18.2, 1.19.4, 1.20.6, and 1.21.11 all passed the expanded release matrix.
+[*]Every version confirmed exactly one monitor detection and exactly one enforce action per flagged message.
+[/LIST]
+
+Updating is recommended for every server. After a fresh installation, review [FONT=Courier New]/nmod doctor[/FONT] and [FONT=Courier New]/nmod test[/FONT], then enable enforcement when you are happy with the decisions.

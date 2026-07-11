@@ -50,19 +50,37 @@ public class StatusCmd implements SubCommand {
     public void execute(CommandSender sender, String label, String[] args) {
         ModerationSettings settings = plugin.settings();
         boolean hasKey = !settings.api().apiKey().isBlank();
+        boolean monitor = settings.mode() == com.neomechanical.neomoderation.config.ModerationMode.MONITOR;
         plugin.messages().send(sender, "status.title");
         plugin.messages().send(sender, "status.enabled", Map.of(
                 "value", settings.enabled() ? "ON" : "OFF"
         ));
+        plugin.messages().send(sender, "status.mode", Map.of(
+                "value", monitor ? "MONITOR (observe only - /nmod mode enforce to act)" : "ENFORCE"
+        ));
         plugin.messages().send(sender, "status.cloud", Map.of(
-                "value", hasKey ? "yes" : "no (local rules only)"
+                "value", hasKey
+                        ? "Local + cloud (" + settings.categories().enabledCount() + " categories)"
+                        : "Local only (no API key)"
         ));
         plugin.messages().send(sender, "status.rules", Map.of(
                 "words", String.valueOf(settings.offline().bannedWords().size()),
                 "urls", String.valueOf(settings.offline().bannedUrls().size())
         ));
+        plugin.messages().send(sender, "status.allow", Map.of(
+                "words", String.valueOf(settings.offline().allowedWords().size()),
+                "urls", String.valueOf(settings.offline().allowedUrls().size())
+        ));
         plugin.messages().send(sender, "status.actions", Map.of(
                 "value", formatActions(settings.actions())
+        ));
+        plugin.messages().send(sender, "status.alerts", Map.of(
+                "value", settings.alerts().enabled()
+                        ? (settings.alerts().includeMessage() ? "on (with message preview)" : "on (content hidden)")
+                        : "off"
+        ));
+        plugin.messages().send(sender, "status.detections", Map.of(
+                "value", String.valueOf(plugin.monitorStats().total())
         ));
     }
 

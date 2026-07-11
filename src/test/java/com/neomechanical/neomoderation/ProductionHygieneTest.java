@@ -48,6 +48,40 @@ class ProductionHygieneTest {
                 "Spigot publisher must fill the required update title field");
     }
 
+    @Test
+    void privacyCopyDistinguishesModerationContentFromAnonymousMetrics() throws IOException {
+        List<Path> privacySurfaces = List.of(
+                Path.of("README.md"),
+                Path.of("docs/PRIVACY.md"),
+                Path.of("src/main/resources/locale/en_US.yml"),
+                Path.of("src/main/resources/locale/es_ES.yml")
+        );
+        List<String> misleadingClaims = List.of(
+                "nothing leaves your server",
+                "nothing ever leaves your server",
+                "nothing is ever sent off this server",
+                "nada sale de este servidor"
+        );
+        List<String> violations = privacySurfaces.stream()
+                .flatMap(path -> {
+                    try {
+                        String text = Files.readString(path).toLowerCase();
+                        return misleadingClaims.stream()
+                                .filter(text::contains)
+                                .map(claim -> path + ": " + claim);
+                    } catch (IOException e) {
+                        throw new IllegalStateException("Unable to read " + path, e);
+                    }
+                })
+                .toList();
+        String privacyDocument = Files.readString(Path.of("docs/PRIVACY.md"));
+
+        assertTrue(violations.isEmpty(),
+                () -> "Privacy copy makes absolute network claims despite bStats:\n" + String.join("\n", violations));
+        assertTrue(privacyDocument.contains("bStats") && privacyDocument.contains("chat content"),
+                "Privacy documentation must disclose bStats and distinguish it from moderation content");
+    }
+
     private static Stream<String> scan(Path path) {
         try {
             List<String> lines = Files.readAllLines(path);

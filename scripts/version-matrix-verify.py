@@ -161,6 +161,8 @@ def run_container(version: str, image: str, index: int) -> Result:
     download_server(version, server_jar)
     for generated in ("world", "world_nether", "world_the_end", "logs", "plugins/NeoModeration"):
         shutil.rmtree(work / generated, ignore_errors=True)
+    for stale_plugin in (work / "plugins").glob("NeoModeration-*.jar"):
+        stale_plugin.unlink()
     shutil.copy2(JAR, work / "plugins" / JAR.name)
     (work / "eula.txt").write_text("eula=true\n", encoding="utf-8")
     (work / "server.properties").write_text(
@@ -229,11 +231,27 @@ def run_container(version: str, image: str, index: int) -> Result:
         def plain(text: str) -> str:
             return re.sub(r"§.", "", text).lower()
 
+        help_output = plain(rcon("neomod help", rcon_port))
+        status_output = plain(rcon("neomod status", rcon_port))
+        privacy_output = plain(rcon("neomod privacy", rcon_port))
+        test_output = plain(rcon("neomod test badword", rcon_port))
+        doctor_output = plain(rcon("neomod doctor", rcon_port))
+        allow_output = plain(
+            rcon("neomod allow word add matrix exception", rcon_port)
+            + rcon("neomod allow word list", rcon_port)
+            + rcon("neomod allow word remove matrix exception", rcon_port)
+        )
+        preset_output = plain(rcon("neomod preset community", rcon_port))
         checks = {
             "plugin": "NeoModeration" in rcon("plugins", rcon_port),
             "version": EXPECTED_VERSION is None or EXPECTED_VERSION in rcon("version NeoModeration", rcon_port),
-            "help": "setup" in plain(rcon("neomod help", rcon_port)) and "action" in plain(rcon("neomod help", rcon_port)),
-            "status": "status" in plain(rcon("neomod status", rcon_port)),
+            "help": all(command in help_output for command in ("setup", "action", "mode", "test", "doctor", "privacy")),
+            "status": "status" in status_output and "monitor" in status_output and "local only" in status_output,
+            "privacy": "no chat or map content" in privacy_output and "bstats" in privacy_output,
+            "test": "flagged" in test_output and "monitor alert only" in test_output,
+            "doctor": "moderation" in doctor_output and "local rules" in doctor_output and "no api key" in doctor_output,
+            "allow": "matrix exception" in allow_output,
+            "preset": "community" in preset_output and "8" in preset_output,
             "rules": "matrixbad" in plain(
                 rcon("neomod word add matrixbad", rcon_port)
                 + rcon("neomod word list", rcon_port)
@@ -247,19 +265,37 @@ def run_container(version: str, image: str, index: int) -> Result:
         since = log_path.stat().st_size if log_path.exists() else 0
         subprocess.run(["node", str(BOT_DIR / "chat.mjs"), str(server_port), f"matrixbad {version}"], cwd=BOT_DIR, check=True, timeout=80)
         deadline = time.time() + 45
-        moderation_log = "Flagged chat from NeoMatrix via blocked_word:matrixbad"
-        moderation_count = 0
+        monitor_log = "MONITOR: chat from NeoMatrix would be flagged via blocked_word:matrixbad"
+        monitor_count = 0
         while time.time() < deadline:
             chunk = log_path.read_bytes()[since:].decode("utf-8", errors="replace") if log_path.exists() else ""
-            moderation_count = chunk.count(moderation_log)
-            if moderation_count:
+            monitor_count = chunk.count(monitor_log)
+            if monitor_count:
                 break
             time.sleep(0.5)
-        if moderation_count:
+        if monitor_count:
             time.sleep(2)
             chunk = log_path.read_bytes()[since:].decode("utf-8", errors="replace") if log_path.exists() else ""
-            moderation_count = chunk.count(moderation_log)
-        checks["offlineChatOnce"] = moderation_count == 1
+            monitor_count = chunk.count(monitor_log)
+        checks["monitorChatOnce"] = monitor_count == 1
+
+        checks["modeEnforce"] = "enforce mode on" in plain(rcon("neomod mode enforce", rcon_port))
+        enforce_since = log_path.stat().st_size if log_path.exists() else 0
+        subprocess.run(["node", str(BOT_DIR / "chat.mjs"), str(server_port), f"matrixbad enforce {version}"], cwd=BOT_DIR, check=True, timeout=80)
+        deadline = time.time() + 45
+        enforce_log = "Flagged chat from NeoMatrix via blocked_word:matrixbad"
+        enforce_count = 0
+        while time.time() < deadline:
+            chunk = log_path.read_bytes()[enforce_since:].decode("utf-8", errors="replace") if log_path.exists() else ""
+            enforce_count = chunk.count(enforce_log)
+            if enforce_count:
+                break
+            time.sleep(0.5)
+        if enforce_count:
+            time.sleep(2)
+            chunk = log_path.read_bytes()[enforce_since:].decode("utf-8", errors="replace") if log_path.exists() else ""
+            enforce_count = chunk.count(enforce_log)
+        checks["enforceChatOnce"] = enforce_count == 1
         return Result(version, all(checks.values()), json.dumps(checks, sort_keys=True))
     finally:
         subprocess.run(["docker", "rm", "-f", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

@@ -25,6 +25,7 @@ help:
     test: "Preview how a message would be moderated"
     doctor: "Diagnose configuration and cloud connectivity"
     preset: "Apply a policy preset (family, community, minimal)"
+    privacy: "Show what data stays local and what the cloud receives"
 setup:
   usage: "&8[&x&0&0&F&F&A&ANeoMod&8] &cUsage: &e/{label} setup <apiKey>"
   done: "&8[&x&0&0&F&F&A&ANeoMod&8] &a&lSuccess! &7Cloud moderation is now &aactive&7. Chat is being scanned."
@@ -38,9 +39,13 @@ key:
 status:
   title: "&8&m=========&r &x&0&0&F&F&A&A&lNeoModeration Status &8&m========="
   enabled: "&7Status: &f{value}"
-  cloud: "&7Cloud: &f{value}"
+  mode: "&7Mode: &f{value}"
+  cloud: "&7Protection: &f{value}"
   rules: "&7Local rules: &b{words} &7words, &b{urls} &7links"
+  allow: "&7Exceptions: &b{words} &7allowed phrases, &b{urls} &7allowed links"
   actions: "&7On detect: &c{value}"
+  alerts: "&7Staff alerts: &f{value}"
+  detections: "&7Detections since startup: &b{value}"
 reload:
   done: "&8[&x&0&0&F&F&A&ANeoMod&8] &aConfiguration reloaded successfully."
 rules:
@@ -84,15 +89,19 @@ allow:
 test:
   usage: "&8[&x&0&0&F&F&A&ANeoMod&8] &cUsage: &e/{label} test <message>"
   title: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Testing: &f{message}"
+  disabled: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Moderation is &cdisabled&7, so the message would not be checked."
   local-flagged: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Local rules: &cFLAGGED &8(&7{reason}&8)"
   local-clear: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Local rules: &aclear"
   cloud-checking: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Cloud: &7checking..."
   cloud-flagged: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Cloud: &cFLAGGED &8(&7{ms}ms&8)"
   cloud-clear: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Cloud: &aclear &8(&7{ms}ms&8)"
   cloud-error: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Cloud: &cerror &8(&7{detail}, {ms}ms&8)"
+  cloud-skipped-local: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Cloud: &8skipped (local rules already detected it)"
   cloud-skipped-key: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Cloud: &8skipped (no API key; local rules only)"
   cloud-skipped-circuit: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Cloud: &8skipped (paused after errors; /nmod reload to retry)"
-  would: "&8[&x&0&0&F&F&A&ANeoMod&8] &7If flagged, this message would: &e{would}"
+  would-allowed: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Result: &aallowed"
+  would-monitor: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Result: &emonitor alert only &7(no blocking or punishment)"
+  would-enforce: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Result: &cblocked&7; actions: &c{actions}"
   note: "&8[&x&0&0&F&F&A&ANeoMod&8] &8This test used one cloud request. No actions were executed."
 doctor:
   title: "&8&m=========&r &x&0&0&F&F&A&A&lNeoModeration Doctor &8&m========="
@@ -100,6 +109,16 @@ doctor:
   warn: "&e[!!] &7{check}&8: &f{detail}"
   fail: "&c[XX] &7{check}&8: &f{detail}"
   checking-cloud: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Checking cloud connectivity..."
+privacy:
+  title: "&8&m=========&r &x&0&0&F&F&A&A&lNeoModeration Privacy &8&m========="
+  headline: "&7Protection: &f{value}"
+  local: "&7Word/URL rules run on this server. That chat never leaves it."
+  cloud: "&7With an API key, flagged-checked chat and map images are sent to &f{endpoint} &7with the player name and UUID."
+  no-cloud: "&7No API key is set, so no chat or map content is sent off this server."
+  retention: "&7Cloud requests use &fno_store&7: not retained, not used for training, no analysis details returned."
+  timeout: "&7Cloud waits: &f{connect}ms &7connect, &f{read}ms &7read (2.5s hard cap). If unreachable: &f{policy}&7."
+  mode: "&7Mode: &f{value}"
+  metrics: "&7bStats technical metrics contain no chat content and can be disabled in &fplugins/bStats/config.yml&7."
 preset:
   usage: "&8[&x&0&0&F&F&A&ANeoMod&8] &cUsage: &e/{label} preset <family|community|minimal>"
   list-title: "&8&m=========&r &x&0&0&F&F&A&A&lPolicy Presets &8&m========="
