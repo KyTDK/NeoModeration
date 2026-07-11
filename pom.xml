@@ -139,6 +139,7 @@
                         <lib>${java.home}/jmods/java.logging.jmod</lib>
                         <lib>${java.home}/jmods/java.net.http.jmod</lib>
                         <lib>${java.home}/jmods/java.desktop.jmod</lib>
+                        <lib>${java.home}/jmods/java.sql.jmod</lib>
                     </libs>
                 </configuration>
             </plugin>
