@@ -20,6 +20,7 @@ help:
     url: "Manage banned links"
     action: "Configure clear/mute/kick/ban on detect"
     usage: "Show NeoMechanical credits and limits"
+    mode: "Switch between monitor (observe only) and enforce"
 setup:
   usage: "&8[&x&0&0&F&F&A&ANeoMod&8] &cUsage: &e/{label} setup <apiKey>"
   done: "&8[&x&0&0&F&F&A&ANeoMod&8] &a&lSuccess! &7Cloud moderation is now &aactive&7. Chat is being scanned."
@@ -74,3 +75,10 @@ mute:
 alert:
   monitor: "&8[&x&0&0&F&F&A&ANeoMod&8] &e&lMONITOR &7{player}&8: &f{message} &8(&7{reason}&8) &7would trigger: &e{actions}"
   enforce: "&8[&x&0&0&F&F&A&ANeoMod&8] &c&lFLAGGED &7{player}&8: &f{message} &8(&7{reason}&8) &7actions: &c{actions}"
+mode:
+  usage: "&8[&x&0&0&F&F&A&ANeoMod&8] &cUsage: &e/{label} mode <monitor|enforce>"
+  current: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Mode: &f{value}"
+  stats: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Detections since startup (&f{hours}h&7): &b{total}"
+  stats-line: "&8  - &7{reason}: &b{count}"
+  set-monitor: "&8[&x&0&0&F&F&A&ANeoMod&8] &eMonitor mode on. &7Detections are logged and alerted, but nothing is blocked or punished. Use &e/nmod mode enforce &7when ready."
+  set-enforce: "&8[&x&0&0&F&F&A&ANeoMod&8] &aEnforce mode on. &7Flagged content is now blocked and configured actions run."

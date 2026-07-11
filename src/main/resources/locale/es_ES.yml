@@ -20,6 +20,7 @@ help:
     url: "Gestionar enlaces bloqueados"
     action: "Configurar clear/mute/kick/ban al detectar"
     usage: "Ver créditos y límites de NeoMechanical"
+    mode: "Cambiar entre monitor (solo observar) y enforce"
 setup:
   usage: "&8[&x&0&0&F&F&A&ANeoMod&8] &cUso: &e/{label} setup <apiKey>"
   done: "&8[&x&0&0&F&F&A&ANeoMod&8] &a&lListo! &7Moderación en la nube &aactiva&7."
@@ -74,3 +75,10 @@ mute:
 alert:
   monitor: "&8[&x&0&0&F&F&A&ANeoMod&8] &e&lMONITOR &7{player}&8: &f{message} &8(&7{reason}&8) &7activaría: &e{actions}"
   enforce: "&8[&x&0&0&F&F&A&ANeoMod&8] &c&lDETECTADO &7{player}&8: &f{message} &8(&7{reason}&8) &7acciones: &c{actions}"
+mode:
+  usage: "&8[&x&0&0&F&F&A&ANeoMod&8] &cUso: &e/{label} mode <monitor|enforce>"
+  current: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Modo: &f{value}"
+  stats: "&8[&x&0&0&F&F&A&ANeoMod&8] &7Detecciones desde el inicio (&f{hours}h&7): &b{total}"
+  stats-line: "&8  - &7{reason}: &b{count}"
+  set-monitor: "&8[&x&0&0&F&F&A&ANeoMod&8] &eModo monitor activado. &7Las detecciones se registran y avisan, pero no se bloquea ni castiga. Usa &e/nmod mode enforce &7cuando estés listo."
+  set-enforce: "&8[&x&0&0&F&F&A&ANeoMod&8] &aModo enforce activado. &7El contenido marcado se bloquea y se ejecutan las acciones."
