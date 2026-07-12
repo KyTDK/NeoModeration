@@ -1,0 +1,313 @@
+#!/usr/bin/env node
+/**
+ * modrinth-publish.mjs — drive Modrinth in the already-logged-in CDP Chrome
+ * (the same real-Chrome debug session the Spigot tool uses), then publish via
+ * the documented REST API.
+ *
+ * USAGE
+ *   node scripts/modrinth-publish.mjs open              # open sign-in page, bring to front
+ *   node scripts/modrinth-publish.mjs check             # is the browser signed in to Modrinth?
+ *   node scripts/modrinth-publish.mjs pat               # create a scoped PAT via the UI, print it
+ *   node scripts/modrinth-publish.mjs publish <token> <jar> <version>
+ *
+ * ENV: MODRINTH_CDP_PORT (default 9223)
+ */
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
+
+const PORT = process.env.MODRINTH_CDP_PORT || "9223";
+const API = "https://api.modrinth.com/v2";
+
+function resolvePlaywright() {
+  const candidates = [
+    "/Users/kyantaber/Documents/GitHub/neomechanical-platform/node_modules/playwright/index.mjs",
+    path.resolve(process.cwd(), "node_modules/playwright/index.mjs"),
+  ];
+  const found = candidates.find(existsSync);
+  if (!found) throw new Error("Could not find Playwright. Set it up like the Spigot tool.");
+  return found;
+}
+
+async function connect() {
+  const { chromium } = await import(`file://${resolvePlaywright()}`);
+  const browser = await chromium.connectOverCDP(`http://127.0.0.1:${PORT}`);
+  const ctx = browser.contexts()[0];
+  if (!ctx) throw new Error(`No browser context on CDP ${PORT}. Is the debug Chrome running?`);
+  return { browser, ctx };
+}
+
+async function modrinthPage(ctx, url) {
+  let page = ctx.pages().find((p) => p.url().includes("modrinth.com"));
+  if (!page) page = await ctx.newPage();
+  if (url) await page.goto(url, { waitUntil: "domcontentloaded" });
+  await page.bringToFront();
+  return page;
+}
+
+/** Reads the signed-in user from Modrinth's session cookie via the frontend API. */
+async function loginInfo(page) {
+  return page.evaluate(async () => {
+    try {
+      const res = await fetch("/api/v1/user", { credentials: "include" }).catch(() => null);
+      if (res && res.ok) return await res.json();
+    } catch (e) {}
+    // Fallback: look for an avatar / username in the nav.
+    const el = document.querySelector("[href^='/user/'] , .username, a.user");
+    return el ? { username: (el.getAttribute("href") || el.textContent || "").replace("/user/", "").trim() } : null;
+  });
+}
+
+async function cmdOpen() {
+  const { browser, ctx } = await connect();
+  try {
+    await modrinthPage(ctx, "https://modrinth.com/auth/sign-in");
+    console.log("Opened Modrinth sign-in in the debug Chrome. Sign in there, then run: check");
+  } finally {
+    await browser.close();
+  }
+}
+
+async function cmdCheck() {
+  const { browser, ctx } = await connect();
+  try {
+    const page = await modrinthPage(ctx, "https://modrinth.com/settings/account");
+    await page.waitForTimeout(1500);
+    const info = await loginInfo(page);
+    console.log(JSON.stringify({ loggedIn: !!info, user: info?.username || info?.email || null }));
+  } finally {
+    await browser.close();
+  }
+}
+
+/** Pull the Modrinth session bearer token from the logged-in browser. */
+async function cmdToken() {
+  const { browser, ctx } = await connect();
+  try {
+    const page = await modrinthPage(ctx, "https://modrinth.com/settings/account");
+    await page.waitForTimeout(1200);
+    const fromStorage = await page.evaluate(() => {
+      const keys = ["auth-token", "authToken", "token"];
+      for (const k of keys) {
+        const v = localStorage.getItem(k) || sessionStorage.getItem(k);
+        if (v) return v.replace(/^"|"$/g, "");
+      }
+      return null;
+    });
+    let token = fromStorage;
+    if (!token) {
+      const cookies = await ctx.cookies("https://modrinth.com");
+      const c = cookies.find((c) => /auth[-_]?token|token/i.test(c.name) && c.value.length > 20);
+      token = c ? c.value : null;
+    }
+    // Validate it against the API.
+    let user = null;
+    if (token) {
+      const res = await fetch(`${API}/user`, { headers: { Authorization: token } }).catch(() => null);
+      if (res && res.ok) user = (await res.json()).username;
+    }
+    console.log(JSON.stringify({ found: !!token, valid: !!user, user, token: user ? token : null }));
+  } finally {
+    await browser.close();
+  }
+}
+
+/** Read-only: dump the create-PAT form structure so automation targets the right controls. */
+async function cmdInspect() {
+  const { browser, ctx } = await connect();
+  try {
+    const page = await modrinthPage(ctx, "https://modrinth.com/settings/pats");
+    await page.waitForTimeout(1500);
+    // Reveal the create form (robust: role-based, then any button containing the text).
+    try {
+      await page.getByRole("button", { name: /create a pat/i }).first().click({ timeout: 4000 });
+    } catch {
+      try { await page.locator("button:has-text('Create a PAT')").first().click({ timeout: 4000 }); } catch {}
+    }
+    await page.waitForTimeout(1800);
+    const structure = await page.evaluate(() => {
+      const btns = Array.from(document.querySelectorAll("button, a.btn, a[role=button]"))
+        .map((b) => (b.innerText || b.textContent || "").trim())
+        .filter(Boolean).slice(0, 40);
+      const inputs = Array.from(document.querySelectorAll("input")).map((i) => ({
+        type: i.type, name: i.name, placeholder: i.placeholder, id: i.id,
+        labelText: (i.closest("label")?.innerText || document.querySelector(`label[for='${i.id}']`)?.innerText || "").trim().slice(0, 40),
+      }));
+      const labels = Array.from(document.querySelectorAll("label")).map((l) => (l.innerText || "").trim()).filter(Boolean).slice(0, 60);
+      const dialogs = Array.from(document.querySelectorAll("[role=dialog], dialog, .modal")).length;
+      const url = location.href;
+      return { url, dialogs, buttons: btns, inputs, labels };
+    });
+    console.log(JSON.stringify(structure, null, 2));
+  } finally {
+    await browser.close();
+  }
+}
+
+const PUBLISH_SCOPES = ["Create projects", "Read projects", "Write projects",
+  "Create versions", "Read versions", "Write versions"];
+
+async function cmdPatDebug() {
+  const { browser, ctx } = await connect();
+  try {
+    const page = await modrinthPage(ctx, "https://modrinth.com/settings/pats");
+    await page.waitForTimeout(1200);
+    try { await page.getByRole("button", { name: /create a pat/i }).first().click({ timeout: 5000 }); } catch {}
+    await page.waitForTimeout(1200);
+    await page.fill("#pat-name", "NeoModeration publishing").catch(() => {});
+    for (const scope of PUBLISH_SCOPES) {
+      await page.getByRole("button", { name: new RegExp(`^${scope}$`, "i") }).first().click({ timeout: 3000 }).catch(() => {});
+    }
+    const state = await page.evaluate(() => {
+      const createBtn = Array.from(document.querySelectorAll("button")).find((b) => /^Create PAT$/i.test((b.innerText || "").trim()));
+      const pressed = Array.from(document.querySelectorAll("button[aria-pressed='true'], button.checked, button[data-selected='true']")).map((b) => (b.innerText || "").trim());
+      const dateInputs = Array.from(document.querySelectorAll("input")).map((i) => ({ id: i.id, ph: i.placeholder, type: i.type, val: i.value, disabled: i.disabled }));
+      return {
+        createDisabled: createBtn ? createBtn.disabled || createBtn.getAttribute("aria-disabled") : "no-btn",
+        pressedScopes: pressed,
+        dateInputs,
+      };
+    });
+    console.log(JSON.stringify(state, null, 2));
+  } finally {
+    await browser.close();
+  }
+}
+
+/** Create a scoped PAT via the settings UI and return its token (in-memory only). */
+async function createPat(page) {
+  await page.goto("https://modrinth.com/settings/pats", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(1500);
+  try {
+    await page.getByRole("button", { name: /create a pat/i }).first().click({ timeout: 5000 });
+  } catch {
+    await page.locator("button:has-text('Create a PAT')").first().click({ timeout: 5000 });
+  }
+  await page.waitForTimeout(1500);
+  await page.fill("#pat-name", "NeoModeration publishing");
+  for (const scope of PUBLISH_SCOPES) {
+    await page.getByRole("button", { name: new RegExp(`^${scope}$`, "i") }).first().click({ timeout: 4000 }).catch(() => {});
+  }
+  // Expiry a year out; set both the visible picker and the hidden ISO field.
+  const iso = new Date(Date.now() + 365 * 864e5).toISOString().slice(0, 10);
+  await page.evaluate((d) => {
+    const hidden = document.querySelector("#pat-expires");
+    if (hidden) { hidden.value = d; hidden.dispatchEvent(new Event("input", { bubbles: true })); hidden.dispatchEvent(new Event("change", { bubbles: true })); }
+    const vis = Array.from(document.querySelectorAll("input[placeholder='Enter date']"));
+    for (const v of vis) { v.value = d; v.dispatchEvent(new Event("input", { bubbles: true })); v.dispatchEvent(new Event("change", { bubbles: true })); }
+  }, iso);
+  await page.waitForTimeout(400);
+  await page.getByRole("button", { name: /^Create PAT$/i }).first().click({ timeout: 5000 });
+  await page.waitForTimeout(2500);
+  const token = await page.evaluate(() => {
+    const m = (document.body.innerText || "").match(/mrp_[A-Za-z0-9]{20,}/);
+    if (m) return m[0];
+    for (const i of document.querySelectorAll("input, textarea, code")) {
+      const v = i.value || i.textContent || "";
+      const mm = v.match(/mrp_[A-Za-z0-9]{20,}/);
+      if (mm) return mm[0];
+    }
+    return null;
+  });
+  return token;
+}
+
+async function api(token, path, opts = {}) {
+  const res = await fetch(`${API}${path}`, {
+    ...opts,
+    headers: { Authorization: token, "User-Agent": "KyTDK/NeoModeration/publish", ...(opts.headers || {}) },
+  });
+  return res;
+}
+
+async function releaseGameVersions() {
+  const res = await fetch(`${API}/tag/game_version`);
+  const all = await res.json();
+  return all
+    .filter((v) => v.version_type === "release" && /^1\.(1[3-9]|2\d)(\.\d+)?$/.test(v.version))
+    .map((v) => v.version);
+}
+
+async function cmdPublish(jar, version) {
+  if (!jar || !version || !existsSync(jar)) throw new Error("usage: publish <jar> <version> (jar must exist)");
+  const { browser, ctx } = await connect();
+  try {
+    let token = process.env.MODRINTH_TOKEN;
+    if (!token) {
+      const page = await modrinthPage(ctx, "https://modrinth.com/settings/account");
+      const info = await loginInfo(page);
+      if (!info) throw new Error("Not signed in to Modrinth in the debug Chrome. Run: open, then sign in.");
+      console.log(`Signed in as ${info.username}. Creating a scoped publishing token...`);
+      token = await createPat(page);
+    }
+    if (!token) throw new Error("No MODRINTH_TOKEN in env and could not create a PAT automatically.");
+    // Validate the token before doing anything destructive.
+    const who = await api(token, "/user");
+    if (who.status !== 200) throw new Error(`Token invalid (HTTP ${who.status}). Check MODRINTH_TOKEN.`);
+    console.log(`Token valid (${(await who.json()).username}). Publishing...`);
+
+    const gameVersions = await releaseGameVersions();
+    const summary = "Automatic chat moderation for Minecraft — blocks swearing, spam, links, and inappropriate map art. Local rules by default, optional cloud moderation.";
+    const body = readFileSync("docs/modrinth-body.md", "utf8");
+    const loaders = ["bukkit", "spigot", "paper", "purpur", "folia"];
+
+    const exists = await (await api(token, `/project/neomoderation`)).status === 200;
+    const jarBlob = new Blob([readFileSync(jar)], { type: "application/java-archive" });
+
+    if (!exists) {
+      const data = {
+        slug: "neomoderation", title: "NeoModeration", description: summary, body,
+        categories: ["management", "social", "utility"], additional_categories: [],
+        client_side: "unsupported", server_side: "required", project_type: "mod",
+        license_id: "LicenseRef-All-Rights-Reserved",
+        issues_url: "https://github.com/KyTDK/NeoModeration/issues",
+        source_url: "https://github.com/KyTDK/NeoModeration",
+        is_draft: true,
+        initial_versions: [{
+          file_parts: ["file"], version_number: version, version_title: `NeoModeration ${version}`,
+          version_body: body, dependencies: [], game_versions: gameVersions,
+          release_channel: "release", loaders, featured: true,
+        }],
+      };
+      const fd = new FormData();
+      fd.append("data", JSON.stringify(data));
+      fd.append("file", jarBlob, `NeoModeration-${version}.jar`);
+      const res = await api(token, "/project", { method: "POST", body: fd });
+      const text = await res.text();
+      if (res.status >= 300) throw new Error(`create project HTTP ${res.status}: ${text.slice(0, 400)}`);
+      console.log("Created draft project. Response:", text.slice(0, 200));
+    } else {
+      const proj = await (await api(token, `/project/neomoderation`)).json();
+      const data = {
+        project_id: proj.id, file_parts: ["file"], version_number: version,
+        name: `NeoModeration ${version}`, version_body: body, dependencies: [],
+        game_versions: gameVersions, release_channel: "release", loaders, featured: true,
+      };
+      const fd = new FormData();
+      fd.append("data", JSON.stringify(data));
+      fd.append("file", jarBlob, `NeoModeration-${version}.jar`);
+      const res = await api(token, "/version", { method: "POST", body: fd });
+      const text = await res.text();
+      if (res.status >= 300) throw new Error(`add version HTTP ${res.status}: ${text.slice(0, 400)}`);
+      console.log("Uploaded version to existing project.");
+    }
+    console.log("Draft: https://modrinth.com/mod/neomoderation/settings  (submit for review when ready)");
+  } finally {
+    await browser.close();
+  }
+}
+
+const [cmd, ...args] = process.argv.slice(2);
+try {
+  if (cmd === "open") await cmdOpen();
+  else if (cmd === "check") await cmdCheck();
+  else if (cmd === "inspect") await cmdInspect();
+  else if (cmd === "patdebug") await cmdPatDebug();
+  else if (cmd === "publish") await cmdPublish(args[0], args[1]);
+  else {
+    console.log("commands: open | check | token | publish <token> <jar> <version>");
+    process.exit(1);
+  }
+} catch (e) {
+  console.error("ERROR:", e.message);
+  process.exit(1);
+}
