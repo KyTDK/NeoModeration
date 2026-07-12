@@ -146,6 +146,31 @@ async function cmdInspect() {
 const PUBLISH_SCOPES = ["Create projects", "Read projects", "Write projects",
   "Create versions", "Read versions", "Write versions"];
 
+async function cmdPatDom() {
+  const { browser, ctx } = await connect();
+  try {
+    const page = await modrinthPage(ctx, "https://modrinth.com/settings/pats");
+    await page.waitForTimeout(1200);
+    try { await page.getByRole("button", { name: /create a pat/i }).first().click({ timeout: 5000 }); } catch {}
+    await page.waitForTimeout(1500);
+    const html = await page.evaluate(() => {
+      const dlg = document.querySelector("[role=dialog], dialog, .modal, .universal-modal, .content");
+      // Find the scope for one toggle + the expires area.
+      const scopeBtn = Array.from(document.querySelectorAll("button")).find((b) => /^Create projects$/i.test((b.innerText || "").trim()));
+      const expiresLabel = Array.from(document.querySelectorAll("label")).find((l) => /expires/i.test(l.innerText || ""));
+      const expiresBox = expiresLabel ? expiresLabel.closest("div") : null;
+      return {
+        scopeBtnHTML: scopeBtn ? scopeBtn.outerHTML.slice(0, 400) : "none",
+        scopeParentHTML: scopeBtn && scopeBtn.parentElement ? scopeBtn.parentElement.outerHTML.slice(0, 300) : "none",
+        expiresHTML: expiresBox ? expiresBox.outerHTML.slice(0, 900) : "none",
+      };
+    });
+    console.log(JSON.stringify(html, null, 2));
+  } finally {
+    await browser.close();
+  }
+}
+
 async function cmdPatDebug() {
   const { browser, ctx } = await connect();
   try {
@@ -229,11 +254,13 @@ async function releaseGameVersions() {
 
 async function cmdPublish(jar, version) {
   if (!jar || !version || !existsSync(jar)) throw new Error("usage: publish <jar> <version> (jar must exist)");
-  const { browser, ctx } = await connect();
+  let token = process.env.MODRINTH_TOKEN;
+  let browser = null;
   try {
-    let token = process.env.MODRINTH_TOKEN;
     if (!token) {
-      const page = await modrinthPage(ctx, "https://modrinth.com/settings/account");
+      const c = await connect();
+      browser = c.browser;
+      const page = await modrinthPage(c.ctx, "https://modrinth.com/settings/account");
       const info = await loginInfo(page);
       if (!info) throw new Error("Not signed in to Modrinth in the debug Chrome. Run: open, then sign in.");
       console.log(`Signed in as ${info.username}. Creating a scoped publishing token...`);
@@ -253,46 +280,46 @@ async function cmdPublish(jar, version) {
     const exists = await (await api(token, `/project/neomoderation`)).status === 200;
     const jarBlob = new Blob([readFileSync(jar)], { type: "application/java-archive" });
 
+    let projectId;
     if (!exists) {
+      // Step 1: create the project as a draft, metadata only (no versions).
       const data = {
         slug: "neomoderation", title: "NeoModeration", description: summary, body,
         categories: ["management", "social", "utility"], additional_categories: [],
-        client_side: "unsupported", server_side: "required", project_type: "mod",
+        client_side: "unsupported", server_side: "required", project_type: "plugin",
         license_id: "LicenseRef-All-Rights-Reserved",
         issues_url: "https://github.com/KyTDK/NeoModeration/issues",
         source_url: "https://github.com/KyTDK/NeoModeration",
-        is_draft: true,
-        initial_versions: [{
-          file_parts: ["file"], version_number: version, version_title: `NeoModeration ${version}`,
-          version_body: body, dependencies: [], game_versions: gameVersions,
-          release_channel: "release", loaders, featured: true,
-        }],
+        is_draft: true, initial_versions: [],
       };
       const fd = new FormData();
       fd.append("data", JSON.stringify(data));
-      fd.append("file", jarBlob, `NeoModeration-${version}.jar`);
       const res = await api(token, "/project", { method: "POST", body: fd });
       const text = await res.text();
       if (res.status >= 300) throw new Error(`create project HTTP ${res.status}: ${text.slice(0, 400)}`);
-      console.log("Created draft project. Response:", text.slice(0, 200));
+      projectId = JSON.parse(text).id;
+      console.log(`Created draft project ${projectId}. Uploading version...`);
     } else {
-      const proj = await (await api(token, `/project/neomoderation`)).json();
-      const data = {
-        project_id: proj.id, file_parts: ["file"], version_number: version,
-        name: `NeoModeration ${version}`, version_body: body, dependencies: [],
-        game_versions: gameVersions, release_channel: "release", loaders, featured: true,
-      };
-      const fd = new FormData();
-      fd.append("data", JSON.stringify(data));
-      fd.append("file", jarBlob, `NeoModeration-${version}.jar`);
-      const res = await api(token, "/version", { method: "POST", body: fd });
-      const text = await res.text();
-      if (res.status >= 300) throw new Error(`add version HTTP ${res.status}: ${text.slice(0, 400)}`);
-      console.log("Uploaded version to existing project.");
+      projectId = (await (await api(token, `/project/neomoderation`)).json()).id;
+      console.log(`Project exists (${projectId}). Uploading version...`);
     }
-    console.log("Draft: https://modrinth.com/mod/neomoderation/settings  (submit for review when ready)");
+
+    // Step 2: add the version (no environment fields — plugin loaders don't take them).
+    const vdata = {
+      project_id: projectId, file_parts: ["file"], version_number: version,
+      name: `NeoModeration ${version}`, version_body: body, dependencies: [],
+      game_versions: gameVersions, release_channel: "release", loaders, featured: true,
+    };
+    const vfd = new FormData();
+    vfd.append("data", JSON.stringify(vdata));
+    vfd.append("file", jarBlob, `NeoModeration-${version}.jar`);
+    const vres = await api(token, "/version", { method: "POST", body: vfd });
+    const vtext = await vres.text();
+    if (vres.status >= 300) throw new Error(`add version HTTP ${vres.status}: ${vtext.slice(0, 400)}`);
+    console.log("Uploaded version 1.4.0.");
+    console.log("Draft: https://modrinth.com/plugin/neomoderation/settings  (submit for review when ready)");
   } finally {
-    await browser.close();
+    if (browser) await browser.close();
   }
 }
 
@@ -302,6 +329,7 @@ try {
   else if (cmd === "check") await cmdCheck();
   else if (cmd === "inspect") await cmdInspect();
   else if (cmd === "patdebug") await cmdPatDebug();
+  else if (cmd === "patdom") await cmdPatDom();
   else if (cmd === "publish") await cmdPublish(args[0], args[1]);
   else {
     console.log("commands: open | check | token | publish <token> <jar> <version>");
