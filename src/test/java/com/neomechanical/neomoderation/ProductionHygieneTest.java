@@ -12,6 +12,34 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ProductionHygieneTest {
     @Test
+    void releaseKitContainsOnlyReusableToolsAndAssets() throws IOException {
+        List<Path> reusable = List.of(
+                Path.of("scripts/spigot-publish.mjs"),
+                Path.of("scripts/modrinth-publish.mjs"),
+                Path.of("scripts/cdp-lib.mjs"),
+                Path.of("scripts/hangar-upload-version.mjs"),
+                Path.of("scripts/hangar-publish.mjs"),
+                Path.of("scripts/hangar-entercode.mjs"),
+                Path.of("media/icon-spigot.png")
+        );
+        List<Path> probes = List.of(
+                Path.of("scripts/hangar-final.mjs"),
+                Path.of("scripts/hv-changelog.mjs"),
+                Path.of("scripts/hv-finish.mjs"),
+                Path.of("scripts/hv-urltest.mjs"),
+                Path.of("scripts/hv-versions.mjs"),
+                Path.of("scripts/hv.mjs")
+        );
+
+        assertTrue(reusable.stream().allMatch(Files::isRegularFile),
+                () -> "Reusable release files are missing: "
+                        + reusable.stream().filter(path -> !Files.isRegularFile(path)).toList());
+        assertTrue(probes.stream().noneMatch(Files::exists),
+                () -> "One-off Hangar probes must be removed: "
+                        + probes.stream().filter(Files::exists).toList());
+    }
+
+    @Test
     void productionSourcesDoNotDumpStackTracesOrWrapGenericRuntimeExceptions() throws IOException {
         Path sourceRoot = Path.of("src/main/java");
         List<String> violations;
@@ -27,8 +55,6 @@ class ProductionHygieneTest {
     @Test
     void activeReleaseToolsDoNotEmbedStaleVersionsOrOmitSpigotTitle() throws IOException {
         List<Path> activeVerificationScripts = List.of(
-                Path.of("scripts/live-verify.py"),
-                Path.of("scripts/sandbox-verify.py"),
                 Path.of("scripts/version-matrix-verify.py")
         );
         List<String> staleVersions = activeVerificationScripts.stream()
