@@ -22,9 +22,13 @@ root and replace only values explicitly shown as variables or placeholders.
 ## 1. Prepare and verify
 
 Start from a clean checkout at the commit to release. Prepare release notes and
-Spigot-formatted notes at the paths below, then build and test with JDK 21:
+Spigot-formatted notes at the paths below, then copy the complete block. It runs
+in a child Bash so failures stop the block without changing the caller's shell;
+`pipefail` also makes a failed checksum stage fail the block.
 
-```sh
+```bash
+bash <<'RELEASE_PREPARE'
+set -euo pipefail
 export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
 export PATH="$JAVA_HOME/bin:$PATH"
 VERSION="$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)"
@@ -38,6 +42,7 @@ mvn clean verify
 python3 scripts/version-matrix-verify.py "$JAR"
 test -s "$JAR"
 shasum -a 256 "$JAR" | sed 's#  target/#  #' | tee "$CHECKSUMS"
+RELEASE_PREPARE
 ```
 
 The Paper matrix command starts local Paper servers in Docker and verifies the
@@ -49,7 +54,14 @@ and ensure `git status --short` is empty.
 
 Create and push the release tag, then publish the JAR and checksum file:
 
-```sh
+```bash
+bash <<'RELEASE_GITHUB'
+set -euo pipefail
+VERSION="$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)"
+JAR="target/NeoModeration-${VERSION}.jar"
+RELEASE_NOTES="/tmp/NeoModeration-${VERSION}-release-notes.md"
+CHECKSUMS="docs/releases/NeoModeration-${VERSION}-SHA256SUMS.txt"
+
 git tag -a "v${VERSION}" -m "NeoModeration ${VERSION}"
 git push origin "v${VERSION}"
 gh release create "v${VERSION}" "$JAR" "$CHECKSUMS" \
@@ -57,16 +69,23 @@ gh release create "v${VERSION}" "$JAR" "$CHECKSUMS" \
   --verify-tag \
   --title "NeoModeration ${VERSION}" \
   --notes-file "$RELEASE_NOTES"
+RELEASE_GITHUB
 ```
 
 Before any marketplace upload, prove that the release and exact JAR are public
 and compare the published checksum with the local build:
 
-```sh
+```bash
+bash <<'RELEASE_CHECKSUM'
+set -euo pipefail
+VERSION="$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)"
+JAR="target/NeoModeration-${VERSION}.jar"
+
 curl -fL "https://github.com/KyTDK/NeoModeration/releases/download/v${VERSION}/NeoModeration-${VERSION}.jar" \
   -o "/tmp/NeoModeration-${VERSION}.jar"
 test "$(shasum -a 256 "$JAR" | awk '{print $1}')" = \
   "$(shasum -a 256 "/tmp/NeoModeration-${VERSION}.jar" | awk '{print $1}')"
+RELEASE_CHECKSUM
 ```
 
 Do not continue to Hangar if the download or checksum comparison fails.
@@ -76,13 +95,20 @@ Do not continue to Hangar if the download or checksum comparison fails.
 Launch a dedicated Chrome profile on debug port 9223, then sign in to SpigotMC
 in that Chrome window and solve any Cloudflare challenge:
 
-```sh
+```bash
+bash <<'SPIGOT_PUBLISH'
+set -euo pipefail
+VERSION="$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)"
+JAR="target/NeoModeration-${VERSION}.jar"
+SPIGOT_NOTES="/tmp/NeoModeration-${VERSION}-spigot-notes.txt"
+
 open -na "Google Chrome" --args \
   --remote-debugging-port=9223 \
   --user-data-dir="$HOME/.neomoderation-release-chrome"
 export SPIGOT_CDP_PORT=9223
 node scripts/spigot-publish.mjs check
 node scripts/spigot-publish.mjs version "$JAR" "$VERSION" "$SPIGOT_NOTES"
+SPIGOT_PUBLISH
 ```
 
 The retained SpigotMC publisher dispatch is:
@@ -96,7 +122,7 @@ paths/text first so every command remains safe to copy and edit:
 
 ```sh
 SPIGOT_DESCRIPTION="/tmp/neomoderation-description.bbcode"
-SPIGOT_BANNER="media/banner-spigot.png"
+SPIGOT_BANNER="media/banner.png"
 SPIGOT_TAGLINE="Automatic chat moderation for Minecraft"
 SPIGOT_ICON="media/icon-spigot.png"
 node scripts/spigot-publish.mjs describe "$SPIGOT_DESCRIPTION" --banner "$SPIGOT_BANNER"
@@ -109,11 +135,20 @@ node scripts/spigot-publish.mjs icon "$SPIGOT_ICON"
 Supply the authenticated API token through the environment. The publish
 contract is exactly `publish <jar> <version>`:
 
-```sh
-test -n "${MODRINTH_TOKEN:-}" # load it from the maintainer's secret store first
-node scripts/modrinth-publish.mjs publish "$JAR" "$VERSION"
-unset MODRINTH_TOKEN
+```bash
+bash <<'MODRINTH_PUBLISH'
+set -euo pipefail
+VERSION="$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)"
+JAR="target/NeoModeration-${VERSION}.jar"
+test -n "${MODRINTH_TOKEN:-}" &&
+  node scripts/modrinth-publish.mjs publish "$JAR" "$VERSION"
+MODRINTH_PUBLISH
 ```
+
+If the token check fails, stop and load `MODRINTH_TOKEN` from the maintainer's
+secret store before retrying this block. The `&&` is the execution gate: it
+prevents the publisher's automatic browser PAT creation path from running when
+the environment token is empty, without exiting an interactive shell.
 
 The retained diagnostic/setup dispatch is:
 
@@ -133,10 +168,15 @@ The proven default is the browser uploader. First confirm the GitHub JAR URL is
 public, then sign in to Hangar in the same debug Chrome on port 9223 and leave a
 Hangar tab open:
 
-```sh
+```bash
+bash <<'HANGAR_BROWSER_PUBLISH'
+set -euo pipefail
+VERSION="$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)"
+
 curl -fIL "https://github.com/KyTDK/NeoModeration/releases/download/v${VERSION}/NeoModeration-${VERSION}.jar"
 export CDP_PORT=9223
 node scripts/hangar-upload-version.mjs "$VERSION"
+HANGAR_BROWSER_PUBLISH
 ```
 
 If Hangar requires account email verification during initial setup only, use:
@@ -154,10 +194,14 @@ The Hangar API publisher is retained as an optional alternative, not the proven
 default. Use it only when a maintainer has intentionally created an API key with
 the documented project/version permissions:
 
-```sh
-test -n "${HANGAR_API_KEY:-}" # load it from the maintainer's secret store first
-node scripts/hangar-publish.mjs publish "$JAR" "$VERSION"
-unset HANGAR_API_KEY
+```bash
+bash <<'HANGAR_API_PUBLISH'
+set -euo pipefail
+VERSION="$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)"
+JAR="target/NeoModeration-${VERSION}.jar"
+test -n "${HANGAR_API_KEY:-}" &&
+  node scripts/hangar-publish.mjs publish "$JAR" "$VERSION"
+HANGAR_API_PUBLISH
 ```
 
 Its dispatch is exactly `publish <jar> <version>`.
@@ -167,20 +211,59 @@ Its dispatch is exactly `publish <jar> <version>`.
 These commands are read-only. Run them after every publisher and inspect the
 returned release/version data rather than relying only on HTTP status:
 
-```sh
-curl -fsS https://api.github.com/repos/KyTDK/NeoModeration/releases | jq .
+```bash
+bash <<'RELEASE_AUDIT'
+set -euo pipefail
+audit_failed=0
 
-MODRINTH_STATUS="$(curl -sS -o /tmp/neomoderation-modrinth.json -w '%{http_code}' \
-  https://api.modrinth.com/v2/project/neomoderation)"
-case "$MODRINTH_STATUS" in
-  200) jq . /tmp/neomoderation-modrinth.json ;;
-  404) echo 'UNPUBLISHED: Modrinth project is not public' >&2; exit 1 ;;
-  *) echo "Modrinth audit failed: HTTP $MODRINTH_STATUS" >&2; exit 1 ;;
+github_url='https://api.github.com/repos/KyTDK/NeoModeration/releases'
+http_code="$(curl -sS -o /tmp/neomoderation-github.json -w '%{http_code}' "$github_url")" || http_code=000
+printf '%s %s\n' "$http_code" "$github_url"
+if [[ "$http_code" == 200 ]]; then
+  jq . /tmp/neomoderation-github.json >/dev/null || audit_failed=1
+else
+  audit_failed=1
+fi
+
+modrinth_url='https://api.modrinth.com/v2/project/neomoderation'
+http_code="$(curl -sS -o /tmp/neomoderation-modrinth.json -w '%{http_code}' "$modrinth_url")" || http_code=000
+printf '%s %s\n' "$http_code" "$modrinth_url"
+case "$http_code" in
+  200)
+    echo 'PUBLIC: Modrinth project is visible'
+    jq . /tmp/neomoderation-modrinth.json >/dev/null || audit_failed=1
+    ;;
+  404)
+    echo 'UNPUBLISHED: Modrinth review/publication remains outstanding' >&2
+    audit_failed=1
+    ;;
+  *)
+    echo "Modrinth audit failed: HTTP $http_code" >&2
+    audit_failed=1
+    ;;
 esac
 
-curl -fsS https://hangar.papermc.io/api/v1/projects/KyTDK/NeoModeration | jq .
-curl -fsSL https://bstats.org/plugin/bukkit/NeoModeration/32542 \
-  -o /tmp/neomoderation-bstats.html
+hangar_url='https://hangar.papermc.io/api/v1/projects/KyTDK/NeoModeration'
+http_code="$(curl -sS -o /tmp/neomoderation-hangar.json -w '%{http_code}' "$hangar_url")" || http_code=000
+printf '%s %s\n' "$http_code" "$hangar_url"
+if [[ "$http_code" == 200 ]]; then
+  jq . /tmp/neomoderation-hangar.json >/dev/null || audit_failed=1
+else
+  audit_failed=1
+fi
+
+bstats_url='https://bstats.org/plugin/bukkit/NeoModeration/32542'
+http_code="$(curl -sS -L -o /tmp/neomoderation-bstats.html -w '%{http_code}' "$bstats_url")" || http_code=000
+printf '%s %s\n' "$http_code" "$bstats_url"
+if [[ "$http_code" != 200 ]]; then
+  audit_failed=1
+fi
+
+if (( audit_failed != 0 )); then
+  echo 'Public release audit has outstanding or failed channels.' >&2
+fi
+exit "$audit_failed"
+RELEASE_AUDIT
 ```
 
 Confirm GitHub exposes tag `v${VERSION}` and the named JAR asset, Modrinth

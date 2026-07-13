@@ -184,6 +184,36 @@ class ProductionHygieneTest {
                 "README must link to the maintainer release runbook");
     }
 
+    @Test
+    void releaseRunbookCommandsGateSecretsAuditAllChannelsAndUseExistingAssets() throws IOException {
+        String text = Files.readString(Path.of("docs/RELEASING.md"));
+
+        assertTrue(text.contains("test -n \"${MODRINTH_TOKEN:-}\" &&\n"
+                        + "  node scripts/modrinth-publish.mjs publish \"$JAR\" \"$VERSION\"")
+                        && text.contains("If the token check fails, stop"),
+                "Modrinth publish must be gated by a non-empty environment token");
+        assertTrue(text.contains("bash <<'RELEASE_PREPARE'\nset -euo pipefail"),
+                "Multi-command Bash blocks must fail fast and propagate pipeline failures");
+
+        int auditStart = text.indexOf("bash <<'RELEASE_AUDIT'");
+        int auditEnd = text.indexOf("RELEASE_AUDIT\n```", auditStart + 1);
+        String audit = auditStart >= 0 && auditEnd > auditStart ? text.substring(auditStart, auditEnd) : "";
+        int auditExit = audit.indexOf("exit \"$audit_failed\"");
+        assertTrue(audit.contains("audit_failed=0")
+                        && audit.contains("http_code=")
+                        && countOccurrences(audit, "audit_failed=1") >= 4
+                        && auditExit > audit.indexOf("api.github.com/repos/KyTDK/NeoModeration/releases")
+                        && auditExit > audit.indexOf("api.modrinth.com/v2/project/neomoderation")
+                        && auditExit > audit.indexOf("hangar.papermc.io/api/v1/projects/KyTDK/NeoModeration")
+                        && auditExit > audit.indexOf("bstats.org/plugin/bukkit/NeoModeration/32542")
+                        && !audit.substring(0, auditExit).contains("exit "),
+                "Public audit must accumulate every channel failure before returning nonzero");
+
+        Path banner = Path.of("media/banner.png");
+        assertTrue(Files.isRegularFile(banner) && text.contains("SPIGOT_BANNER=\"media/banner.png\""),
+                "Spigot metadata example must use the existing banner asset");
+    }
+
     private static Stream<String> scan(Path path) {
         try {
             List<String> lines = Files.readAllLines(path);
