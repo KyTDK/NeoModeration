@@ -135,7 +135,8 @@ async function cmdDescribe(file, bannerPng) {
     if (!n) throw new Error("could not find the Description textarea to set.");
     const saved = await clickButton(page, /^Save$/);
     await page.waitForTimeout(4000);
-    console.log(saved ? `Description saved (fields set: ${n}).` : "Save button not found.");
+    if (!saved) throw new Error(`Save button not found for ${BASE}/edit`);
+    console.log(`Description saved (fields set: ${n}).`);
   } finally { await browser.close(); }
 }
 
@@ -183,7 +184,8 @@ async function cmdTagline(tagline) {
     if (!set) throw new Error("could not find the tag line field on the edit page.");
     const saved = await clickButton(page, /^Save$/);
     await page.waitForTimeout(4000);
-    console.log(saved ? `Tag line set to: ${tagline}` : "Save button not found.");
+    if (!saved) throw new Error(`Save button not found for ${BASE}/edit`);
+    console.log(`Tag line set to: ${tagline}`);
   } finally { await browser.close(); }
 }
 
@@ -196,7 +198,8 @@ async function cmdIcon(png) {
     await uploadToFileInput(page, "#ctrl_icon", png);
     const saved = await clickButton(page, /Save Changes/);
     await page.waitForTimeout(4000);
-    console.log(saved ? "Icon saved." : "Save Changes button not found.");
+    if (!saved) throw new Error(`Save Changes button not found for ${BASE}/icon`);
+    console.log("Icon saved.");
   } finally { await browser.close(); }
 }
 
@@ -229,7 +232,8 @@ async function cmdVersion(jar, versionString, notesFile) {
     await setRedactorBBCode(page, notes, 0);
     const saved = await clickButton(page, /Save Update/);
     await page.waitForTimeout(5000);
-    console.log(saved ? `Posted version ${versionString}.` : "Save Update button not found.");
+    if (!saved) throw new Error(`Save Update button not found for ${BASE}/add-version`);
+    console.log(`Posted version ${versionString}.`);
   } finally { await browser.close(); }
 }
 

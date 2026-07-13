@@ -61,60 +61,72 @@ async function clickBtn(reSrc, minY = 0) {
   return false;
 }
 
-// ── Step 1: Artifact — provide the GitHub jar URL + Paper platform ─────────
-await p.navigate(`https://hangar.papermc.io/${OWNER}/${PROJECT}/versions/new`);
-await sleep(2500);
-// Switch the Download to "Provide a URL" (the artifact becomes input[name="url"]).
-await p.eval(`(function(){ var b=Array.prototype.slice.call(document.querySelectorAll('button,a,div,span')).find(function(x){return /^Provide a URL$/i.test((x.innerText||'').trim());}); if(b) b.click(); })()`);
-await sleep(1500);
-// The URL field is Vue-controlled: the native value setter is ignored. Focus it
-// directly (a coordinate click can miss) and type via Input.insertText.
-const urlLen = await typeInto('input[name="url"]', jarUrl);
-const urlSet = `len:${urlLen}`;
-await p.eval(`(function(){ var c=document.querySelector('input[name="Paper-0"]'); if(c && !c.checked) c.click(); })()`);
-await sleep(1000);
-await bottom(); await sleep(400);
-await clickBtn("/^Next$/i");
-await sleep(2500);
+try {
+  // ── Step 1: Artifact — provide the GitHub jar URL + Paper platform ─────────
+  await p.navigate(`https://hangar.papermc.io/${OWNER}/${PROJECT}/versions/new`);
+  await sleep(2500);
+  // Switch the Download to "Provide a URL" (the artifact becomes input[name="url"]).
+  await p.eval(`(function(){ var b=Array.prototype.slice.call(document.querySelectorAll('button,a,div,span')).find(function(x){return /^Provide a URL$/i.test((x.innerText||'').trim());}); if(b) b.click(); })()`);
+  await sleep(1500);
+  // The URL field is Vue-controlled: the native value setter is ignored. Focus it
+  // directly (a coordinate click can miss) and type via Input.insertText.
+  const urlLen = await typeInto('input[name="url"]', jarUrl);
+  if (!urlLen) throw new Error("Hangar external URL field was not found or remained empty.");
+  const urlSet = `len:${urlLen}`;
+  await p.eval(`(function(){ var c=document.querySelector('input[name="Paper-0"]'); if(c && !c.checked) c.click(); })()`);
+  await sleep(1000);
+  await bottom(); await sleep(400);
+  const artifactNext = await clickBtn("/^Next$/i");
+  if (!artifactNext) throw new Error("Hangar Next button was not found for the artifact step.");
+  await sleep(2500);
 
-// ── Step 2 Artifact Data: type the version number (Vue field → real keystrokes) ─
-const verLen = await typeInto('input[name="version"]', version);
-await bottom(); await sleep(400);
-await clickBtn("/^Next$/i");
-await sleep(2500);
+  // ── Step 2 Artifact Data: type the version number (Vue field → real keystrokes) ─
+  const verLen = await typeInto('input[name="version"]', version);
+  if (!verLen) throw new Error("Hangar version field was not found or remained empty.");
+  await bottom(); await sleep(400);
+  const artifactDataNext = await clickBtn("/^Next$/i");
+  if (!artifactDataNext) throw new Error("Hangar Next button was not found for the artifact-data step.");
+  await sleep(2500);
 
-// ── Step 3 Dependencies: select Paper version families 1.13–1.21 ───────────
-for (const m of MAJORS) {
-  const box = await p.eval(`(function(){
-    var t=${JSON.stringify(m)};
-    var label=Array.prototype.slice.call(document.querySelectorAll('span,div,label')).find(function(e){return (e.childNodes.length===1?e.innerText:'').trim()===t;});
-    if(!label) return null;
-    var row=label.parentElement, cb=null;
-    for(var i=0;i<3 && row;i++){ cb=row.querySelector('input[type=checkbox]'); if(cb) break; row=row.parentElement; }
-    if(!cb || cb.checked) return null;
-    var b=cb.getBoundingClientRect(); return {x:b.x+b.width/2, y:b.y+b.height/2};
+  // ── Step 3 Dependencies: select Paper version families 1.13–1.21 ───────────
+  for (const m of MAJORS) {
+    const box = await p.eval(`(function(){
+      var t=${JSON.stringify(m)};
+      var label=Array.prototype.slice.call(document.querySelectorAll('span,div,label')).find(function(e){return (e.childNodes.length===1?e.innerText:'').trim()===t;});
+      if(!label) return null;
+      var row=label.parentElement, cb=null;
+      for(var i=0;i<3 && row;i++){ cb=row.querySelector('input[type=checkbox]'); if(cb) break; row=row.parentElement; }
+      if(!cb || cb.checked) return null;
+      var b=cb.getBoundingClientRect(); return {x:b.x+b.width/2, y:b.y+b.height/2};
+    })()`);
+    if (box) { await p.clickAt(box.x, box.y); await sleep(200); }
+  }
+  await sleep(500);
+  await bottom(); await sleep(400);
+  const dependenciesNext = await clickBtn("/^Next$/i");
+  if (!dependenciesNext) throw new Error("Hangar Next button was not found for the dependencies step.");
+  await sleep(2500);
+
+  // ── Step 4 Changelog: type into the markdown editor ───────────────────────
+  const editorBox = await p.eval(`(function(){
+    var el=document.querySelector('.cm-content, .CodeMirror, [contenteditable=true], .ProseMirror, textarea');
+    if(!el) return null; el.scrollIntoView({block:'center'});
+    var b=el.getBoundingClientRect(); return {x:b.x+Math.min(80,b.width/2), y:b.y+Math.min(40,b.height/2)};
   })()`);
-  if (box) { await p.clickAt(box.x, box.y); await sleep(200); }
+  if (!editorBox) throw new Error("Hangar changelog editor was not found.");
+  await p.clickAt(editorBox.x, editorBox.y); await sleep(400); await p.send("Input.insertText", { text: changelog }); await sleep(1000);
+
+  // ── Submit ────────────────────────────────────────────────────────────────
+  await bottom(); await sleep(400);
+  const created = await clickBtn("/^Create$/i", 150);
+  if (!created) throw new Error("Hangar Create button was not found.");
+  let after = "";
+  for (let i = 0; i < 40; i++) { await sleep(700); after = await p.eval(`location.href`); if (!after.includes("/versions/new")) break; }
+  const published = Boolean(after) && !after.includes("/versions/new");
+  await sleep(1000);
+  await p.screenshot(SHOT).catch(() => {});
+  if (!published) throw new Error(`Hangar version creation did not complete; current URL: ${after || "unknown"}`);
+  console.log(JSON.stringify({ urlSet, published, finalUrl: after }, null, 1));
+} finally {
+  p.close();
 }
-await sleep(500);
-await bottom(); await sleep(400);
-await clickBtn("/^Next$/i");
-await sleep(2500);
-
-// ── Step 4 Changelog: type into the markdown editor ───────────────────────
-const editorBox = await p.eval(`(function(){
-  var el=document.querySelector('.cm-content, .CodeMirror, [contenteditable=true], .ProseMirror, textarea');
-  if(!el) return null; el.scrollIntoView({block:'center'});
-  var b=el.getBoundingClientRect(); return {x:b.x+Math.min(80,b.width/2), y:b.y+Math.min(40,b.height/2)};
-})()`);
-if (editorBox) { await p.clickAt(editorBox.x, editorBox.y); await sleep(400); await p.send("Input.insertText", { text: changelog }); await sleep(1000); }
-
-// ── Submit ────────────────────────────────────────────────────────────────
-await bottom(); await sleep(400);
-await clickBtn("/^Create$/i", 150);
-let after = "";
-for (let i = 0; i < 40; i++) { await sleep(700); after = await p.eval(`location.href`); if (!after.includes("/versions/new")) break; }
-await sleep(1000);
-await p.screenshot(SHOT).catch(() => {});
-console.log(JSON.stringify({ urlSet, published: !after.includes("/versions/new"), finalUrl: after }, null, 1));
-p.close();

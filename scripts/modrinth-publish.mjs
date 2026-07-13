@@ -79,38 +79,6 @@ async function cmdCheck() {
   }
 }
 
-/** Pull the Modrinth session bearer token from the logged-in browser. */
-async function cmdToken() {
-  const { browser, ctx } = await connect();
-  try {
-    const page = await modrinthPage(ctx, "https://modrinth.com/settings/account");
-    await page.waitForTimeout(1200);
-    const fromStorage = await page.evaluate(() => {
-      const keys = ["auth-token", "authToken", "token"];
-      for (const k of keys) {
-        const v = localStorage.getItem(k) || sessionStorage.getItem(k);
-        if (v) return v.replace(/^"|"$/g, "");
-      }
-      return null;
-    });
-    let token = fromStorage;
-    if (!token) {
-      const cookies = await ctx.cookies("https://modrinth.com");
-      const c = cookies.find((c) => /auth[-_]?token|token/i.test(c.name) && c.value.length > 20);
-      token = c ? c.value : null;
-    }
-    // Validate it against the API.
-    let user = null;
-    if (token) {
-      const res = await fetch(`${API}/user`, { headers: { Authorization: token } }).catch(() => null);
-      if (res && res.ok) user = (await res.json()).username;
-    }
-    console.log(JSON.stringify({ found: !!token, valid: !!user, user, token: user ? token : null }));
-  } finally {
-    await browser.close();
-  }
-}
-
 /** Read-only: dump the create-PAT form structure so automation targets the right controls. */
 async function cmdInspect() {
   const { browser, ctx } = await connect();
@@ -316,7 +284,7 @@ async function cmdPublish(jar, version) {
     const vres = await api(token, "/version", { method: "POST", body: vfd });
     const vtext = await vres.text();
     if (vres.status >= 300) throw new Error(`add version HTTP ${vres.status}: ${vtext.slice(0, 400)}`);
-    console.log("Uploaded version 1.4.0.");
+    console.log(`Uploaded version ${version} as a draft.`);
     console.log("Draft: https://modrinth.com/plugin/neomoderation/settings  (submit for review when ready)");
   } finally {
     if (browser) await browser.close();
@@ -332,7 +300,7 @@ try {
   else if (cmd === "patdom") await cmdPatDom();
   else if (cmd === "publish") await cmdPublish(args[0], args[1]);
   else {
-    console.log("commands: open | check | token | publish <token> <jar> <version>");
+    console.log("commands: open | check | inspect | patdebug | patdom | publish <token> <jar> <version>");
     process.exit(1);
   }
 } catch (e) {

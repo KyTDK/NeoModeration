@@ -40,6 +40,24 @@ class ProductionHygieneTest {
     }
 
     @Test
+    void publishersUseParameterizedOutputAndExplicitFailureChecks() throws IOException {
+        String modrinth = Files.readString(Path.of("scripts/modrinth-publish.mjs"));
+        String spigot = Files.readString(Path.of("scripts/spigot-publish.mjs"));
+        String hangar = Files.readString(Path.of("scripts/hangar-upload-version.mjs"));
+
+        assertTrue(!modrinth.contains("Uploaded version 1.4.0."),
+                "Modrinth output must use the requested version");
+        assertTrue(!modrinth.contains("console.log(JSON.stringify({ found: !!token"),
+                "Modrinth must not expose bearer tokens through a CLI command");
+        assertTrue(spigot.contains("throw new Error(`Save button not found"),
+                "Spigot mutations must fail when their submit control is missing");
+        assertTrue(hangar.contains("if (!urlLen) throw new Error"),
+                "Hangar must stop when the external URL was not entered");
+        assertTrue(hangar.contains("if (!published) throw new Error"),
+                "Hangar must stop when creation did not leave the new-version page");
+    }
+
+    @Test
     void productionSourcesDoNotDumpStackTracesOrWrapGenericRuntimeExceptions() throws IOException {
         Path sourceRoot = Path.of("src/main/java");
         List<String> violations;
