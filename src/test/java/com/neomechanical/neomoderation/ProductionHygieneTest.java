@@ -5,7 +5,10 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -212,6 +215,57 @@ class ProductionHygieneTest {
         Path banner = Path.of("media/banner.png");
         assertTrue(Files.isRegularFile(banner) && text.contains("SPIGOT_BANNER=\"media/banner.png\""),
                 "Spigot metadata example must use the existing banner asset");
+    }
+
+    @Test
+    void releaseRunbookMavenBlocksPinJdk21Locally() throws IOException {
+        String text = Files.readString(Path.of("docs/RELEASING.md"));
+        Matcher heredocs = Pattern.compile("(?ms)^bash <<'([A-Z_]+)'\\R(.*?)^\\1$").matcher(text);
+        List<String> missingJdk = new ArrayList<>();
+        int mavenBlocks = 0;
+        while (heredocs.find()) {
+            String label = heredocs.group(1);
+            String block = heredocs.group(2);
+            int maven = block.indexOf("mvn ");
+            if (maven < 0) {
+                continue;
+            }
+            mavenBlocks++;
+            String preamble = block.substring(0, maven);
+            if (!preamble.contains("export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home")
+                    || !preamble.contains("export PATH=\"$JAVA_HOME/bin:$PATH\"")) {
+                missingJdk.add(label);
+            }
+        }
+        assertTrue(mavenBlocks >= 8 && missingJdk.isEmpty(),
+                () -> "Every Maven-using release block must pin JDK 21 locally; missing: " + missingJdk);
+    }
+
+    @Test
+    void releaseAuditVerifiesExpectedPublicArtifacts() throws IOException {
+        String text = Files.readString(Path.of("docs/RELEASING.md"));
+        int auditStart = text.indexOf("bash <<'RELEASE_AUDIT'");
+        int auditEnd = text.indexOf("RELEASE_AUDIT\n```", auditStart + 1);
+        String audit = auditStart >= 0 && auditEnd > auditStart ? text.substring(auditStart, auditEnd) : "";
+
+        assertTrue(audit.contains("github_url='https://api.github.com/repos/KyTDK/NeoModeration/releases/latest'")
+                        && audit.contains("github_expected_tag=\"v${VERSION}\"")
+                        && audit.contains("github_expected_asset=\"NeoModeration-${VERSION}.jar\"")
+                        && audit.contains(".tag_name == $tag")
+                        && audit.contains("any(.assets[]?; .name == $asset)"),
+                "GitHub audit must match the expected latest tag and JAR asset");
+        assertTrue(audit.contains("modrinth_versions_url='https://api.modrinth.com/v2/project/neomoderation/version'")
+                        && audit.contains("any(.[]?; .version_number == $version)"),
+                "Modrinth audit must match the expected public version number");
+        assertTrue(audit.contains(".visibility == \"public\"")
+                        && audit.contains("hangar_versions_url='https://hangar.papermc.io/api/v1/projects/KyTDK/NeoModeration/versions'")
+                        && audit.contains("any(.result[]?; .name == $version and .visibility == \"public\")"),
+                "Hangar audit must match public project visibility and the expected public version");
+        assertTrue(audit.indexOf("bstats.org/plugin/bukkit/NeoModeration/32542")
+                        > audit.indexOf("hangar_versions_url=")
+                        && audit.indexOf("exit \"$audit_failed\"")
+                        > audit.indexOf("bstats.org/plugin/bukkit/NeoModeration/32542"),
+                "bStats must be checked after marketplace predicates and before the audit returns");
     }
 
     private static Stream<String> scan(Path path) {

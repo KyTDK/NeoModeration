@@ -57,6 +57,8 @@ Create and push the release tag, then publish the JAR and checksum file:
 ```bash
 bash <<'RELEASE_GITHUB'
 set -euo pipefail
+export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
+export PATH="$JAVA_HOME/bin:$PATH"
 VERSION="$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)"
 JAR="target/NeoModeration-${VERSION}.jar"
 RELEASE_NOTES="/tmp/NeoModeration-${VERSION}-release-notes.md"
@@ -78,6 +80,8 @@ and compare the published checksum with the local build:
 ```bash
 bash <<'RELEASE_CHECKSUM'
 set -euo pipefail
+export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
+export PATH="$JAVA_HOME/bin:$PATH"
 VERSION="$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)"
 JAR="target/NeoModeration-${VERSION}.jar"
 
@@ -98,6 +102,8 @@ in that Chrome window and solve any Cloudflare challenge:
 ```bash
 bash <<'SPIGOT_PUBLISH'
 set -euo pipefail
+export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
+export PATH="$JAVA_HOME/bin:$PATH"
 VERSION="$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)"
 JAR="target/NeoModeration-${VERSION}.jar"
 SPIGOT_NOTES="/tmp/NeoModeration-${VERSION}-spigot-notes.txt"
@@ -138,6 +144,8 @@ contract is exactly `publish <jar> <version>`:
 ```bash
 bash <<'MODRINTH_PUBLISH'
 set -euo pipefail
+export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
+export PATH="$JAVA_HOME/bin:$PATH"
 VERSION="$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)"
 JAR="target/NeoModeration-${VERSION}.jar"
 test -n "${MODRINTH_TOKEN:-}" &&
@@ -171,6 +179,8 @@ Hangar tab open:
 ```bash
 bash <<'HANGAR_BROWSER_PUBLISH'
 set -euo pipefail
+export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
+export PATH="$JAVA_HOME/bin:$PATH"
 VERSION="$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)"
 
 curl -fIL "https://github.com/KyTDK/NeoModeration/releases/download/v${VERSION}/NeoModeration-${VERSION}.jar"
@@ -197,6 +207,8 @@ the documented project/version permissions:
 ```bash
 bash <<'HANGAR_API_PUBLISH'
 set -euo pipefail
+export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
+export PATH="$JAVA_HOME/bin:$PATH"
 VERSION="$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)"
 JAR="target/NeoModeration-${VERSION}.jar"
 test -n "${HANGAR_API_KEY:-}" &&
@@ -214,48 +226,80 @@ returned release/version data rather than relying only on HTTP status:
 ```bash
 bash <<'RELEASE_AUDIT'
 set -euo pipefail
+export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
+export PATH="$JAVA_HOME/bin:$PATH"
+VERSION="$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)"
 audit_failed=0
 
-github_url='https://api.github.com/repos/KyTDK/NeoModeration/releases'
+github_url='https://api.github.com/repos/KyTDK/NeoModeration/releases/latest'
+github_expected_tag="v${VERSION}"
+github_expected_asset="NeoModeration-${VERSION}.jar"
 http_code="$(curl -sS -o /tmp/neomoderation-github.json -w '%{http_code}' "$github_url")" || http_code=000
-printf '%s %s\n' "$http_code" "$github_url"
-if [[ "$http_code" == 200 ]]; then
-  jq . /tmp/neomoderation-github.json >/dev/null || audit_failed=1
+if [[ "$http_code" == 200 ]] &&
+  jq -e --arg tag "$github_expected_tag" --arg asset "$github_expected_asset" \
+    '.tag_name == $tag and any(.assets[]?; .name == $asset)' \
+    /tmp/neomoderation-github.json >/dev/null; then
+  printf 'PASS GitHub: HTTP %s, tag %s, asset %s\n' \
+    "$http_code" "$github_expected_tag" "$github_expected_asset"
 else
+  printf 'FAIL GitHub: HTTP %s, expected tag %s and asset %s (%s)\n' \
+    "$http_code" "$github_expected_tag" "$github_expected_asset" "$github_url" >&2
   audit_failed=1
 fi
 
 modrinth_url='https://api.modrinth.com/v2/project/neomoderation'
 http_code="$(curl -sS -o /tmp/neomoderation-modrinth.json -w '%{http_code}' "$modrinth_url")" || http_code=000
-printf '%s %s\n' "$http_code" "$modrinth_url"
 case "$http_code" in
   200)
-    echo 'PUBLIC: Modrinth project is visible'
-    jq . /tmp/neomoderation-modrinth.json >/dev/null || audit_failed=1
+    modrinth_versions_url='https://api.modrinth.com/v2/project/neomoderation/version'
+    http_code="$(curl -sS -o /tmp/neomoderation-modrinth-versions.json -w '%{http_code}' "$modrinth_versions_url")" || http_code=000
+    if [[ "$http_code" == 200 ]] &&
+      jq -e --arg version "$VERSION" \
+        'any(.[]?; .version_number == $version)' \
+        /tmp/neomoderation-modrinth-versions.json >/dev/null; then
+      printf 'PASS Modrinth: HTTP %s, public version %s\n' "$http_code" "$VERSION"
+    else
+      printf 'FAIL Modrinth: HTTP %s, expected public version %s (%s)\n' \
+        "$http_code" "$VERSION" "$modrinth_versions_url" >&2
+      audit_failed=1
+    fi
     ;;
   404)
-    echo 'UNPUBLISHED: Modrinth review/publication remains outstanding' >&2
+    printf 'OUTSTANDING Modrinth: HTTP 404, version %s is unpublished (%s)\n' \
+      "$VERSION" "$modrinth_url" >&2
     audit_failed=1
     ;;
   *)
-    echo "Modrinth audit failed: HTTP $http_code" >&2
+    printf 'FAIL Modrinth: HTTP %s (%s)\n' "$http_code" "$modrinth_url" >&2
     audit_failed=1
     ;;
 esac
 
 hangar_url='https://hangar.papermc.io/api/v1/projects/KyTDK/NeoModeration'
 http_code="$(curl -sS -o /tmp/neomoderation-hangar.json -w '%{http_code}' "$hangar_url")" || http_code=000
-printf '%s %s\n' "$http_code" "$hangar_url"
-if [[ "$http_code" == 200 ]]; then
-  jq . /tmp/neomoderation-hangar.json >/dev/null || audit_failed=1
+hangar_project_http_code="$http_code"
+hangar_versions_url='https://hangar.papermc.io/api/v1/projects/KyTDK/NeoModeration/versions'
+http_code="$(curl -sS -o /tmp/neomoderation-hangar-versions.json -w '%{http_code}' "$hangar_versions_url")" || http_code=000
+hangar_versions_http_code="$http_code"
+if [[ "$hangar_project_http_code" == 200 && "$hangar_versions_http_code" == 200 ]] &&
+  jq -e '.visibility == "public"' /tmp/neomoderation-hangar.json >/dev/null &&
+  jq -e --arg version "$VERSION" \
+    'any(.result[]?; .name == $version and .visibility == "public")' \
+    /tmp/neomoderation-hangar-versions.json >/dev/null; then
+  printf 'PASS Hangar: project HTTP %s, versions HTTP %s, public version %s\n' \
+    "$hangar_project_http_code" "$hangar_versions_http_code" "$VERSION"
 else
+  printf 'FAIL Hangar: project HTTP %s, versions HTTP %s, expected public version %s (%s)\n' \
+    "$hangar_project_http_code" "$hangar_versions_http_code" "$VERSION" "$hangar_versions_url" >&2
   audit_failed=1
 fi
 
 bstats_url='https://bstats.org/plugin/bukkit/NeoModeration/32542'
 http_code="$(curl -sS -L -o /tmp/neomoderation-bstats.html -w '%{http_code}' "$bstats_url")" || http_code=000
-printf '%s %s\n' "$http_code" "$bstats_url"
-if [[ "$http_code" != 200 ]]; then
+if [[ "$http_code" == 200 ]]; then
+  printf 'PASS bStats: HTTP %s (%s)\n' "$http_code" "$bstats_url"
+else
+  printf 'FAIL bStats: HTTP %s (%s)\n' "$http_code" "$bstats_url" >&2
   audit_failed=1
 fi
 
