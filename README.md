@@ -118,3 +118,8 @@ moderation:
 - If the cloud is down, chat keeps working (fail-open) and local rules still run.
 - Servers upgrading from 1.2.x keep enforcing exactly as before; monitor mode is only the default for brand-new installs.
 - Edit `plugins/NeoModeration/config.yml` for advanced options.
+
+## Maintainers
+
+The build, marketplace publishing, review, and post-release verification
+process is documented in [docs/RELEASING.md](docs/RELEASING.md).

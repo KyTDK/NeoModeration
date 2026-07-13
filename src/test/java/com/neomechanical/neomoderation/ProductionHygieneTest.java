@@ -159,6 +159,31 @@ class ProductionHygieneTest {
                 "Privacy documentation must disclose bStats and distinguish it from moderation content");
     }
 
+    @Test
+    void releaseRunbookCoversEveryPublicationAndAuditChannel() throws IOException {
+        Path runbook = Path.of("docs/RELEASING.md");
+        assertTrue(Files.isRegularFile(runbook), "Canonical release runbook is missing");
+
+        String text = Files.readString(runbook);
+        List<String> required = List.of(
+                "mvn clean verify",
+                "scripts/version-matrix-verify.py",
+                "scripts/spigot-publish.mjs",
+                "scripts/modrinth-publish.mjs",
+                "submit for review",
+                "api.modrinth.com/v2/project/neomoderation",
+                "scripts/hangar-upload-version.mjs",
+                "api.github.com/repos/KyTDK/NeoModeration/releases",
+                "hangar.papermc.io/api/v1/projects/KyTDK/NeoModeration",
+                "bstats.org/plugin/bukkit/NeoModeration/32542"
+        );
+        assertTrue(required.stream().allMatch(text::contains),
+                () -> "Release runbook is missing: "
+                        + required.stream().filter(value -> !text.contains(value)).toList());
+        assertTrue(Files.readString(Path.of("README.md")).contains("docs/RELEASING.md"),
+                "README must link to the maintainer release runbook");
+    }
+
     private static Stream<String> scan(Path path) {
         try {
             List<String> lines = Files.readAllLines(path);
