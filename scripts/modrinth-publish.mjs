@@ -7,10 +7,14 @@
  * USAGE
  *   node scripts/modrinth-publish.mjs open              # open sign-in page, bring to front
  *   node scripts/modrinth-publish.mjs check             # is the browser signed in to Modrinth?
- *   node scripts/modrinth-publish.mjs pat               # create a scoped PAT via the UI, print it
- *   node scripts/modrinth-publish.mjs publish <token> <jar> <version>
+ *   node scripts/modrinth-publish.mjs inspect           # inspect the create-PAT form
+ *   node scripts/modrinth-publish.mjs patdebug          # inspect create-PAT state
+ *   node scripts/modrinth-publish.mjs patdom            # inspect create-PAT DOM controls
+ *   node scripts/modrinth-publish.mjs publish <jar> <version>
  *
- * ENV: MODRINTH_CDP_PORT (default 9223)
+ * ENV
+ *   MODRINTH_CDP_PORT  CDP port of the logged-in Chrome (default 9223)
+ *   MODRINTH_TOKEN     bearer token used for API publishing (created in-browser when unset)
  */
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -300,7 +304,7 @@ try {
   else if (cmd === "patdom") await cmdPatDom();
   else if (cmd === "publish") await cmdPublish(args[0], args[1]);
   else {
-    console.log("commands: open | check | inspect | patdebug | patdom | publish <token> <jar> <version>");
+    console.log("commands: open | check | inspect | patdebug | patdom | publish <jar> <version>");
     process.exit(1);
   }
 } catch (e) {

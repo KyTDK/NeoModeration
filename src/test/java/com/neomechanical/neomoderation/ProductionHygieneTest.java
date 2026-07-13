@@ -44,17 +44,50 @@ class ProductionHygieneTest {
         String modrinth = Files.readString(Path.of("scripts/modrinth-publish.mjs"));
         String spigot = Files.readString(Path.of("scripts/spigot-publish.mjs"));
         String hangar = Files.readString(Path.of("scripts/hangar-upload-version.mjs"));
+        String hangarEnterCode = Files.readString(Path.of("scripts/hangar-entercode.mjs"));
 
-        assertTrue(!modrinth.contains("Uploaded version 1.4.0."),
+        assertTrue(modrinth.contains("console.log(`Uploaded version ${version} as a draft.`);"),
                 "Modrinth output must use the requested version");
-        assertTrue(!modrinth.contains("console.log(JSON.stringify({ found: !!token"),
-                "Modrinth must not expose bearer tokens through a CLI command");
-        assertTrue(spigot.contains("throw new Error(`Save button not found"),
-                "Spigot mutations must fail when their submit control is missing");
-        assertTrue(hangar.contains("if (!urlLen) throw new Error"),
-                "Hangar must stop when the external URL was not entered");
-        assertTrue(hangar.contains("if (!published) throw new Error"),
+        assertTrue(!modrinth.contains("async function cmdToken"),
+                "Modrinth must not expose a bearer-token output command");
+        assertTrue(!modrinth.contains("publish <token>"),
+                "Modrinth must not accept bearer tokens as positional arguments");
+        assertTrue(!modrinth.contains("modrinth-publish.mjs pat ")
+                        && modrinth.contains("node scripts/modrinth-publish.mjs publish <jar> <version>")
+                        && modrinth.contains("*   MODRINTH_TOKEN")
+                        && modrinth.contains("commands: open | check | inspect | patdebug | patdom | publish <jar> <version>"),
+                "Modrinth usage and help must document the dispatched environment-token interface");
+        List<String> modrinthCommands = List.of("open", "check", "inspect", "patdebug", "patdom", "publish");
+        assertTrue(modrinthCommands.stream().allMatch(command -> modrinth.contains("cmd === \"" + command + "\""))
+                        && countOccurrences(modrinth, "cmd === \"") == modrinthCommands.size(),
+                "Modrinth help and dispatch commands must agree");
+
+        assertTrue(countOccurrences(spigot,
+                        "if (!saved) throw new Error(`Save button not found for ${BASE}/edit`);") == 2,
+                "Spigot description and tagline mutations must fail when Save is missing");
+        assertTrue(spigot.contains("if (!saved) throw new Error(`Save Changes button not found for ${BASE}/icon`);")
+                        && spigot.contains("if (!saved) throw new Error(`Save Update button not found for ${BASE}/add-version`);"),
+                "Spigot icon and version mutations must fail when submit controls are missing");
+
+        assertTrue(hangar.contains("if (!urlLen) throw new Error(\"Hangar external URL field was not found or remained empty.\");")
+                        && hangar.contains("if (!verLen) throw new Error(\"Hangar version field was not found or remained empty.\");"),
+                "Hangar must require the external URL and version fields");
+        assertTrue(hangar.contains("if (!artifactNext) throw new Error(\"Hangar Next button was not found for the artifact step.\");")
+                        && hangar.contains("if (!artifactDataNext) throw new Error(\"Hangar Next button was not found for the artifact-data step.\");")
+                        && hangar.contains("if (!dependenciesNext) throw new Error(\"Hangar Next button was not found for the dependencies step.\");"),
+                "Hangar must require every named Next-step transition");
+        assertTrue(hangar.contains("if (!editorBox) throw new Error(\"Hangar changelog editor was not found.\");")
+                        && hangar.contains("if (!created) throw new Error(\"Hangar Create button was not found.\");"),
+                "Hangar must require the changelog editor and Create control");
+        assertTrue(hangar.contains("if (!published) throw new Error")
+                        && hangar.contains("} finally {\n  p.close();\n}"),
                 "Hangar must stop when creation did not leave the new-version page");
+
+        assertTrue(hangarEnterCode.contains("if (filled === \"no-field\") throw new Error(\"Hangar verification-code field was not found.\");")
+                        && hangarEnterCode.contains("if (!submitted) throw new Error(\"Hangar Verify Code button was not found.\");"),
+                "Hangar account verification must require the code field and submit control");
+        assertTrue(hangarEnterCode.contains("} finally {\n  p.close();\n}"),
+                "Hangar account verification must close its CDP page on failure");
     }
 
     @Test
@@ -137,5 +170,13 @@ class ProductionHygieneTest {
         } catch (IOException e) {
             throw new IllegalStateException("Unable to scan " + path, e);
         }
+    }
+
+    private static int countOccurrences(String text, String needle) {
+        int count = 0;
+        for (int index = 0; (index = text.indexOf(needle, index)) >= 0; index += needle.length()) {
+            count++;
+        }
+        return count;
     }
 }
