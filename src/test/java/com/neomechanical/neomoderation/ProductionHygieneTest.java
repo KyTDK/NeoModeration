@@ -15,6 +15,150 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ProductionHygieneTest {
     @Test
+    void modrinthPublisherUsesDocumentedDraftContractAndSafeLookupSemantics() throws Exception {
+        NodeResult contract = runNodeAssertions("""
+                import assert from "node:assert/strict";
+                import {
+                  buildModrinthVersionData,
+                  classifyModrinthProjectLookup,
+                  validateModrinthDraftVersion
+                } from "./scripts/modrinth-publish.mjs";
+
+                const payload = buildModrinthVersionData({
+                  projectId: "project-123",
+                  version: "2.0.0",
+                  changelog: "Release notes",
+                  gameVersions: ["1.21.8"],
+                  loaders: ["paper"]
+                });
+                assert.deepEqual(payload, {
+                  project_id: "project-123",
+                  file_parts: ["file"],
+                  version_number: "2.0.0",
+                  name: "NeoModeration 2.0.0",
+                  changelog: "Release notes",
+                  dependencies: [],
+                  game_versions: ["1.21.8"],
+                  version_type: "release",
+                  loaders: ["paper"],
+                  featured: true,
+                  status: "draft"
+                });
+                assert.equal(classifyModrinthProjectLookup(200), "exists");
+                assert.equal(classifyModrinthProjectLookup(404), "missing");
+                assert.throws(() => classifyModrinthProjectLookup(401), /HTTP 401/);
+                assert.throws(() => classifyModrinthProjectLookup(500), /HTTP 500/);
+                assert.doesNotThrow(() => validateModrinthDraftVersion({
+                  id: "version-123",
+                  project_id: "project-123",
+                  version_number: "2.0.0",
+                  status: "draft"
+                }, "project-123", "2.0.0"));
+                assert.throws(() => validateModrinthDraftVersion({
+                  id: "version-123",
+                  project_id: "project-123",
+                  version_number: "1.9.0",
+                  status: "draft"
+                }, "project-123", "2.0.0"), /requested version/);
+                assert.throws(() => validateModrinthDraftVersion({
+                  id: "version-123",
+                  project_id: "project-123",
+                  version_number: "2.0.0",
+                  status: "listed"
+                }, "project-123", "2.0.0"), /draft/);
+                """);
+        assertTrue(contract.exitCode() == 0,
+                () -> "Modrinth contract fixture failed:\n" + contract.output());
+
+        String modrinth = Files.readString(Path.of("scripts/modrinth-publish.mjs"));
+        assertTrue(modrinth.contains("if (!token) throw new Error(\"Set MODRINTH_TOKEN in env.\");")
+                        && !modrinth.contains("async function createPat")
+                        && !modrinth.contains("Creating a scoped publishing token"),
+                "Modrinth publishing must require the environment token without creating a PAT");
+    }
+
+    @Test
+    void browserPublishersRequireExactInputsAndDefinitiveSuccess() throws Exception {
+        NodeResult contract = runNodeAssertions("""
+                import assert from "node:assert/strict";
+                import { isSpigotVersionSubmissionSuccessful } from "./scripts/spigot-publish.mjs";
+                import {
+                  classifyHangarProjectLookup,
+                  isExactHangarVersionUrl
+                } from "./scripts/hangar-publish.mjs";
+
+                assert.equal(isSpigotVersionSubmissionSuccessful(
+                  "https://www.spigotmc.org/resources/neomoderation.136721/add-version",
+                  "NeoModeration 2.0.0",
+                  "2.0.0"), false);
+                assert.equal(isSpigotVersionSubmissionSuccessful(
+                  "https://www.spigotmc.org/resources/neomoderation.136721/updates/1234/",
+                  "Update posted",
+                  "2.0.0"), false);
+                assert.equal(isSpigotVersionSubmissionSuccessful(
+                  "https://www.spigotmc.org/resources/neomoderation.136721/updates/1234/",
+                  "NeoModeration 2.0.0",
+                  "2.0.0"), true);
+                assert.equal(classifyHangarProjectLookup(200), "exists");
+                assert.equal(classifyHangarProjectLookup(404), "missing");
+                assert.throws(() => classifyHangarProjectLookup(403), /HTTP 403/);
+                assert.throws(() => classifyHangarProjectLookup(503), /HTTP 503/);
+                assert.equal(isExactHangarVersionUrl(
+                  "https://hangar.papermc.io/KyTDK/NeoModeration/versions/2.0.0",
+                  "KyTDK", "NeoModeration", "2.0.0"), true);
+                assert.equal(isExactHangarVersionUrl(
+                  "https://hangar.papermc.io/KyTDK/NeoModeration/versions",
+                  "KyTDK", "NeoModeration", "2.0.0"), false);
+                assert.equal(isExactHangarVersionUrl(
+                  "https://hangar.papermc.io/KyTDK/NeoModeration/versions/1.9.0",
+                  "KyTDK", "NeoModeration", "2.0.0"), false);
+                """);
+        assertTrue(contract.exitCode() == 0,
+                () -> "Browser/API publisher contract fixture failed:\n" + contract.output());
+
+        String spigot = Files.readString(Path.of("scripts/spigot-publish.mjs"));
+        String hangarUpload = Files.readString(Path.of("scripts/hangar-upload-version.mjs"));
+        String hangarEnterCode = Files.readString(Path.of("scripts/hangar-entercode.mjs"));
+        assertTrue(spigot.contains("if (!notesFields) throw new Error")
+                        && spigot.contains("if (!notesPopulated) throw new Error")
+                        && spigot.contains("if (!submissionSuccessful) throw new Error"),
+                "Spigot version publishing must require populated notes and definitive submission proof");
+        assertTrue(hangarUpload.contains("if (urlValue !== jarUrl) throw new Error")
+                        && hangarUpload.contains("if (versionValue !== version) throw new Error")
+                        && hangarUpload.contains("isExactHangarVersionUrl(after, OWNER, PROJECT, version)"),
+                "Hangar browser publishing must verify exact inputs and the exact version URL");
+        assertTrue(hangarEnterCode.contains("if (!accepted) throw new Error")
+                        && !hangarEnterCode.contains("console.log(result);"),
+                "Hangar verification-code submission must exit nonzero unless accepted");
+    }
+
+    @Test
+    void releaseRunbookRejectsFalsePositiveAuditsAndUsesTwoStageChromeAuth() throws IOException {
+        String text = Files.readString(Path.of("docs/RELEASING.md"));
+        int auditStart = text.indexOf("bash <<'RELEASE_AUDIT'");
+        int auditEnd = text.indexOf("RELEASE_AUDIT\n```", auditStart + 1);
+        String audit = auditStart >= 0 && auditEnd > auditStart ? text.substring(auditStart, auditEnd) : "";
+
+        assertTrue(audit.contains("releases/tags/v${VERSION}")
+                        && !audit.contains("releases/latest"),
+                "GitHub audit must inspect the requested tag rather than the latest release");
+        assertTrue(audit.contains("unknownPlugin:false")
+                        && audit.contains("plugin:{id:32542,name:\"NeoModeration\"")
+                        && audit.contains("resolve(1, () => [[[")
+                        && audit.contains("resolve(2, () => [[["),
+                "bStats audit must require the NeoModeration identity and populated server/player series");
+
+        int launch = text.indexOf("bash <<'SPIGOT_CHROME_LAUNCH'");
+        int connectionCheck = text.indexOf("bash <<'SPIGOT_CONNECTION_CHECK'");
+        int publish = text.indexOf("bash <<'SPIGOT_PUBLISH'");
+        assertTrue(launch >= 0 && connectionCheck > launch && publish > connectionCheck
+                        && text.substring(launch, connectionCheck).contains("open -na \"Google Chrome\"")
+                        && !text.substring(launch, connectionCheck).contains("spigot-publish.mjs check")
+                        && text.substring(connectionCheck, publish).contains("spigot-publish.mjs check"),
+                "Spigot Chrome launch, interactive authentication, connection check, and publish must be separate stages");
+    }
+
+    @Test
     void releaseKitContainsOnlyReusableToolsAndAssets() throws IOException {
         List<Path> reusable = List.of(
                 Path.of("scripts/spigot-publish.mjs"),
@@ -248,12 +392,12 @@ class ProductionHygieneTest {
         int auditEnd = text.indexOf("RELEASE_AUDIT\n```", auditStart + 1);
         String audit = auditStart >= 0 && auditEnd > auditStart ? text.substring(auditStart, auditEnd) : "";
 
-        assertTrue(audit.contains("github_url='https://api.github.com/repos/KyTDK/NeoModeration/releases/latest'")
+        assertTrue(audit.contains("github_url=\"https://api.github.com/repos/KyTDK/NeoModeration/releases/tags/v${VERSION}\"")
                         && audit.contains("github_expected_tag=\"v${VERSION}\"")
                         && audit.contains("github_expected_asset=\"NeoModeration-${VERSION}.jar\"")
                         && audit.contains(".tag_name == $tag")
                         && audit.contains("any(.assets[]?; .name == $asset)"),
-                "GitHub audit must match the expected latest tag and JAR asset");
+                "GitHub audit must match the requested tag and JAR asset");
         assertTrue(audit.contains("modrinth_versions_url='https://api.modrinth.com/v2/project/neomoderation/version'")
                         && audit.contains("any(.[]?; .version_number == $version)"),
                 "Modrinth audit must match the expected public version number");
@@ -287,5 +431,19 @@ class ProductionHygieneTest {
             count++;
         }
         return count;
+    }
+
+    private static NodeResult runNodeAssertions(String source) throws IOException, InterruptedException {
+        ProcessBuilder builder = new ProcessBuilder("node", "--input-type=module", "--eval", source);
+        builder.directory(Path.of(".").toFile());
+        builder.redirectErrorStream(true);
+        builder.environment().remove("MODRINTH_TOKEN");
+        builder.environment().remove("HANGAR_API_KEY");
+        Process process = builder.start();
+        String output = new String(process.getInputStream().readAllBytes());
+        return new NodeResult(process.waitFor(), output);
+    }
+
+    private record NodeResult(int exitCode, String output) {
     }
 }

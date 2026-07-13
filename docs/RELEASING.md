@@ -96,8 +96,30 @@ Do not continue to Hangar if the download or checksum comparison fails.
 
 ## 3. Publish SpigotMC
 
-Launch a dedicated Chrome profile on debug port 9223, then sign in to SpigotMC
-in that Chrome window and solve any Cloudflare challenge:
+Launch a dedicated Chrome profile on debug port 9223:
+
+```bash
+bash <<'SPIGOT_CHROME_LAUNCH'
+set -euo pipefail
+open -na "Google Chrome" --args \
+  --remote-debugging-port=9223 \
+  --user-data-dir="$HOME/.neomoderation-release-chrome"
+SPIGOT_CHROME_LAUNCH
+```
+
+Stop here. In that Chrome window, sign in to SpigotMC and solve any Cloudflare
+challenge. Only after the resource page is visibly available should you run a
+separate, read-only connection check:
+
+```bash
+bash <<'SPIGOT_CONNECTION_CHECK'
+set -euo pipefail
+export SPIGOT_CDP_PORT=9223
+node scripts/spigot-publish.mjs check
+SPIGOT_CONNECTION_CHECK
+```
+
+After the connection check succeeds, run the mutation in a separate block:
 
 ```bash
 bash <<'SPIGOT_PUBLISH'
@@ -108,11 +130,7 @@ VERSION="$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)"
 JAR="target/NeoModeration-${VERSION}.jar"
 SPIGOT_NOTES="/tmp/NeoModeration-${VERSION}-spigot-notes.txt"
 
-open -na "Google Chrome" --args \
-  --remote-debugging-port=9223 \
-  --user-data-dir="$HOME/.neomoderation-release-chrome"
 export SPIGOT_CDP_PORT=9223
-node scripts/spigot-publish.mjs check
 node scripts/spigot-publish.mjs version "$JAR" "$VERSION" "$SPIGOT_NOTES"
 SPIGOT_PUBLISH
 ```
@@ -154,9 +172,8 @@ MODRINTH_PUBLISH
 ```
 
 If the token check fails, stop and load `MODRINTH_TOKEN` from the maintainer's
-secret store before retrying this block. The `&&` is the execution gate: it
-prevents the publisher's automatic browser PAT creation path from running when
-the environment token is empty, without exiting an interactive shell.
+secret store before retrying this block. The publisher requires this environment
+token and does not create or manage personal access tokens.
 
 The retained diagnostic/setup dispatch is:
 
@@ -231,7 +248,7 @@ export PATH="$JAVA_HOME/bin:$PATH"
 VERSION="$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)"
 audit_failed=0
 
-github_url='https://api.github.com/repos/KyTDK/NeoModeration/releases/latest'
+github_url="https://api.github.com/repos/KyTDK/NeoModeration/releases/tags/v${VERSION}"
 github_expected_tag="v${VERSION}"
 github_expected_asset="NeoModeration-${VERSION}.jar"
 http_code="$(curl -sS -o /tmp/neomoderation-github.json -w '%{http_code}' "$github_url")" || http_code=000
@@ -296,10 +313,16 @@ fi
 
 bstats_url='https://bstats.org/plugin/bukkit/NeoModeration/32542'
 http_code="$(curl -sS -L -o /tmp/neomoderation-bstats.html -w '%{http_code}' "$bstats_url")" || http_code=000
-if [[ "$http_code" == 200 ]]; then
-  printf 'PASS bStats: HTTP %s (%s)\n' "$http_code" "$bstats_url"
+if [[ "$http_code" == 200 ]] &&
+  rg -Fq 'unknownPlugin:false' /tmp/neomoderation-bstats.html &&
+  rg -Fq 'plugin:{id:32542,name:"NeoModeration"' /tmp/neomoderation-bstats.html &&
+  rg -Fq 'resolve(1, () => [[[' /tmp/neomoderation-bstats.html &&
+  rg -Fq 'resolve(2, () => [[[' /tmp/neomoderation-bstats.html; then
+  printf 'PASS bStats: HTTP %s, NeoModeration identity, populated server/player series (%s)\n' \
+    "$http_code" "$bstats_url"
 else
-  printf 'FAIL bStats: HTTP %s (%s)\n' "$http_code" "$bstats_url" >&2
+  printf 'FAIL bStats: HTTP %s, expected NeoModeration identity and populated server/player series (%s)\n' \
+    "$http_code" "$bstats_url" >&2
   audit_failed=1
 fi
 
@@ -310,9 +333,12 @@ exit "$audit_failed"
 RELEASE_AUDIT
 ```
 
-Confirm GitHub exposes tag `v${VERSION}` and the named JAR asset, Modrinth
+Confirm GitHub's tag-specific endpoint exposes tag `v${VERSION}` and the named JAR asset, Modrinth
 exposes the reviewed project and version, and Hangar exposes the new version and
-public GitHub download. Also open the marketplace pages as a signed-out user.
+public GitHub download. The bStats page returns HTTP 200 even for unknown plugin
+IDs, so only the expected plugin identity plus populated `resolve(1, ...)`
+(servers) and `resolve(2, ...)` (players) series count as success. Also open the
+marketplace pages as a signed-out user.
 
 The plugin reports bStats custom charts named `moderation_mode`,
 `cloud_enabled`, and `chat_censor`. Do not include any custom chart in a release

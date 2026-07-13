@@ -30,13 +30,15 @@ try {
   await sleep(3000);
   const result = await p.eval(`(function(){
     var t=(document.body.innerText||'').toLowerCase();
-    var ok = t.indexOf('verified')!==-1 && t.indexOf('not verified')===-1;
+    var accepted = t.indexOf('verified')!==-1 && t.indexOf('not verified')===-1;
     var notice='';
     var els=Array.prototype.slice.call(document.querySelectorAll('[class*=toast i],[role=alert],[class*=notification i]'));
     for(var i=0;i<els.length;i++){var s=(els[i].innerText||'').trim(); if(s) notice+=s+' | ';}
-    return JSON.stringify({ filled:'${filled}', submitted:${submitted}, notice:notice.slice(0,180) });
+    return { accepted:accepted, notice:notice.slice(0,180) };
   })()`);
-  console.log(result);
+  const accepted = Boolean(result && result.accepted);
+  if (!accepted) throw new Error(`Hangar verification code was not accepted${result?.notice ? `: ${result.notice}` : "."}`);
+  console.log(JSON.stringify({ accepted: true, notice: result.notice }));
 } finally {
   p.close();
 }

@@ -9,6 +9,7 @@
  * create_project and create_version permissions. Passed via env, never printed.
  */
 import { existsSync, readFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 
 const BASE = "https://hangar.papermc.io/api/v1";
 const OWNER = process.env.HANGAR_OWNER || "KyTDK";
@@ -32,6 +33,24 @@ async function paperVersions() {
   return paper ? (paper.possibleVersions || paper.versions) : null;
 }
 
+export function classifyHangarProjectLookup(status) {
+  if (status === 200) return "exists";
+  if (status === 404) return "missing";
+  throw new Error(`lookup Hangar project HTTP ${status}`);
+}
+
+export function isExactHangarVersionUrl(url, owner, project, version) {
+  try {
+    const parsed = new URL(url);
+    const path = decodeURIComponent(parsed.pathname).replace(/\/$/, "");
+    return parsed.protocol === "https:"
+      && parsed.hostname === "hangar.papermc.io"
+      && path === `/${owner}/${project}/versions/${version}`;
+  } catch {
+    return false;
+  }
+}
+
 async function cmdPublish(jar, version) {
   if (!jar || !version || !existsSync(jar)) throw new Error("usage: publish <jar> <version>");
   const apiKey = process.env.HANGAR_API_KEY;
@@ -45,8 +64,9 @@ async function cmdPublish(jar, version) {
   const user = await userRes.json();
 
   // Ensure the project exists.
-  let exists = (await h(token, `/projects/${OWNER}/NeoModeration`)).status === 200;
-  if (!exists) {
+  const projectResponse = await h(token, `/projects/${OWNER}/NeoModeration`);
+  const projectLookup = classifyHangarProjectLookup(projectResponse.status);
+  if (projectLookup === "missing") {
     const form = {
       name: "NeoModeration",
       category: "protection",
@@ -91,11 +111,15 @@ async function cmdPublish(jar, version) {
   console.log("Project: https://hangar.papermc.io/" + OWNER + "/NeoModeration");
 }
 
-const [cmd, ...args] = process.argv.slice(2);
-try {
-  if (cmd === "publish") await cmdPublish(args[0], args[1]);
-  else { console.log("commands: publish <jar> <version>"); process.exit(1); }
-} catch (e) {
-  console.error("ERROR:", e.message);
-  process.exit(1);
+async function main() {
+  const [cmd, ...args] = process.argv.slice(2);
+  try {
+    if (cmd === "publish") await cmdPublish(args[0], args[1]);
+    else { console.log("commands: publish <jar> <version>"); process.exitCode = 1; }
+  } catch (e) {
+    console.error("ERROR:", e.message);
+    process.exitCode = 1;
+  }
 }
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();

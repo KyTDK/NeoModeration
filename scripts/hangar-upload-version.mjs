@@ -18,6 +18,7 @@
  *   e.g. node scripts/hangar-upload-version.mjs 1.4.0
  */
 import { Page, sleep } from "./cdp-lib.mjs";
+import { isExactHangarVersionUrl } from "./hangar-publish.mjs";
 
 const OWNER = process.env.HANGAR_OWNER || "KyTDK";
 const PROJECT = process.env.HANGAR_PROJECT || "NeoModeration";
@@ -36,9 +37,10 @@ const bottom = () => p.eval(`window.scrollTo(0, document.body.scrollHeight)`);
 /**
  * Robustly type into a Vue-controlled input identified by CSS selector: focus,
  * insert text as real keystrokes, verify the value stuck, and retry (with a
- * coordinate click) until it does. Returns the final value length.
+ * coordinate click) until it does. Returns the exact final value.
  */
 async function typeInto(selector, text, tries = 4) {
+  let lastValue = "";
   for (let i = 0; i < tries; i++) {
     const coords = await p.eval(`(function(){
       var el=document.querySelector(${JSON.stringify(selector)});
@@ -47,13 +49,22 @@ async function typeInto(selector, text, tries = 4) {
     })()`);
     if (!coords) { await sleep(600); continue; }
     if (i > 0) { await p.clickAt(coords.x, coords.y); await sleep(200); }
+    await p.eval(`(function(){
+      var el=document.querySelector(${JSON.stringify(selector)});
+      if(!el) return;
+      var set=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;
+      set.call(el, '');
+      el.dispatchEvent(new Event('input',{bubbles:true}));
+      el.dispatchEvent(new Event('change',{bubbles:true}));
+      el.focus();
+    })()`);
     await sleep(200);
     await p.send("Input.insertText", { text });
     await sleep(400);
-    const len = await p.eval(`(function(){ var el=document.querySelector(${JSON.stringify(selector)}); return el?el.value.length:0; })()`);
-    if (len > 0) return len;
+    lastValue = await p.eval(`(function(){ var el=document.querySelector(${JSON.stringify(selector)}); return el?el.value:''; })()`);
+    if (lastValue === text) return lastValue;
   }
-  return 0;
+  return lastValue;
 }
 async function clickBtn(reSrc, minY = 0) {
   const b = await p.boxOfExpr(`Array.prototype.slice.call(document.querySelectorAll('button')).find(function(x){return ${reSrc}.test((x.innerText||'').trim()) && !x.disabled && x.getBoundingClientRect().y >= ${minY};})`);
@@ -70,9 +81,11 @@ try {
   await sleep(1500);
   // The URL field is Vue-controlled: the native value setter is ignored. Focus it
   // directly (a coordinate click can miss) and type via Input.insertText.
-  const urlLen = await typeInto('input[name="url"]', jarUrl);
+  const urlValue = await typeInto('input[name="url"]', jarUrl);
+  const urlLen = urlValue.length;
   if (!urlLen) throw new Error("Hangar external URL field was not found or remained empty.");
-  const urlSet = `len:${urlLen}`;
+  if (urlValue !== jarUrl) throw new Error(`Hangar external URL did not match the requested URL (length ${urlLen}).`);
+  const urlSet = true;
   await p.eval(`(function(){ var c=document.querySelector('input[name="Paper-0"]'); if(c && !c.checked) c.click(); })()`);
   await sleep(1000);
   await bottom(); await sleep(400);
@@ -81,8 +94,10 @@ try {
   await sleep(2500);
 
   // ── Step 2 Artifact Data: type the version number (Vue field → real keystrokes) ─
-  const verLen = await typeInto('input[name="version"]', version);
+  const versionValue = await typeInto('input[name="version"]', version);
+  const verLen = versionValue.length;
   if (!verLen) throw new Error("Hangar version field was not found or remained empty.");
+  if (versionValue !== version) throw new Error(`Hangar version field did not match requested version ${version}.`);
   await bottom(); await sleep(400);
   const artifactDataNext = await clickBtn("/^Next$/i");
   if (!artifactDataNext) throw new Error("Hangar Next button was not found for the artifact-data step.");
@@ -122,11 +137,11 @@ try {
   if (!created) throw new Error("Hangar Create button was not found.");
   let after = "";
   for (let i = 0; i < 40; i++) { await sleep(700); after = await p.eval(`location.href`); if (!after.includes("/versions/new")) break; }
-  const published = Boolean(after) && !after.includes("/versions/new");
+  const published = isExactHangarVersionUrl(after, OWNER, PROJECT, version);
   await sleep(1000);
   await p.screenshot(SHOT).catch(() => {});
-  if (!published) throw new Error(`Hangar version creation did not complete; current URL: ${after || "unknown"}`);
-  console.log(JSON.stringify({ urlSet, published, finalUrl: after }, null, 1));
+  if (!published) throw new Error(`Hangar version creation did not reach the requested version URL; current URL: ${after || "unknown"}`);
+  console.log(JSON.stringify({ urlSet, versionSet: true, published, finalUrl: after }, null, 1));
 } finally {
   p.close();
 }

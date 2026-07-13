@@ -26,6 +26,7 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 const PORT = process.env.SPIGOT_CDP_PORT || "9223";
 const RESOURCE = process.env.SPIGOT_RESOURCE || "neomoderation.136721";
@@ -101,6 +102,12 @@ async function uploadToFileInput(page, selector, filePath) {
   if (!input) throw new Error(`file input not found: ${selector}`);
   await input.setInputFiles(filePath);
   await page.waitForTimeout(2500); // XenForo uploads via AJAX on select
+}
+
+export function isSpigotVersionSubmissionSuccessful(url, pageText, version) {
+  return Boolean(url)
+    && !url.includes("/add-version")
+    && (pageText || "").includes(`NeoModeration ${version}`);
 }
 
 async function cmdCheck() {
@@ -229,30 +236,51 @@ async function cmdVersion(jar, versionString, notesFile) {
       throw new Error(`required update fields missing: ${JSON.stringify(fields)}`);
     }
     await uploadToFileInput(page, 'input[type=file]', jar); // "Updated Resource File" is the first file input
-    await setRedactorBBCode(page, notes, 0);
+    const notesFields = await setRedactorBBCode(page, notes, 0);
+    if (!notesFields) throw new Error("Spigot release-notes editor was not found.");
+    const notesPopulated = await page.evaluate((expected) => {
+      const textareas = Array.from(document.querySelectorAll("textarea")).filter(
+        (element) => (element.name === "message" || /message_html|_html$/.test(element.name))
+          && element.id !== "uix_offCanvasStatus"
+      );
+      return textareas.some((element) => element.value === expected);
+    }, notes);
+    if (!notesPopulated) throw new Error("Spigot release-notes editor did not contain the requested notes.");
     const saved = await clickButton(page, /Save Update/);
     await page.waitForTimeout(5000);
     if (!saved) throw new Error(`Save Update button not found for ${BASE}/add-version`);
+    const submission = await page.evaluate(() => ({
+      url: location.href,
+      pageText: document.body?.innerText || "",
+    }));
+    const submissionSuccessful = isSpigotVersionSubmissionSuccessful(
+      submission.url, submission.pageText, versionString
+    );
+    if (!submissionSuccessful) throw new Error(`Spigot version submission was not confirmed; current URL: ${submission.url || "unknown"}`);
     console.log(`Posted version ${versionString}.`);
   } finally { await browser.close(); }
 }
 
-const [cmd, ...args] = process.argv.slice(2);
-const bannerFlag = args.indexOf("--banner");
-const banner = bannerFlag >= 0 ? args[bannerFlag + 1] : null;
-const positional = args.filter((a, i) => a !== "--banner" && args[i - 1] !== "--banner");
+async function main() {
+  const [cmd, ...args] = process.argv.slice(2);
+  const bannerFlag = args.indexOf("--banner");
+  const banner = bannerFlag >= 0 ? args[bannerFlag + 1] : null;
+  const positional = args.filter((a, i) => a !== "--banner" && args[i - 1] !== "--banner");
 
-try {
-  if (cmd === "check") await cmdCheck();
-  else if (cmd === "describe") await cmdDescribe(positional[0], banner);
-  else if (cmd === "tagline") await cmdTagline(positional.join(" "));
-  else if (cmd === "icon") await cmdIcon(positional[0]);
-  else if (cmd === "version") await cmdVersion(positional[0], positional[1], positional[2]);
-  else {
-    console.log("commands: check | describe <bbcode.txt> [--banner <png>] | tagline <text> | icon <png> | version <jar> <ver> <notes.txt>");
-    process.exit(1);
+  try {
+    if (cmd === "check") await cmdCheck();
+    else if (cmd === "describe") await cmdDescribe(positional[0], banner);
+    else if (cmd === "tagline") await cmdTagline(positional.join(" "));
+    else if (cmd === "icon") await cmdIcon(positional[0]);
+    else if (cmd === "version") await cmdVersion(positional[0], positional[1], positional[2]);
+    else {
+      console.log("commands: check | describe <bbcode.txt> [--banner <png>] | tagline <text> | icon <png> | version <jar> <ver> <notes.txt>");
+      process.exitCode = 1;
+    }
+  } catch (e) {
+    console.error("ERROR:", e.message);
+    process.exitCode = 1;
   }
-} catch (e) {
-  console.error("ERROR:", e.message);
-  process.exit(1);
 }
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();
