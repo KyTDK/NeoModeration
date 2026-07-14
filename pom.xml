@@ -151,6 +151,18 @@
         </plugins>
     </build>
 
+    <profiles>
+        <profile>
+            <id>modrinth</id>
+            <properties>
+                <proguard.skip>true</proguard.skip>
+            </properties>
+            <build>
+                <finalName>NeoModeration-${project.version}-modrinth</finalName>
+            </build>
+        </profile>
+    </profiles>
+
     <repositories>
         <repository>
             <id>spigot-repo</id>

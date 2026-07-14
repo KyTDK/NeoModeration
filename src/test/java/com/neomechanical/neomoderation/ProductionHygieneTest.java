@@ -21,6 +21,8 @@ class ProductionHygieneTest {
                 import {
                   buildModrinthVersionData,
                   classifyModrinthProjectLookup,
+                  expectedModrinthJarName,
+                  selectModrinthDraftForPromotion,
                   validateModrinthDraftVersion
                 } from "./scripts/modrinth-publish.mjs";
 
@@ -66,6 +68,28 @@ class ProductionHygieneTest {
                   version_number: "2.0.0",
                   status: "listed"
                 }, "project-123", "2.0.0"), /draft/);
+                assert.equal(expectedModrinthJarName("2.0.0"), "NeoModeration-2.0.0-modrinth.jar");
+                assert.equal(selectModrinthDraftForPromotion([{
+                  id: "version-123",
+                  project_id: "project-123",
+                  version_number: "2.0.0",
+                  status: "draft",
+                  files: [{ primary: true, hashes: { sha512: "expected-sha512" } }]
+                }], "project-123", "2.0.0", "expected-sha512").id, "version-123");
+                assert.throws(() => selectModrinthDraftForPromotion([{
+                  id: "version-123",
+                  project_id: "project-123",
+                  version_number: "2.0.0",
+                  status: "listed",
+                  files: [{ primary: true, hashes: { sha512: "expected-sha512" } }]
+                }], "project-123", "2.0.0", "expected-sha512"), /draft/);
+                assert.throws(() => selectModrinthDraftForPromotion([{
+                  id: "version-123",
+                  project_id: "project-123",
+                  version_number: "2.0.0",
+                  status: "draft",
+                  files: [{ primary: true, hashes: { sha512: "different" } }]
+                }], "project-123", "2.0.0", "expected-sha512"), /SHA-512/);
                 """);
         assertTrue(contract.exitCode() == 0,
                 () -> "Modrinth contract fixture failed:\n" + contract.output());
@@ -75,6 +99,32 @@ class ProductionHygieneTest {
                         && !modrinth.contains("async function createPat")
                         && !modrinth.contains("Creating a scoped publishing token"),
                 "Modrinth publishing must require the environment token without creating a PAT");
+        assertTrue(!modrinth.contains("api(token, \"/user\")")
+                        && !modrinth.contains("Token valid ("),
+                "Modrinth publishing must not require unrelated user-read permission");
+    }
+
+    @Test
+    void modrinthReleaseUsesAReviewableNonObfuscatedArtifact() throws IOException {
+        String pom = Files.readString(Path.of("pom.xml"));
+        String runbook = Files.readString(Path.of("docs/RELEASING.md"));
+        String publisher = Files.readString(Path.of("scripts/modrinth-publish.mjs"));
+
+        assertTrue(pom.contains("<id>modrinth</id>")
+                        && pom.contains("<proguard.skip>true</proguard.skip>")
+                        && pom.contains("NeoModeration-${project.version}-modrinth"),
+                "The Modrinth Maven profile must produce a clearly named non-obfuscated artifact");
+        assertTrue(runbook.contains("mvn -Pmodrinth clean verify")
+                        && runbook.contains("target/NeoModeration-${VERSION}-modrinth.jar")
+                        && runbook.contains("Modrinth rejects the normal ProGuard-obfuscated release JAR")
+                        && runbook.contains("modrinth-publish.mjs promote \"$JAR\" \"$VERSION\""),
+                "The runbook must build and explain the Modrinth-specific reviewable artifact");
+        assertTrue(publisher.contains("expectedModrinthJarName(version)")
+                        && publisher.contains("path.basename(jar) !== expectedJar")
+                        && publisher.contains("cmd === \"promote\"")
+                        && publisher.contains("`/version_file/${expectedSha512}?algorithm=sha512`")
+                        && publisher.contains("body: JSON.stringify({ status: \"listed\" })"),
+                "The Modrinth publisher must reject the normal obfuscated release JAR");
     }
 
     @Test
@@ -202,9 +252,9 @@ class ProductionHygieneTest {
         assertTrue(!modrinth.contains("modrinth-publish.mjs pat ")
                         && modrinth.contains("node scripts/modrinth-publish.mjs publish <jar> <version>")
                         && modrinth.contains("*   MODRINTH_TOKEN")
-                        && modrinth.contains("commands: open | check | inspect | patdebug | patdom | publish <jar> <version>"),
+                        && modrinth.contains("commands: open | check | inspect | patdebug | patdom | publish <jar> <version> | promote <jar> <version>"),
                 "Modrinth usage and help must document the dispatched environment-token interface");
-        List<String> modrinthCommands = List.of("open", "check", "inspect", "patdebug", "patdom", "publish");
+        List<String> modrinthCommands = List.of("open", "check", "inspect", "patdebug", "patdom", "publish", "promote");
         assertTrue(modrinthCommands.stream().allMatch(command -> modrinth.contains("cmd === \"" + command + "\""))
                         && countOccurrences(modrinth, "cmd === \"") == modrinthCommands.size(),
                 "Modrinth help and dispatch commands must agree");

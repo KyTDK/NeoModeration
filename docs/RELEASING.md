@@ -156,8 +156,11 @@ node scripts/spigot-publish.mjs icon "$SPIGOT_ICON"
 
 ## 4. Upload and submit Modrinth
 
-Supply the authenticated API token through the environment. The publish
-contract is exactly `publish <jar> <version>`:
+Modrinth rejects the normal ProGuard-obfuscated release JAR. Build its
+reviewable, non-obfuscated artifact with the dedicated Maven profile. This JAR
+contains the same plugin code and shaded dependencies, but retains readable
+class names for moderation. Supply the authenticated API token through the
+environment. The publish contract is exactly `publish <jar> <version>`:
 
 ```bash
 bash <<'MODRINTH_PUBLISH'
@@ -165,7 +168,9 @@ set -euo pipefail
 export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
 export PATH="$JAVA_HOME/bin:$PATH"
 VERSION="$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)"
-JAR="target/NeoModeration-${VERSION}.jar"
+mvn -Pmodrinth clean verify
+JAR="target/NeoModeration-${VERSION}-modrinth.jar"
+test -f "$JAR"
 test -n "${MODRINTH_TOKEN:-}" &&
   node scripts/modrinth-publish.mjs publish "$JAR" "$VERSION"
 MODRINTH_PUBLISH
@@ -178,12 +183,28 @@ token and does not create or manage personal access tokens.
 The retained diagnostic/setup dispatch is:
 
 ```text
-open | check | inspect | patdebug | patdom | publish <jar> <version>
+open | check | inspect | patdebug | patdom | publish <jar> <version> | promote <jar> <version>
 ```
 
 The publisher creates or updates the project as a draft and uploads the version.
-Open `https://modrinth.com/plugin/neomoderation/settings`, inspect the draft,
-and submit for review. Upload success does not make the project public. A `404`
+Inspect the draft and the local non-obfuscated JAR, then explicitly promote the
+exact checksum-matched draft to `listed` so it satisfies the project checklist:
+
+```bash
+bash <<'MODRINTH_PROMOTE'
+set -euo pipefail
+export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
+export PATH="$JAVA_HOME/bin:$PATH"
+VERSION="$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)"
+JAR="target/NeoModeration-${VERSION}-modrinth.jar"
+test -n "${MODRINTH_TOKEN:-}" &&
+  node scripts/modrinth-publish.mjs promote "$JAR" "$VERSION"
+MODRINTH_PROMOTE
+```
+
+Open `https://modrinth.com/plugin/neomoderation/moderation`, reply to any
+moderator feedback, and submit for review. Upload or promotion success does not
+make the project public. A `404`
 from `https://api.modrinth.com/v2/project/neomoderation` explicitly means the
 project remains unpublished; it is not a successful public audit.
 

@@ -11,12 +11,14 @@
  *   node scripts/modrinth-publish.mjs patdebug          # inspect create-PAT state
  *   node scripts/modrinth-publish.mjs patdom            # inspect create-PAT DOM controls
  *   node scripts/modrinth-publish.mjs publish <jar> <version>
+ *   node scripts/modrinth-publish.mjs promote <jar> <version>
  *
  * ENV
  *   MODRINTH_CDP_PORT  CDP port of the logged-in Chrome (default 9223)
  *   MODRINTH_TOKEN     bearer token required for API publishing
  */
 import { existsSync, readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -193,6 +195,10 @@ export function classifyModrinthProjectLookup(status) {
   throw new Error(`lookup Modrinth project HTTP ${status}`);
 }
 
+export function expectedModrinthJarName(version) {
+  return `NeoModeration-${version}-modrinth.jar`;
+}
+
 export function buildModrinthVersionData({ projectId, version, changelog, gameVersions, loaders }) {
   return {
     project_id: projectId,
@@ -220,14 +226,33 @@ export function validateModrinthDraftVersion(created, projectId, version) {
   return created;
 }
 
+export function selectModrinthDraftForPromotion(versions, projectId, version, expectedSha512) {
+  const matches = (versions || []).filter(
+    (candidate) => candidate.project_id === projectId && candidate.version_number === version,
+  );
+  if (matches.length !== 1) {
+    throw new Error(`Expected exactly one Modrinth draft for version ${version}; found ${matches.length}.`);
+  }
+  const selected = matches[0];
+  if (selected.status !== "draft") {
+    throw new Error(`Modrinth version ${version} is not draft (status: ${selected.status || "missing"}).`);
+  }
+  const primary = selected.files?.find((file) => file.primary) || selected.files?.[0];
+  if (primary?.hashes?.sha512 !== expectedSha512) {
+    throw new Error(`Modrinth version ${version} SHA-512 does not match the inspected local artifact.`);
+  }
+  return selected;
+}
+
 async function cmdPublish(jar, version) {
   if (!jar || !version || !existsSync(jar)) throw new Error("usage: publish <jar> <version> (jar must exist)");
+  const expectedJar = expectedModrinthJarName(version);
+  if (path.basename(jar) !== expectedJar) {
+    throw new Error(`Modrinth requires the non-obfuscated ${expectedJar} built with mvn -Pmodrinth clean verify.`);
+  }
   const token = process.env.MODRINTH_TOKEN;
   if (!token) throw new Error("Set MODRINTH_TOKEN in env.");
-  // Validate the token before doing anything destructive.
-  const who = await api(token, "/user");
-  if (who.status !== 200) throw new Error(`Token invalid (HTTP ${who.status}). Check MODRINTH_TOKEN.`);
-  console.log(`Token valid (${(await who.json()).username}). Publishing...`);
+  console.log("Publishing with the supplied scoped Modrinth token...");
 
   const gameVersions = await releaseGameVersions();
   const summary = "Automatic chat moderation for Minecraft — blocks swearing, spam, links, and inappropriate map art. Local rules by default, optional cloud moderation.";
@@ -283,6 +308,50 @@ async function cmdPublish(jar, version) {
   console.log("Draft: https://modrinth.com/plugin/neomoderation/settings  (submit for review when ready)");
 }
 
+async function cmdPromote(jar, version) {
+  if (!jar || !version || !existsSync(jar)) throw new Error("usage: promote <jar> <version> (jar must exist)");
+  const expectedJar = expectedModrinthJarName(version);
+  if (path.basename(jar) !== expectedJar) {
+    throw new Error(`Modrinth requires the non-obfuscated ${expectedJar} built with mvn -Pmodrinth clean verify.`);
+  }
+  const token = process.env.MODRINTH_TOKEN;
+  if (!token) throw new Error("Set MODRINTH_TOKEN in env.");
+
+  const projectResponse = await api(token, "/project/neomoderation");
+  const lookup = classifyModrinthProjectLookup(projectResponse.status);
+  if (lookup !== "exists") throw new Error("NeoModeration must exist on Modrinth before promoting a version.");
+  const projectId = (await projectResponse.json()).id;
+
+  const expectedSha512 = createHash("sha512").update(readFileSync(jar)).digest("hex");
+  const draftResponse = await api(token, `/version_file/${expectedSha512}?algorithm=sha512`);
+  const draftText = await draftResponse.text();
+  if (draftResponse.status !== 200) {
+    throw new Error(`lookup draft by SHA-512 HTTP ${draftResponse.status}: ${draftText.slice(0, 400)}`);
+  }
+  const selected = selectModrinthDraftForPromotion(
+    [JSON.parse(draftText)], projectId, version, expectedSha512,
+  );
+
+  const promoted = await api(token, `/version/${selected.id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status: "listed" }),
+  });
+  const promotedText = await promoted.text();
+  if (promoted.status !== 204) {
+    throw new Error(`promote version HTTP ${promoted.status}: ${promotedText.slice(0, 400)}`);
+  }
+
+  const verify = await api(token, `/version/${selected.id}`);
+  const verified = await verify.json().catch(() => null);
+  const primary = verified?.files?.find((file) => file.primary) || verified?.files?.[0];
+  if (verify.status !== 200 || verified?.status !== "listed"
+      || verified?.version_number !== version || primary?.hashes?.sha512 !== expectedSha512) {
+    throw new Error(`Modrinth did not confirm the exact listed version ${version}.`);
+  }
+  console.log(`Promoted exact Modrinth version ${version} from draft to listed for project review.`);
+}
+
 async function main() {
   const [cmd, ...args] = process.argv.slice(2);
   try {
@@ -292,8 +361,9 @@ async function main() {
     else if (cmd === "patdebug") await cmdPatDebug();
     else if (cmd === "patdom") await cmdPatDom();
     else if (cmd === "publish") await cmdPublish(args[0], args[1]);
+    else if (cmd === "promote") await cmdPromote(args[0], args[1]);
     else {
-      console.log("commands: open | check | inspect | patdebug | patdom | publish <jar> <version>");
+      console.log("commands: open | check | inspect | patdebug | patdom | publish <jar> <version> | promote <jar> <version>");
       process.exitCode = 1;
     }
   } catch (e) {
