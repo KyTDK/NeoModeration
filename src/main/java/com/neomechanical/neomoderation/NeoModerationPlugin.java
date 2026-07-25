@@ -17,6 +17,7 @@ import com.neomechanical.neomoderation.moderation.ModerationApiClient;
 import com.neomechanical.neomoderation.moderation.MonitorStats;
 import com.neomechanical.neomoderation.moderation.PlayerMuteService;
 import com.neomechanical.neomoderation.moderation.SpamDetector;
+import com.neomechanical.neomoderation.moderation.StartupSummary;
 import com.neomechanical.neomoderation.moderation.StrikeService;
 import org.bstats.bukkit.Metrics;
 import org.bstats.charts.SimplePie;
@@ -81,7 +82,11 @@ public final class NeoModerationPlugin extends JavaPlugin {
             command.setTabCompleter(executor);
         }
         registerMetrics();
-        getLogger().info("NeoModeration enabled.");
+        // A fresh install trials in monitor mode with no API key, so it blocks
+        // nothing by design. Saying so is the difference between "working as
+        // intended" and "this plugin does nothing", which is the judgement an
+        // admin makes in the first few minutes.
+        StartupSummary.lines(settings, getDescription().getVersion()).forEach(getLogger()::info);
     }
 
     private void registerMetrics() {
