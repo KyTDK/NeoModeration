@@ -2,6 +2,8 @@ package com.neomechanical.neomoderation.commands.subcommands;
 
 import com.neomechanical.neomoderation.NeoModerationPlugin;
 import com.neomechanical.neomoderation.commands.SubCommand;
+import com.neomechanical.neomoderation.moderation.CloudRecovery;
+import com.neomechanical.neomoderation.moderation.ModerationApiResult;
 import com.neomechanical.neomoderation.moderation.NeoMechanicalUsageClient;
 import com.neomechanical.neomoderation.moderation.UsageSummary;
 import org.bukkit.command.CommandSender;
@@ -34,7 +36,9 @@ public class UsageCmd implements SubCommand {
     @Override
     public void execute(CommandSender sender, String label, String[] args) {
         if (plugin.settings().api().apiKey().isBlank()) {
-            plugin.messages().send(sender, "error.no-api-key");
+            plugin.messages().send(sender, "error.no-api-key", Map.of(
+                    "url", CloudRecovery.SIGNUP_URL
+            ));
             return;
         }
 
@@ -44,7 +48,10 @@ public class UsageCmd implements SubCommand {
                 UsageSummary summary = usageClient.fetchUsage(plugin.settings().api());
                 plugin.runSync(() -> render(sender, summary));
             } catch (NeoMechanicalUsageClient.UsageException e) {
-                plugin.runSync(() -> plugin.messages().send(sender, "usage.error"));
+                plugin.runSync(() -> plugin.messages().send(sender, usageErrorKey(e.kind()), Map.of(
+                        "keysUrl", CloudRecovery.API_KEYS_URL,
+                        "billingUrl", CloudRecovery.BILLING_URL
+                )));
             }
         });
     }
@@ -56,7 +63,15 @@ public class UsageCmd implements SubCommand {
                 "value", s.tier(),
                 "rpm", String.valueOf(s.requestsPerMinuteLimit())
         ));
-        plugin.messages().send(sender, "usage.credits", Map.of("value", String.valueOf(s.creditsRemaining())));
+        if (s.creditsRemaining() > 0) {
+            plugin.messages().send(sender, "usage.credits", Map.of(
+                    "value", String.valueOf(s.creditsRemaining())
+            ));
+        } else {
+            plugin.messages().send(sender, "usage.credits-empty", Map.of(
+                    "url", CloudRecovery.BILLING_URL
+            ));
+        }
         plugin.messages().send(sender, "usage.requests", Map.of(
                 "today", String.valueOf(s.requestsToday()),
                 "week", String.valueOf(s.requestsLast7Days())
@@ -70,5 +85,14 @@ public class UsageCmd implements SubCommand {
 
     private static String nsfw(long remaining, long cap) {
         return remaining + "/" + cap;
+    }
+
+    static String usageErrorKey(ModerationApiResult.Kind kind) {
+        return switch (kind) {
+            case CLIENT_AUTH -> "usage.error-auth";
+            case INSUFFICIENT_CREDITS -> "usage.error-credits";
+            case CLIENT_REQUEST -> "usage.error-request";
+            case TRANSIENT_TRANSPORT, FLAGGED, CLEAR -> "usage.error";
+        };
     }
 }

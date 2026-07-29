@@ -23,6 +23,7 @@ import java.util.UUID;
 import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -38,6 +39,34 @@ class ChatModerationCoordinatorTest {
     void authenticationFailureFollowsFailOpenSetting() throws Exception {
         assertFalse(decisionFor(401, "invalid key", true));
         assertTrue(decisionFor(401, "invalid key", false));
+    }
+
+    @Test
+    void paymentAndAuthenticationFailuresStayDistinct() throws Exception {
+        assertEquals(ModerationApiResult.Kind.INSUFFICIENT_CREDITS, resultKindFor(402, "credits exhausted"));
+        assertEquals(ModerationApiResult.Kind.CLIENT_AUTH, resultKindFor(403, "invalid key"));
+        assertEquals(ModerationApiResult.Kind.CLIENT_REQUEST, resultKindFor(422, "bad request"));
+    }
+
+    @Test
+    void httpRequestTimeoutIsATransientTransportFailure() throws Exception {
+        assertEquals(ModerationApiResult.Kind.TRANSIENT_TRANSPORT,
+                resultKindFor(408, "request timed out"));
+    }
+
+    @Test
+    void malformedConfiguredEndpointIsAClientConfigurationFailure() {
+        ModerationSettings malformed = settings("not a valid URI", true);
+
+        ModerationApiResult result = new ModerationApiClient().moderateText(
+                "Tester",
+                "00000000-0000-0000-0000-000000000001",
+                "hello",
+                malformed.api(),
+                malformed.categories()
+        );
+
+        assertEquals(ModerationApiResult.Kind.CLIENT_REQUEST, result.kind());
     }
 
     @Test
@@ -66,6 +95,18 @@ class ChatModerationCoordinatorTest {
                 new ModerationCircuitBreaker(Logger.getLogger("test")), new ModerationApiClient())) {
             String endpoint = "http://127.0.0.1:" + server.getAddress().getPort() + "/v1/events";
             return coordinator.isMessageFlagged(player(), "hello", settings(endpoint, failOpen));
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    private ModerationApiResult.Kind resultKindFor(int status, String body) throws Exception {
+        HttpServer server = localServer(status, body);
+        try (ChatModerationCoordinator coordinator = new ChatModerationCoordinator(
+                new ModerationCircuitBreaker(Logger.getLogger("test")), new ModerationApiClient())) {
+            String endpoint = "http://127.0.0.1:" + server.getAddress().getPort() + "/v1/events";
+            coordinator.isMessageFlagged(player(), "hello", settings(endpoint, true));
+            return coordinator.lastCloudResultKind();
         } finally {
             server.stop(0);
         }

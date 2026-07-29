@@ -5,6 +5,8 @@ import com.neomechanical.neomoderation.commands.SubCommand;
 import com.neomechanical.neomoderation.config.ModerationAction;
 import com.neomechanical.neomoderation.config.ModerationMode;
 import com.neomechanical.neomoderation.config.ModerationSettings;
+import com.neomechanical.neomoderation.moderation.CloudRecovery;
+import com.neomechanical.neomoderation.moderation.ModerationApiResult;
 import org.bukkit.command.CommandSender;
 
 import java.util.List;
@@ -51,9 +53,19 @@ public class StatusCmd implements SubCommand {
         ));
         plugin.messages().send(sender, "status.cloud", Map.of(
                 "value", hasKey
-                        ? "Local + cloud (" + settings.categories().enabledCount() + " categories)"
+                        ? "Local + cloud configured (" + settings.categories().enabledCount() + " categories)"
                         : "Local only (no API key)"
         ));
+        if (!hasKey) {
+            plugin.messages().send(sender, "status.cloud-no-key", Map.of(
+                    "url", CloudRecovery.SIGNUP_URL
+            ));
+        } else {
+            plugin.messages().send(sender, cloudStatusKey(plugin.coordinator().lastCloudResultKind()), Map.of(
+                    "keysUrl", CloudRecovery.API_KEYS_URL,
+                    "billingUrl", CloudRecovery.BILLING_URL
+            ));
+        }
         plugin.messages().send(sender, "status.rules", Map.of(
                 "words", String.valueOf(settings.offline().bannedWords().size()),
                 "urls", String.valueOf(settings.offline().bannedUrls().size())
@@ -79,5 +91,18 @@ public class StatusCmd implements SubCommand {
         plugin.messages().send(sender, "status.detections", Map.of(
                 "value", String.valueOf(plugin.monitorStats().total())
         ));
+    }
+
+    static String cloudStatusKey(ModerationApiResult.Kind kind) {
+        if (kind == null) {
+            return "status.cloud-unverified";
+        }
+        return switch (kind) {
+            case FLAGGED, CLEAR -> "status.cloud-ready";
+            case CLIENT_AUTH -> "status.cloud-auth";
+            case INSUFFICIENT_CREDITS -> "status.cloud-credits";
+            case CLIENT_REQUEST -> "status.cloud-request-error";
+            case TRANSIENT_TRANSPORT -> "status.cloud-transient";
+        };
     }
 }

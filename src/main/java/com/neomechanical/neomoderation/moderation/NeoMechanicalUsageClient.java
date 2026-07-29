@@ -20,25 +20,32 @@ public final class NeoMechanicalUsageClient {
             .build();
 
     public UsageSummary fetchUsage(ModerationApiSettings apiSettings) throws UsageException {
-        HttpRequest request = HttpRequest.newBuilder(URI.create(usageUrl(apiSettings.endpoint())))
-                .timeout(Duration.ofSeconds(10))
-                .header("Accept", "application/json")
-                .header("Authorization", "Bearer " + apiSettings.apiKey())
-                .GET()
-                .build();
+        HttpRequest request;
+        try {
+            request = HttpRequest.newBuilder(URI.create(usageUrl(apiSettings.endpoint())))
+                    .timeout(Duration.ofSeconds(10))
+                    .header("Accept", "application/json")
+                    .header("Authorization", "Bearer " + apiSettings.apiKey())
+                    .GET()
+                    .build();
+        } catch (IllegalArgumentException e) {
+            throw new UsageException(ModerationApiResult.Kind.CLIENT_REQUEST, "invalid endpoint");
+        }
+
         try {
             HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() != 200) {
-                throw new UsageException("HTTP " + response.statusCode());
+                ModerationApiResult result = ModerationApiResult.fromHttpFailureStatus(response.statusCode());
+                throw new UsageException(result.kind(), "HTTP " + response.statusCode());
             }
             return UsageSummary.parse(response.body());
         } catch (UsageException e) {
             throw e;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new UsageException("interrupted");
+            throw new UsageException(ModerationApiResult.Kind.TRANSIENT_TRANSPORT, "interrupted");
         } catch (Exception e) {
-            throw new UsageException(e.getMessage());
+            throw new UsageException(ModerationApiResult.Kind.TRANSIENT_TRANSPORT, "request failed");
         }
     }
 
@@ -54,8 +61,15 @@ public final class NeoMechanicalUsageClient {
     }
 
     public static final class UsageException extends Exception {
-        public UsageException(String message) {
+        private final ModerationApiResult.Kind kind;
+
+        public UsageException(ModerationApiResult.Kind kind, String message) {
             super(message);
+            this.kind = kind;
+        }
+
+        public ModerationApiResult.Kind kind() {
+            return kind;
         }
     }
 }

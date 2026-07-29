@@ -1,28 +1,27 @@
 # NeoModeration
 
-Chat **and map-art** moderation for Minecraft. Blocks bad words and links locally. Optionally uses the Neomechanical cloud for smarter scanning, including NSFW detection on filled maps.
+Chat **and map-art** moderation for Minecraft. Matches configurable word/link rules and detects spam locally, then can block detections when you explicitly enable enforcement. The bundled `badword` and `scam` entries are safe setup examples, not a complete profanity list. Optional Neomechanical cloud checks add context-aware scanning, including NSFW detection on filled maps.
 
 **Safe to try:** new installations start in **monitor mode** — detections are logged and alerted to staff, but nothing is blocked or punished until you turn enforcement on. See exactly what data stays on your server with `/nmod privacy` ([privacy details](docs/PRIVACY.md)).
 
 ## Setup
 
-1. Drop `NeoModeration-1.4.0.jar` into `plugins/` and restart.
-2. Local rules work immediately (in monitor mode on fresh installs).
-3. For cloud moderation, create an API key at [platform.neomechanical.com](https://platform.neomechanical.com) (scopes: `events:write` + `usage:read`), then run:
+1. Drop `NeoModeration-1.4.1.jar` into `plugins/` and restart.
+2. Run `/nmod test badword`. It should show the bundled local rule as **FLAGGED** and the result as **monitor alert only**. This is a dry run, and a fresh install does not block or punish anyone.
+3. Optional: for context-aware cloud moderation, [sign up](https://neomechanical.com/signup?src=neomoderation), create an API key with `events:write` + `usage:read`, then save it:
 
 ```text
 /nmod setup YOUR_KEY
 ```
 
-4. Verify everything with `/nmod doctor` — it checks configuration, actions, key, endpoint, latency, and remaining quota in one command.
-5. Try it safely: `/nmod test <message>` shows exactly how any message would be moderated (which rule, cloud verdict, latency) without punishing anyone.
-6. Happy with the decisions? Turn enforcement on:
+4. Run `/nmod doctor` to verify the account/usage API, latency, and exact credit balance. If credits are exhausted, it links directly to the [billing recovery page](https://neomechanical.com/billing?src=neomoderation_credits). Then use `/nmod test hello` to verify the moderation-events path safely.
+5. Review every enabled path, then turn blocking on only when you are ready:
 
 ```text
 /nmod mode enforce
 ```
 
-## Coverage (1.4.0)
+## Coverage
 
 Beyond chat, all running on local rules (no API key needed):
 
@@ -35,7 +34,7 @@ Beyond chat, all running on local rules (no API key needed):
 ## Trust & control
 
 - **Monitor mode** (`/nmod mode monitor|enforce`) — evaluate decisions without any risk to players. `/nmod mode` shows what would have happened since startup.
-- **Explain any decision** — `/nmod test <message>` dry-runs the full local + cloud pipeline.
+- **Explain any decision** — `/nmod test badword` proves the bundled local rule works; `/nmod test <message>` dry-runs the full local + cloud pipeline.
 - **Setup diagnostics** — `/nmod doctor` finds misconfigurations before they bite.
 - **Exceptions** — `/nmod allow word|url add <value>` fixes false positives instantly; allowed phrases/links always win over banned rules.
 - **Policy presets** — `/nmod preset family|community|minimal` bundles category thresholds + actions. Each cloud category also accepts a custom threshold (0.05–0.99) in `config.yml`.
@@ -64,16 +63,16 @@ Mute durations: `30s`, `5m`, `1h`, `1d` (or bare seconds).
 
 | Command | What it does |
 |---------|----------------|
-| `/nmod setup <apiKey>` | Turn on cloud moderation |
+| `/nmod setup <apiKey>` | Save a cloud key; verify it with `/nmod doctor` |
 | `/nmod mode [monitor\|enforce]` | Show or switch enforcement mode |
 | `/nmod test <message>` | Preview how a message would be moderated |
-| `/nmod doctor` | Diagnose configuration and cloud connectivity |
+| `/nmod doctor` | Diagnose configuration, account API, and known event health |
 | `/nmod cases [player]` / `/nmod case <id>` | Browse the local detection history |
 | `/nmod preset <family\|community\|minimal>` | Apply a policy preset |
 | `/nmod allow word\|url add\|remove\|list` | Manage exceptions (always win) |
 | `/nmod privacy` | Show what data stays local vs. cloud |
 | `/nmod on` / `/nmod off` | Enable or disable |
-| `/nmod key <apiKey>` | Save a new key |
+| `/nmod key set <apiKey>` | Save a new key; verify it with `/nmod doctor` |
 | `/nmod key clear` | Remove the key (local rules stay) |
 | `/nmod action list` | Show actions on detect |
 | `/nmod action add <clear\|mute\|kick\|ban> [time]` | Add an action |
@@ -86,6 +85,12 @@ Mute durations: `30s`, `5m`, `1h`, `1d` (or bare seconds).
 | `/nmod reload` | Reload config |
 
 Aliases: `/neomod`, `/nmod`, `/neomoderation`.
+
+## Compatibility
+
+Supports Bukkit, Spigot, Paper, and Purpur on Minecraft 1.18.2 through the
+1.21.x line. The release matrix verifies Paper 1.18.2, 1.19.4, 1.20.6, and
+1.21.11.
 
 ## Map-art scanning
 

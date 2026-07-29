@@ -5,6 +5,7 @@ import com.neomechanical.neomoderation.commands.SubCommand;
 import com.neomechanical.neomoderation.config.ModerationAction;
 import com.neomechanical.neomoderation.config.ModerationMode;
 import com.neomechanical.neomoderation.config.ModerationSettings;
+import com.neomechanical.neomoderation.moderation.CloudRecovery;
 import com.neomechanical.neomoderation.moderation.ModerationApiResult;
 import com.neomechanical.neomoderation.moderation.OfflineModerationEngine;
 import com.neomechanical.neomoderation.moderation.OfflineModerationResult;
@@ -12,7 +13,6 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.util.Arrays;
-import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -80,7 +80,9 @@ public class TestCmd implements SubCommand {
         }
 
         if (settings.api().apiKey().isBlank()) {
-            plugin.messages().send(sender, "test.cloud-skipped-key");
+            plugin.messages().send(sender, "test.cloud-skipped-key", Map.of(
+                    "url", CloudRecovery.SIGNUP_URL
+            ));
             sendOutcome(sender, settings, false);
             return;
         }
@@ -97,16 +99,15 @@ public class TestCmd implements SubCommand {
             long start = System.nanoTime();
             ModerationApiResult result = plugin.apiClient().moderateText(
                     senderName, senderUuid, message, settings.api(), settings.categories());
+            plugin.coordinator().recordApiResult(result);
             String ms = String.valueOf((System.nanoTime() - start) / 1_000_000L);
             plugin.runSync(() -> {
-                switch (result.kind()) {
-                    case FLAGGED -> plugin.messages().send(sender, "test.cloud-flagged", Map.of("ms", ms));
-                    case CLEAR -> plugin.messages().send(sender, "test.cloud-clear", Map.of("ms", ms));
-                    default -> plugin.messages().send(sender, "test.cloud-error", Map.of(
-                            "ms", ms,
-                            "detail", result.kind().name().toLowerCase(Locale.ROOT).replace('_', ' ')
-                    ));
-                }
+                Map<String, String> placeholders = switch (result.kind()) {
+                    case CLIENT_AUTH -> Map.of("ms", ms, "url", CloudRecovery.API_KEYS_URL);
+                    case INSUFFICIENT_CREDITS -> Map.of("ms", ms, "url", CloudRecovery.BILLING_URL);
+                    default -> Map.of("ms", ms);
+                };
+                plugin.messages().send(sender, cloudMessageKey(result.kind()), placeholders);
                 sendOutcome(sender, settings, cloudDetected(result, settings.failOpen()));
                 plugin.messages().send(sender, "test.note");
             });
@@ -130,6 +131,17 @@ public class TestCmd implements SubCommand {
     static boolean cloudDetected(ModerationApiResult result, boolean failOpen) {
         return result.isFlagged()
                 || (result.kind() != ModerationApiResult.Kind.CLEAR && !failOpen);
+    }
+
+    static String cloudMessageKey(ModerationApiResult.Kind kind) {
+        return switch (kind) {
+            case FLAGGED -> "test.cloud-flagged";
+            case CLEAR -> "test.cloud-clear";
+            case CLIENT_AUTH -> "test.cloud-auth";
+            case INSUFFICIENT_CREDITS -> "test.cloud-credits";
+            case CLIENT_REQUEST -> "test.cloud-request-error";
+            case TRANSIENT_TRANSPORT -> "test.cloud-error";
+        };
     }
 
     static Outcome outcome(boolean enabled, boolean detected, ModerationMode mode) {

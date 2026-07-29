@@ -5,6 +5,8 @@ import com.neomechanical.neomoderation.commands.SubCommand;
 import com.neomechanical.neomoderation.config.ModerationAction;
 import com.neomechanical.neomoderation.config.ModerationMode;
 import com.neomechanical.neomoderation.config.ModerationSettings;
+import com.neomechanical.neomoderation.moderation.CloudRecovery;
+import com.neomechanical.neomoderation.moderation.ModerationApiResult;
 import com.neomechanical.neomoderation.moderation.NeoMechanicalUsageClient;
 import com.neomechanical.neomoderation.moderation.UsageSummary;
 import org.bukkit.command.CommandSender;
@@ -34,7 +36,7 @@ public class DoctorCmd implements SubCommand {
 
     @Override
     public String getDescription() {
-        return "Diagnose configuration and cloud connectivity.";
+        return "Diagnose configuration, account API, and event health.";
     }
 
     @Override
@@ -112,7 +114,8 @@ public class DoctorCmd implements SubCommand {
         }
 
         if (settings.api().apiKey().isBlank()) {
-            warn(sender, "Cloud", "no API key - local rules only. Get one at platform.neomechanical.com, then /nmod setup <key>");
+            warn(sender, "Cloud", "no API key - local rules only. Sign up at "
+                    + CloudRecovery.SIGNUP_URL + ", create a key, then run /nmod setup <key>");
             return;
         }
 
@@ -123,10 +126,11 @@ public class DoctorCmd implements SubCommand {
         pass(sender, "Endpoint", settings.api().endpoint());
 
         if (plugin.coordinator().isRemoteCallAllowed()) {
-            pass(sender, "Circuit", "closed (cloud calls flowing)");
+            pass(sender, "Moderation circuit", "closed (event calls allowed; last result is below)");
         } else {
-            warn(sender, "Circuit", "open - cloud paused after errors; /nmod reload resumes early");
+            warn(sender, "Moderation circuit", "open - event calls paused after errors; /nmod reload resumes early");
         }
+        renderModerationEventHealth(sender, plugin.coordinator().lastCloudResultKind());
 
         plugin.messages().send(sender, "doctor.checking-cloud");
         plugin.runAsync(() -> {
@@ -134,16 +138,61 @@ public class DoctorCmd implements SubCommand {
             try {
                 UsageSummary usage = usageClient.fetchUsage(settings.api());
                 long ms = (System.nanoTime() - start) / 1_000_000L;
-                plugin.runSync(() -> pass(sender, "Cloud connectivity",
-                        "OK in " + ms + "ms - workspace " + usage.workspace()
-                                + ", plan " + usage.tier()
-                                + ", " + usage.creditsRemaining() + " credits left"));
+                boolean hasCredits = usage.creditsRemaining() > 0;
+                plugin.runSync(() -> {
+                    pass(sender, "Account API",
+                            "OK in " + ms + "ms - workspace " + usage.workspace()
+                                    + ", plan " + usage.tier());
+                    if (hasCredits) {
+                        pass(sender, "Account credits", usage.creditsRemaining() + " remaining");
+                    } else {
+                        fail(sender, "Account credits", "0 remaining - add credits at "
+                                + CloudRecovery.BILLING_URL + ", then run /nmod test hello");
+                    }
+                });
             } catch (NeoMechanicalUsageClient.UsageException e) {
                 long ms = (System.nanoTime() - start) / 1_000_000L;
-                plugin.runSync(() -> fail(sender, "Cloud connectivity",
-                        "failed in " + ms + "ms (" + e.getMessage() + ") - check the key and endpoint"));
+                plugin.runSync(() -> fail(sender, failureCheck(e.kind()),
+                        failureDetail(e, ms)));
             }
         });
+    }
+
+    private void renderModerationEventHealth(CommandSender sender, ModerationApiResult.Kind kind) {
+        if (kind == null) {
+            warn(sender, "Moderation events", "unverified - run /nmod test hello");
+            return;
+        }
+        switch (kind) {
+            case FLAGGED, CLEAR -> pass(sender, "Moderation events", "last request succeeded");
+            case CLIENT_AUTH -> fail(sender, "Moderation events", "last request rejected the API key");
+            case INSUFFICIENT_CREDITS -> fail(sender, "Moderation events", "last request had no credits");
+            case CLIENT_REQUEST -> fail(sender, "Moderation events", "last request was rejected; check the endpoint");
+            case TRANSIENT_TRANSPORT -> warn(sender, "Moderation events", "last request hit a network/server error");
+        }
+    }
+
+    static String failureCheck(ModerationApiResult.Kind kind) {
+        return switch (kind) {
+            case CLIENT_AUTH -> "Account authentication";
+            case INSUFFICIENT_CREDITS -> "Account credits";
+            case CLIENT_REQUEST -> "Account request";
+            case TRANSIENT_TRANSPORT, FLAGGED, CLEAR -> "Account API";
+        };
+    }
+
+    static String failureDetail(NeoMechanicalUsageClient.UsageException error, long elapsedMs) {
+        String timing = "failed in " + elapsedMs + "ms (" + error.getMessage() + ")";
+        return switch (error.kind()) {
+            case CLIENT_AUTH -> timing + " - API key rejected; replace it at "
+                    + CloudRecovery.API_KEYS_URL + ", then run /nmod setup <key>";
+            case INSUFFICIENT_CREDITS -> timing + " - insufficient credits; add credits at "
+                    + CloudRecovery.BILLING_URL + ", then run /nmod test hello";
+            case CLIENT_REQUEST -> timing
+                    + " - request rejected without rejecting the API key; verify moderation.api.endpoint";
+            case TRANSIENT_TRANSPORT, FLAGGED, CLEAR -> timing
+                    + " - temporary network or server error; local rules remain active";
+        };
     }
 
     private static boolean isHttpUri(String endpoint) {

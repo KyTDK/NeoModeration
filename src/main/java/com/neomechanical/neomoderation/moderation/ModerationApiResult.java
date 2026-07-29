@@ -5,7 +5,9 @@ public record ModerationApiResult(Kind kind) {
         FLAGGED,
         CLEAR,
         TRANSIENT_TRANSPORT,
-        CLIENT_AUTH
+        CLIENT_AUTH,
+        INSUFFICIENT_CREDITS,
+        CLIENT_REQUEST
     }
 
     public boolean isFlagged() {
@@ -30,5 +32,30 @@ public record ModerationApiResult(Kind kind) {
 
     public static ModerationApiResult clientAuth() {
         return new ModerationApiResult(Kind.CLIENT_AUTH);
+    }
+
+    public static ModerationApiResult insufficientCredits() {
+        return new ModerationApiResult(Kind.INSUFFICIENT_CREDITS);
+    }
+
+    public static ModerationApiResult clientRequest() {
+        return new ModerationApiResult(Kind.CLIENT_REQUEST);
+    }
+
+    /**
+     * Classifies a non-success HTTP response without conflating payment state,
+     * credentials, and malformed requests.
+     */
+    public static ModerationApiResult fromHttpFailureStatus(int status) {
+        if (status == 401 || status == 403) {
+            return clientAuth();
+        }
+        if (status == 402) {
+            return insufficientCredits();
+        }
+        if (status == 408 || status == 429 || status >= 500 || status < 400) {
+            return transientTransport();
+        }
+        return clientRequest();
     }
 }

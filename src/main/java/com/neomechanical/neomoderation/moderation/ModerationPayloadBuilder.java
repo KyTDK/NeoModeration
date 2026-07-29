@@ -7,6 +7,12 @@ import java.util.Map;
 public final class ModerationPayloadBuilder {
     private static final String ADAPTER = "neomoderation";
     private static final String SOURCE = "minecraft";
+    /**
+     * The platform contract accepts only general and nsfw. Ordinary chat must
+     * remain general; only the explicitly NSFW map-art scanner may use nsfw.
+     */
+    public static final String GENERAL_BILLING_CONTENT_CLASS = "general";
+    public static final String NSFW_BILLING_CONTENT_CLASS = "nsfw";
 
     private ModerationPayloadBuilder() {
     }
@@ -17,7 +23,14 @@ public final class ModerationPayloadBuilder {
             String message,
             ModerationCategorySettings categorySettings
     ) {
-        return buildPayload(playerName, playerUuid, message, null, categorySettings);
+        return buildPayload(
+                playerName,
+                playerUuid,
+                message,
+                null,
+                categorySettings,
+                GENERAL_BILLING_CONTENT_CLASS
+        );
     }
 
     public static String buildImage(
@@ -26,7 +39,14 @@ public final class ModerationPayloadBuilder {
             String base64Image,
             ModerationCategorySettings categorySettings
     ) {
-        return buildPayload(playerName, playerUuid, "", base64Image, categorySettings);
+        return buildPayload(
+                playerName,
+                playerUuid,
+                "",
+                base64Image,
+                categorySettings,
+                NSFW_BILLING_CONTENT_CLASS
+        );
     }
 
     private static String buildPayload(
@@ -34,7 +54,8 @@ public final class ModerationPayloadBuilder {
             String playerUuid,
             String text,
             String base64Image,
-            ModerationCategorySettings categorySettings
+            ModerationCategorySettings categorySettings,
+            String billingContentClass
     ) {
         StringBuilder thresholds = new StringBuilder();
         boolean first = true;
@@ -84,6 +105,7 @@ public final class ModerationPayloadBuilder {
                 + "}"
                 + "},"
                 + "\"options\":{"
+                + "\"billing\":{\"contentClass\":\"" + billingContentClass + "\"},"
                 + "\"persistence\":\"no_store\","
                 + "\"includeAnalysisDetails\":false,"
                 + "\"learning\":{\"enabled\":false,\"mode\":\"off\"}"

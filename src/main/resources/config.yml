@@ -21,13 +21,15 @@ moderation:
   # safely. When you're happy with the decisions, run:  /nmod mode enforce
   mode: "monitor"
 
-  # ---- Local rules (no API key required, run instantly) -------------------
+  # ---- Local rules (no API key required, evaluate instantly) --------------
   offline:
     enabled: true
     # Block ANY url, not just the ones listed in bannedUrls.
     blockAnyUrl: false
     # Treat "b4dw0rd" style spellings as their plain-text equivalent.
     normalizeLeetspeak: true
+    # Safe setup examples only. Replace or extend these with your server's
+    # reviewed policy; NeoModeration does not ship a complete profanity list.
     bannedWords:
       - "badword"
       - "scam"
@@ -42,8 +44,10 @@ moderation:
     allowedUrls: []
 
   # ---- Cloud moderation (requires a NeoMechanical API key) -----------------
-  # Create a key at https://platform.neomechanical.com (scope: events:write),
-  # then run:  /nmod setup <apiKey>
+  # Sign up at https://neomechanical.com/signup?src=neomoderation, create a key
+  # with events:write + usage:read, then run:  /nmod setup <apiKey>
+  # Verify authentication and credits with /nmod doctor. If credits reach zero,
+  # recover at https://neomechanical.com/billing?src=neomoderation_credits.
   api:
     endpoint: "https://api.neomechanical.com/v1/events"
     apiKey: ""

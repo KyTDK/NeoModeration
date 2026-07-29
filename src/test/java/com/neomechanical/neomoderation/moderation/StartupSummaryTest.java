@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * 22 Spigot downloads have produced 1 bStats server, so that distinction matters.
  */
 class StartupSummaryTest {
+    private static final String VERSION = "1.4.1";
 
     private static ModerationSettings bundledDefaults() {
         YamlConfiguration config = new YamlConfiguration();
@@ -30,7 +31,7 @@ class StartupSummaryTest {
 
     @Test
     void saysWhenNothingWillBeBlocked() {
-        List<String> lines = StartupSummary.lines(bundledDefaults(), "1.4.0");
+        List<String> lines = StartupSummary.lines(bundledDefaults(), VERSION);
 
         assertTrue(joined(lines).contains("MONITOR"), joined(lines));
         assertTrue(joined(lines).toLowerCase().contains("nothing is blocked"), joined(lines));
@@ -38,7 +39,7 @@ class StartupSummaryTest {
 
     @Test
     void namesTheCommandThatTurnsEnforcementOn() {
-        List<String> lines = StartupSummary.lines(bundledDefaults(), "1.4.0");
+        List<String> lines = StartupSummary.lines(bundledDefaults(), VERSION);
 
         assertTrue(joined(lines).contains("/nmod mode enforce"), joined(lines));
     }
@@ -48,7 +49,7 @@ class StartupSummaryTest {
         YamlConfiguration config = new YamlConfiguration();
         config.set("moderation.enabled", true);
         config.set("moderation.mode", "enforce");
-        List<String> lines = StartupSummary.lines(ModerationSettings.from(config), "1.4.0");
+        List<String> lines = StartupSummary.lines(ModerationSettings.from(config), VERSION);
 
         assertTrue(joined(lines).contains("ENFORCE"));
         assertFalse(joined(lines).contains("/nmod mode enforce"));
@@ -58,7 +59,7 @@ class StartupSummaryTest {
     void listsProtectionsThatAreActuallyRunning() {
         // Anti-spam and the local word/URL rules need no API key, so they are the
         // honest answer to "is this doing anything yet?".
-        List<String> lines = StartupSummary.lines(bundledDefaults(), "1.4.0");
+        List<String> lines = StartupSummary.lines(bundledDefaults(), VERSION);
 
         String text = joined(lines).toLowerCase();
         assertTrue(text.contains("anti-spam"), text);
@@ -67,7 +68,7 @@ class StartupSummaryTest {
 
     @Test
     void saysCloudIsOffAndHowToTurnItOn() {
-        List<String> lines = StartupSummary.lines(bundledDefaults(), "1.4.0");
+        List<String> lines = StartupSummary.lines(bundledDefaults(), VERSION);
 
         String text = joined(lines);
         assertTrue(text.toLowerCase().contains("no api key"), text);
@@ -80,7 +81,7 @@ class StartupSummaryTest {
         config.set("moderation.enabled", true);
         config.set("moderation.mode", "monitor");
         config.set("moderation.api.apiKey", "nm_live_example");
-        List<String> lines = StartupSummary.lines(ModerationSettings.from(config), "1.4.0");
+        List<String> lines = StartupSummary.lines(ModerationSettings.from(config), VERSION);
 
         assertFalse(joined(lines).contains("/nmod setup"), joined(lines));
     }
@@ -89,29 +90,38 @@ class StartupSummaryTest {
     void reportsWhenModerationIsSwitchedOffEntirely() {
         YamlConfiguration config = new YamlConfiguration();
         config.set("moderation.enabled", false);
-        List<String> lines = StartupSummary.lines(ModerationSettings.from(config), "1.4.0");
+        List<String> lines = StartupSummary.lines(ModerationSettings.from(config), VERSION);
 
         assertTrue(joined(lines).toLowerCase().contains("disabled"), joined(lines));
     }
 
     @Test
     void alwaysPointsAtStatusForTheFullPicture() {
-        List<String> lines = StartupSummary.lines(bundledDefaults(), "1.4.0");
+        List<String> lines = StartupSummary.lines(bundledDefaults(), VERSION);
 
         assertTrue(joined(lines).contains("/nmod status"), joined(lines));
     }
 
     @Test
     void includesTheVersionSoBugReportsAreActionable() {
-        List<String> lines = StartupSummary.lines(bundledDefaults(), "1.4.0");
+        List<String> lines = StartupSummary.lines(bundledDefaults(), VERSION);
 
-        assertTrue(joined(lines).contains("1.4.0"), joined(lines));
+        assertTrue(joined(lines).contains(VERSION), joined(lines));
+    }
+
+    @Test
+    void givesFreshInstallsAnExactSafeTestPath() {
+        List<String> lines = StartupSummary.lines(bundledDefaults(), VERSION);
+
+        String text = joined(lines);
+        assertTrue(text.contains("/nmod test badword"), text);
+        assertTrue(text.contains("never blocks or punishes"), text);
     }
 
     @Test
     void staysShortEnoughToReadInAConsole() {
         // A wall of text at startup is ignored exactly like a single line is.
-        List<String> lines = StartupSummary.lines(bundledDefaults(), "1.4.0");
+        List<String> lines = StartupSummary.lines(bundledDefaults(), VERSION);
 
         assertTrue(lines.size() <= 6, "too many lines: " + lines.size());
         assertEquals(lines.size(), lines.stream().filter(l -> !l.isBlank()).count());

@@ -5,7 +5,9 @@ import org.junit.jupiter.api.Test;
 import java.lang.reflect.Field;
 import java.util.logging.Logger;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ModerationCircuitBreakerTest {
@@ -27,6 +29,19 @@ class ModerationCircuitBreakerTest {
             breaker.record(ModerationApiResult.clientAuth());
         }
         assertTrue(breaker.isRemoteCallAllowed());
+        assertEquals(ModerationApiResult.Kind.CLIENT_AUTH, breaker.lastResultKind());
+    }
+
+    @Test
+    void insufficientCreditsAndOtherClientErrorsDoNotMasqueradeAsTransportFailures() {
+        ModerationCircuitBreaker breaker = newBreaker();
+        for (int i = 0; i < 5; i++) {
+            breaker.record(ModerationApiResult.insufficientCredits());
+            breaker.record(ModerationApiResult.clientRequest());
+        }
+
+        assertTrue(breaker.isRemoteCallAllowed());
+        assertEquals(ModerationApiResult.Kind.CLIENT_REQUEST, breaker.lastResultKind());
     }
 
     @Test
@@ -37,6 +52,7 @@ class ModerationCircuitBreakerTest {
 
         breaker.reset();
         assertTrue(breaker.isRemoteCallAllowed());
+        assertNull(breaker.lastResultKind());
     }
 
     @Test

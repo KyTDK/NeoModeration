@@ -1,0 +1,36 @@
+[B]NeoModeration 1.4.1 — Activation clarity[/B]
+
+A fresh install starts in [B]monitor mode[/B]: it detects and reports, but does not block or punish until you run [FONT=Courier New]/nmod mode enforce[/FONT].
+
+[B]Improved[/B]
+[LIST]
+[*][B]Guided first test[/B]: run [FONT=Courier New]/nmod test badword[/FONT] to prove the bundled local rule works. The dry run never executes an action.
+[*][B]Truthful key setup[/B]: saving a key no longer claims the cloud is active before verification. Run [FONT=Courier New]/nmod doctor[/FONT] to check the account API and credits, then [FONT=Courier New]/nmod test hello[/FONT] to verify moderation events.
+[*][B]Specific recovery[/B]: rejected keys (HTTP 401/403) and insufficient credits (HTTP 402) now have different messages, direct recovery links, and verification commands in status, doctor, test, and usage.
+[*][B]Honest billing class[/B]: ordinary chat remains general billing. Only the NSFW map-art image scanner declares the NSFW class.
+[*][B]Separated cloud health[/B]: test, normal chat, and map-art results update moderation-event status. Account/usage checks are reported separately and cannot hide a broken events endpoint. Other 4xx responses are no longer called invalid keys.
+[/LIST]
+
+[B]60-second first run[/B]
+[LIST=1]
+[*]Install the JAR and restart.
+[*]Run [FONT=Courier New]/nmod test badword[/FONT]. Expect FLAGGED + monitor alert only.
+[*]For optional cloud checks, save a NeoMechanical key and run [FONT=Courier New]/nmod doctor[/FONT].
+[*]Review every enabled path, then run [FONT=Courier New]/nmod mode enforce[/FONT] only when ready.
+[/LIST]
+
+[B]Compatibility[/B]
+[LIST]
+[*]No configuration migration is required.
+[*]Existing enforce-mode servers stay in enforce mode.
+[*]Marketplace compatibility is limited to the verified Minecraft 1.18.2-1.21.x range; this release does not advertise untested Folia support.
+[*]Local word, link, and anti-spam rules continue when cloud checks are unavailable or out of credits.
+[/LIST]
+
+[B]Verified[/B]
+[LIST]
+[*]Automated regression coverage includes authentication, credits, request/transport errors, separated account/event health, locale migration, and monitor-mode behavior.
+[*]The release matrix checks Paper 1.18.2, 1.19.4, 1.20.6, and 1.21.11, including monitor-once/enforce-once chat checks.
+[/LIST]
+
+Updating is recommended for every server.

@@ -47,6 +47,18 @@ public final class ChatModerationCoordinator implements AutoCloseable {
         return circuit.isRemoteCallAllowed();
     }
 
+    public ModerationApiResult.Kind lastCloudResultKind() {
+        return circuit.lastResultKind();
+    }
+
+    /**
+     * Records moderation-event calls made outside the normal chat path, such as
+     * /nmod test and map-art scans. Account/usage calls must not enter this state.
+     */
+    public void recordApiResult(ModerationApiResult result) {
+        circuit.record(result);
+    }
+
     @Override
     public void close() {
         workers.shutdownNow();

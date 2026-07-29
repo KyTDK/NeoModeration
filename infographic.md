@@ -1,20 +1,28 @@
-# NeoModeration 1.1.0
+# NeoModeration 1.4.1
 
-**Chat safety for Minecraft** · Local rules · Optional cloud · One-command setup
+**Monitor-first Minecraft moderation** · Local rules · Optional cloud · NSFW map-art scanning
 
 ## Setup (60 seconds)
 
 1. Put the jar in `plugins/` and restart
-2. Local rules are already on
-3. For cloud:
+2. Run `/nmod test badword` — expect **FLAGGED** + **monitor alert only**
+3. Optional cloud setup:
 
 ```text
 /nmod setup YOUR_API_KEY
+/nmod doctor
 ```
 
-Get a key at https://platform.neomechanical.com → API keys → `events:write`
+Sign up at https://neomechanical.com/signup?src=neomoderation, create a key
+with `events:write` + `usage:read`, and use `/nmod doctor` to verify credits.
+If credits reach zero: https://neomechanical.com/billing?src=neomoderation_credits
+4. Review every enabled path; nothing blocks or punishes until
+   `/nmod mode enforce`
 
 ## On detect
+
+Monitor mode alerts staff and records what would happen. Enforce mode blocks
+flagged chat and runs the configured actions:
 
 ```text
 /nmod action list
@@ -32,11 +40,15 @@ Default: **clear** chat spam + **mute** 5 minutes (built-in).
 
 ```text
 /nmod setup <apiKey>
+/nmod test <message>
+/nmod doctor
+/nmod mode monitor | enforce
 /nmod on | off
-/nmod key <apiKey> | clear
+/nmod key set <apiKey> | clear
 /nmod action list | add | remove | reset
 /nmod word add | remove | list
 /nmod url add | remove | list
+/nmod usage
 /nmod status
 /nmod reload
 ```

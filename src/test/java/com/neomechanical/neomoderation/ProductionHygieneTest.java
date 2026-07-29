@@ -25,6 +25,11 @@ class ProductionHygieneTest {
                   selectModrinthDraftForPromotion,
                   validateModrinthDraftVersion
                 } from "./scripts/modrinth-publish.mjs";
+                import {
+                  hangarPaperVersions,
+                  isSupportedMinecraftVersion,
+                  supportedMinecraftVersions
+                } from "./scripts/release-compatibility.mjs";
 
                 const payload = buildModrinthVersionData({
                   projectId: "project-123",
@@ -90,6 +95,19 @@ class ProductionHygieneTest {
                   status: "draft",
                   files: [{ primary: true, hashes: { sha512: "different" } }]
                 }], "project-123", "2.0.0", "expected-sha512"), /SHA-512/);
+                assert.equal(isSupportedMinecraftVersion("1.18.2"), true);
+                assert.equal(isSupportedMinecraftVersion("1.21.11"), true);
+                assert.equal(isSupportedMinecraftVersion("1.18.1"), false);
+                assert.equal(isSupportedMinecraftVersion("1.22"), false);
+                assert.deepEqual(
+                  supportedMinecraftVersions(["1.18.1", "1.18.2", "1.21.11", "1.22"]),
+                  ["1.18.2", "1.21.11"]
+                );
+                assert.deepEqual(hangarPaperVersions([
+                  { version: "1.18", subVersions: ["1.18.2", "1.18.1"] },
+                  { version: "1.21", subVersions: ["1.21.11", "1.21"] },
+                  { version: "26.1", subVersions: ["26.1.1"] }
+                ]), ["1.18.2", "1.21.11", "1.21"]);
                 """);
         assertTrue(contract.exitCode() == 0,
                 () -> "Modrinth contract fixture failed:\n" + contract.output());
@@ -102,6 +120,9 @@ class ProductionHygieneTest {
         assertTrue(!modrinth.contains("api(token, \"/user\")")
                         && !modrinth.contains("Token valid ("),
                 "Modrinth publishing must not require unrelated user-read permission");
+        assertTrue(!modrinth.contains("\"folia\"")
+                        && modrinth.contains("supportedMinecraftVersions("),
+                "Modrinth must advertise only tested loaders and Minecraft versions");
     }
 
     @Test
@@ -252,9 +273,9 @@ class ProductionHygieneTest {
         assertTrue(!modrinth.contains("modrinth-publish.mjs pat ")
                         && modrinth.contains("node scripts/modrinth-publish.mjs publish <jar> <version>")
                         && modrinth.contains("*   MODRINTH_TOKEN")
-                        && modrinth.contains("commands: open | check | inspect | patdebug | patdom | publish <jar> <version> | promote <jar> <version>"),
+                        && modrinth.contains("commands: open | check | status | inspect | patdebug | patdom | publish <jar> <version> | promote <jar> <version>"),
                 "Modrinth usage and help must document the dispatched environment-token interface");
-        List<String> modrinthCommands = List.of("open", "check", "inspect", "patdebug", "patdom", "publish", "promote");
+        List<String> modrinthCommands = List.of("open", "check", "status", "inspect", "patdebug", "patdom", "publish", "promote");
         assertTrue(modrinthCommands.stream().allMatch(command -> modrinth.contains("cmd === \"" + command + "\""))
                         && countOccurrences(modrinth, "cmd === \"") == modrinthCommands.size(),
                 "Modrinth help and dispatch commands must agree");
@@ -354,6 +375,68 @@ class ProductionHygieneTest {
                 () -> "Privacy copy makes absolute network claims despite bStats:\n" + String.join("\n", violations));
         assertTrue(privacyDocument.contains("bStats") && privacyDocument.contains("chat content"),
                 "Privacy documentation must disclose bStats and distinguish it from moderation content");
+    }
+
+    @Test
+    void currentMarketplaceCopyIsMonitorFirstAndProvidesAnExactActivationTest() throws IOException {
+        List<Path> listingSurfaces = List.of(
+                Path.of("README.md"),
+                Path.of("docs/modrinth-body.md"),
+                Path.of("docs/releases/1.4.1.md"),
+                Path.of("docs/releases/1.4.1-spigot.bbcode")
+        );
+        List<String> missingGuidance = listingSurfaces.stream()
+                .filter(path -> {
+                    try {
+                        String text = Files.readString(path).toLowerCase();
+                        return !text.contains("/nmod test badword")
+                                || !text.contains("monitor")
+                                || !text.contains("/nmod mode enforce");
+                    } catch (IOException e) {
+                        throw new IllegalStateException("Unable to read " + path, e);
+                    }
+                })
+                .map(Path::toString)
+                .toList();
+        String modrinthBody = Files.readString(Path.of("docs/modrinth-body.md")).toLowerCase();
+        String modrinthPublisher = Files.readString(Path.of("scripts/modrinth-publish.mjs")).toLowerCase();
+        String hangarPublisher = Files.readString(Path.of("scripts/hangar-publish.mjs")).toLowerCase();
+        String pluginYml = Files.readString(Path.of("src/main/resources/plugin.yml")).toLowerCase();
+
+        assertTrue(missingGuidance.isEmpty(),
+                () -> "Current listings must explain the safe first test and explicit enforcement: "
+                        + missingGuidance);
+        assertTrue(!modrinthBody.contains("blocks swearing")
+                        && !modrinthBody.contains("detects swearing")
+                        && !modrinthBody.contains("works the instant you install")
+                        && modrinthBody.contains("safe setup examples")
+                        && modrinthBody.contains("1.18.2 through the 1.21.x")
+                        && !modrinthBody.contains("folia")
+                        && modrinthPublisher.contains("monitor-first")
+                        && !modrinthPublisher.contains("\"folia\"")
+                        && pluginYml.contains("api-version: 1.18")
+                        && hangarPublisher.contains("monitor-first"),
+                "Marketplace copy must not claim a fresh monitor-mode install blocks immediately");
+    }
+
+    @Test
+    void currentReleaseUsesAttributedCloudRecoveryWithoutPromisingUnverifiedActivation() throws IOException {
+        String readme = Files.readString(Path.of("README.md"));
+        String config = Files.readString(Path.of("src/main/resources/config.yml"));
+        String english = Files.readString(Path.of("src/main/resources/locale/en_US.yml"));
+        String pom = Files.readString(Path.of("pom.xml"));
+
+        assertTrue(pom.contains("<version>1.4.1</version>")
+                        && readme.contains("NeoModeration-1.4.1.jar"),
+                "Current build and install documentation must agree on 1.4.1");
+        assertTrue(readme.contains("signup?src=neomoderation")
+                        && config.contains("signup?src=neomoderation")
+                        && readme.contains("billing?src=neomoderation_credits")
+                        && config.contains("billing?src=neomoderation_credits"),
+                "Acquisition and exhausted-credit recovery links must be attributable");
+        assertTrue(!english.contains("Cloud moderation is now &aactive")
+                        && english.contains("/nmod doctor"),
+                "Saving an unverified key must not claim that cloud moderation is already active");
     }
 
     @Test

@@ -15,21 +15,31 @@
  *
  * USAGE
  *   node scripts/hangar-upload-version.mjs <version>
- *   e.g. node scripts/hangar-upload-version.mjs 1.4.0
+ *   e.g. node scripts/hangar-upload-version.mjs 1.4.1
  */
 import { Page, sleep } from "./cdp-lib.mjs";
 import { isExactHangarVersionUrl } from "./hangar-publish.mjs";
+import { hangarPaperVersions } from "./release-compatibility.mjs";
 
 const OWNER = process.env.HANGAR_OWNER || "KyTDK";
 const PROJECT = process.env.HANGAR_PROJECT || "NeoModeration";
 const GH_REPO = process.env.GH_REPO || "KyTDK/NeoModeration";
-const MAJORS = ["1.21", "1.20", "1.19", "1.18", "1.17", "1.16", "1.15", "1.14", "1.13"];
 const SHOT = process.env.HANGAR_SHOT || "/tmp/hangar-upload.png";
 
 const version = process.argv[2];
 if (!version) { console.error("usage: hangar-upload-version.mjs <version>"); process.exit(1); }
 const jarUrl = `https://github.com/${GH_REPO}/releases/download/v${version}/${PROJECT}-${version}.jar`;
 const changelog = `NeoModeration ${version} - see the full release notes at https://github.com/${GH_REPO}/releases/tag/v${version}`;
+
+async function supportedPaperVersions() {
+  const response = await fetch("https://hangar.papermc.io/api/v1/platforms/PAPER/versions");
+  if (!response.ok) throw new Error(`lookup Hangar Paper versions HTTP ${response.status}`);
+  const versions = hangarPaperVersions(await response.json());
+  if (!versions.length) {
+    throw new Error("Hangar returned no Paper versions in the verified 1.18.2-1.21.x range.");
+  }
+  return versions;
+}
 
 const p = await Page.attach("hangar.papermc.io");
 const bottom = () => p.eval(`window.scrollTo(0, document.body.scrollHeight)`);
@@ -103,18 +113,34 @@ try {
   if (!artifactDataNext) throw new Error("Hangar Next button was not found for the artifact-data step.");
   await sleep(2500);
 
-  // ── Step 3 Dependencies: select Paper version families 1.13–1.21 ───────────
-  for (const m of MAJORS) {
+  // ── Step 3 Dependencies: select only the verified 1.18.2–1.21.x range ──────
+  const paperVersions = await supportedPaperVersions();
+  for (const paperVersion of paperVersions) {
     const box = await p.eval(`(function(){
-      var t=${JSON.stringify(m)};
+      var t=${JSON.stringify(paperVersion)};
       var label=Array.prototype.slice.call(document.querySelectorAll('span,div,label')).find(function(e){return (e.childNodes.length===1?e.innerText:'').trim()===t;});
       if(!label) return null;
+      label.scrollIntoView({block:'center'});
       var row=label.parentElement, cb=null;
       for(var i=0;i<3 && row;i++){ cb=row.querySelector('input[type=checkbox]'); if(cb) break; row=row.parentElement; }
-      if(!cb || cb.checked) return null;
+      if(!cb) return null;
+      if(cb.checked) return {checked:true};
       var b=cb.getBoundingClientRect(); return {x:b.x+b.width/2, y:b.y+b.height/2};
     })()`);
-    if (box) { await p.clickAt(box.x, box.y); await sleep(200); }
+    if (!box) throw new Error(`Hangar Paper dependency ${paperVersion} was not found.`);
+    if (!box.checked) {
+      await p.clickAt(box.x, box.y);
+      await sleep(120);
+      const checked = await p.eval(`(function(){
+        var t=${JSON.stringify(paperVersion)};
+        var label=Array.prototype.slice.call(document.querySelectorAll('span,div,label')).find(function(e){return (e.childNodes.length===1?e.innerText:'').trim()===t;});
+        if(!label) return false;
+        var row=label.parentElement, cb=null;
+        for(var i=0;i<3 && row;i++){ cb=row.querySelector('input[type=checkbox]'); if(cb) break; row=row.parentElement; }
+        return !!(cb && cb.checked);
+      })()`);
+      if (!checked) throw new Error(`Hangar Paper dependency ${paperVersion} was not selected.`);
+    }
   }
   await sleep(500);
   await bottom(); await sleep(400);

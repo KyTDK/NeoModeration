@@ -5,7 +5,7 @@ load: POSTWORLD
 authors:
   - NeoDevs
 prefix: NeoModeration
-api-version: 1.13
+api-version: 1.18
 softdepend: [ LuckPerms ]
 commands:
   neomod:

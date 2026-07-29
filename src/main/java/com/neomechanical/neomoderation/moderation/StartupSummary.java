@@ -51,6 +51,13 @@ public final class StartupSummary {
             lines.add("Not active: " + String.join(", ", inactive) + ".");
         }
 
+        if (monitor) {
+            lines.add("Try /nmod test badword now: it previews the bundled local rule, but MONITOR "
+                    + "mode never blocks or punishes. Use /nmod mode enforce only when ready.");
+        } else {
+            lines.add("Verify the bundled local rule with /nmod test badword; tests never execute actions.");
+        }
+
         lines.add("Run /nmod status at any time for the full picture.");
         return lines;
     }
@@ -79,7 +86,8 @@ public final class StartupSummary {
             // The single biggest capability gap on a fresh install, and the only one
             // that needs a step outside the server.
             inactive.add("cloud moderation and map-art scanning (no API key - "
-                    + "get one at https://neomechanical.com then run /nmod setup <key>)");
+                    + "sign up at " + CloudRecovery.SIGNUP_URL
+                    + ", create a key, then run /nmod setup <key>)");
         }
         if (!settings.spam().enabled()) {
             inactive.add("anti-spam");

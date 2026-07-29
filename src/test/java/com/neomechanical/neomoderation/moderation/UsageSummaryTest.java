@@ -23,6 +23,22 @@ class UsageSummaryTest {
     }
 
     @Test
+    void httpFailuresKeepAuthenticationBillingAndRequestErrorsDistinct() {
+        assertEquals(ModerationApiResult.Kind.CLIENT_AUTH,
+                ModerationApiResult.fromHttpFailureStatus(401).kind());
+        assertEquals(ModerationApiResult.Kind.CLIENT_AUTH,
+                ModerationApiResult.fromHttpFailureStatus(403).kind());
+        assertEquals(ModerationApiResult.Kind.INSUFFICIENT_CREDITS,
+                ModerationApiResult.fromHttpFailureStatus(402).kind());
+        assertEquals(ModerationApiResult.Kind.CLIENT_REQUEST,
+                ModerationApiResult.fromHttpFailureStatus(422).kind());
+        assertEquals(ModerationApiResult.Kind.TRANSIENT_TRANSPORT,
+                ModerationApiResult.fromHttpFailureStatus(429).kind());
+        assertEquals(ModerationApiResult.Kind.TRANSIENT_TRANSPORT,
+                ModerationApiResult.fromHttpFailureStatus(503).kind());
+    }
+
+    @Test
     void parsesFlatUsageFields() {
         String json = "{\"workspace\":\"My Server\",\"tier\":\"free\","
                 + "\"requestsPerMinuteLimit\":60,\"creditsRemaining\":12345,"

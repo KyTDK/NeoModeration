@@ -56,23 +56,14 @@ public final class ModerationApiClient {
                     .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
                     .build();
         } catch (IllegalArgumentException e) {
-            return ModerationApiResult.transientTransport();
+            return ModerationApiResult.clientRequest();
         }
 
         try {
             HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
             int status = response.statusCode();
-            if (status == 401 || status == 403) {
-                return ModerationApiResult.clientAuth();
-            }
-            if (status == 429 || status >= 500) {
-                return ModerationApiResult.transientTransport();
-            }
-            if (status >= 400) {
-                return ModerationApiResult.clientAuth();
-            }
             if (status < 200 || status >= 300) {
-                return ModerationApiResult.transientTransport();
+                return ModerationApiResult.fromHttpFailureStatus(status);
             }
             return ChatModerationResponseParser.matchesPositiveSignal(response.body(), categorySettings)
                     ? ModerationApiResult.flagged()

@@ -10,6 +10,7 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { hangarPaperVersions } from "./release-compatibility.mjs";
 
 const BASE = "https://hangar.papermc.io/api/v1";
 const OWNER = process.env.HANGAR_OWNER || "KyTDK";
@@ -25,12 +26,14 @@ async function h(token, path, opts = {}) {
 }
 
 async function paperVersions() {
-  // Hangar validates platform versions against its own list.
-  const res = await fetch(`${BASE}/platforms`);
-  if (!res.ok) return null;
-  const data = await res.json();
-  const paper = data.find((p) => (p.name || p.platform) === "PAPER" || p.enumName === "PAPER");
-  return paper ? (paper.possibleVersions || paper.versions) : null;
+  // Hangar validates exact platform versions against this public catalog.
+  const res = await fetch(`${BASE}/platforms/PAPER/versions`);
+  if (!res.ok) throw new Error(`lookup Hangar Paper versions HTTP ${res.status}`);
+  const versions = hangarPaperVersions(await res.json());
+  if (!versions.length) {
+    throw new Error("Hangar returned no Paper versions in the verified 1.18.2-1.21.x range.");
+  }
+  return versions;
 }
 
 export function classifyHangarProjectLookup(status) {
@@ -70,7 +73,7 @@ async function cmdPublish(jar, version) {
     const form = {
       name: "NeoModeration",
       category: "protection",
-      description: "Automatic chat moderation — blocks swearing, spam, links, and inappropriate map art.",
+      description: "Monitor-first Minecraft chat moderation with local rules, optional cloud checks, and NSFW map-art scanning.",
       pageContent: readFileSync("docs/modrinth-body.md", "utf8"),
       ownerId: user.id,
     };
@@ -87,10 +90,7 @@ async function cmdPublish(jar, version) {
   }
 
   // Determine Paper versions to declare.
-  let versions = await paperVersions();
-  if (!versions || !versions.length) {
-    versions = ["1.13", "1.14", "1.15", "1.16", "1.17", "1.18", "1.19", "1.20", "1.21"];
-  }
+  const versions = await paperVersions();
 
   // Upload the version (multipart: versionUpload JSON + jar file).
   const meta = {

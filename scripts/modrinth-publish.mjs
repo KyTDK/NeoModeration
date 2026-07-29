@@ -7,6 +7,7 @@
  * USAGE
  *   node scripts/modrinth-publish.mjs open              # open sign-in page, bring to front
  *   node scripts/modrinth-publish.mjs check             # is the browser signed in to Modrinth?
+ *   node scripts/modrinth-publish.mjs status            # read project/review status
  *   node scripts/modrinth-publish.mjs inspect           # inspect the create-PAT form
  *   node scripts/modrinth-publish.mjs patdebug          # inspect create-PAT state
  *   node scripts/modrinth-publish.mjs patdom            # inspect create-PAT DOM controls
@@ -21,6 +22,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { supportedMinecraftVersions } from "./release-compatibility.mjs";
 
 const PORT = process.env.MODRINTH_CDP_PORT || "9223";
 const API = "https://api.modrinth.com/v2";
@@ -81,6 +83,74 @@ async function cmdCheck() {
     await page.waitForTimeout(1500);
     const info = await loginInfo(page);
     console.log(JSON.stringify({ loggedIn: !!info, user: info?.username || info?.email || null }));
+  } finally {
+    await browser.close();
+  }
+}
+
+/** Read-only: report the authenticated project's visible review state. */
+async function cmdStatus() {
+  const { browser, ctx } = await connect();
+  try {
+    const page = await modrinthPage(ctx);
+    async function readFocusedPage(url) {
+      await page.goto(url, { waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(1500);
+      return page.evaluate(() => {
+        const lines = (document.body?.innerText || "")
+          .split("\n")
+          .map((line) => line.trim().replace(/\s+/g, " "))
+          .filter(Boolean);
+        return {
+          url: location.href,
+          lines,
+          versionLinks: Array.from(document.querySelectorAll("a[href]"))
+            .map((element) => ({
+              label: (element.innerText || element.textContent || "").trim().replace(/\s+/g, " "),
+              href: element.getAttribute("href"),
+            }))
+            .filter((entry) => /^\/plugin\/neomoderation\/version\/[^/]+$/.test(entry.href || "")),
+        };
+      });
+    }
+
+    const general = await readFocusedPage("https://modrinth.com/plugin/neomoderation/settings");
+    const dashboard = await readFocusedPage("https://modrinth.com/dashboard/projects");
+    const versions = await readFocusedPage("https://modrinth.com/plugin/neomoderation/settings/versions");
+    const moderation = await readFocusedPage("https://modrinth.com/plugin/neomoderation/moderation");
+    const versionHrefs = Array.from(new Set(
+      versions.versionLinks
+        .filter((entry) => entry.label === "1.4.0" && /^\/plugin\/neomoderation\/version\//.test(entry.href || ""))
+        .map((entry) => entry.href),
+    )).slice(0, 5);
+    const versionDetails = [];
+    for (const href of versionHrefs) {
+      const detail = await readFocusedPage(new URL(href, "https://modrinth.com").href);
+      versionDetails.push({
+        id: href.split("/").pop(),
+        version: detail.lines.find((line) => line === "1.4.0") || null,
+        status: detail.lines.find((line) => /^(under review|draft|rejected|approved|listed|unlisted)$/i.test(line)) || null,
+        submitted: detail.lines.find((line) => /^Submitted /i.test(line)) || null,
+      });
+    }
+
+    const visibilityIndex = general.lines.indexOf("Visibility");
+    const moderationSignals = Array.from(new Set(
+      moderation.lines.filter((line) => (
+        /^(Project under review|Your project is in queue|submitted the project for review\.|Rejected)$/i.test(line)
+        || /obfuscat|non-obfuscated build|removed the obfuscated/i.test(line)
+      )),
+    ));
+    console.log(JSON.stringify({
+      project: {
+        status: dashboard.lines.find((line) => /^(under review|draft|rejected|approved|listed|unlisted)$/i.test(line)) || null,
+        visibility: visibilityIndex >= 0 ? general.lines[visibilityIndex + 1] || null : null,
+        submitted: moderation.lines.find((line) => /^Submitted /i.test(line)) || null,
+        updated: moderation.lines.find((line) => /^Updated /i.test(line)) || null,
+      },
+      versions: versionDetails,
+      moderationSignals,
+    }, null, 2));
   } finally {
     await browser.close();
   }
@@ -184,9 +254,9 @@ async function api(token, path, opts = {}) {
 async function releaseGameVersions() {
   const res = await fetch(`${API}/tag/game_version`);
   const all = await res.json();
-  return all
-    .filter((v) => v.version_type === "release" && /^1\.(1[3-9]|2\d)(\.\d+)?$/.test(v.version))
-    .map((v) => v.version);
+  return supportedMinecraftVersions(
+    all.filter((v) => v.version_type === "release").map((v) => v.version),
+  );
 }
 
 export function classifyModrinthProjectLookup(status) {
@@ -255,9 +325,9 @@ async function cmdPublish(jar, version) {
   console.log("Publishing with the supplied scoped Modrinth token...");
 
   const gameVersions = await releaseGameVersions();
-  const summary = "Automatic chat moderation for Minecraft — blocks swearing, spam, links, and inappropriate map art. Local rules by default, optional cloud moderation.";
+  const summary = "Monitor-first Minecraft chat moderation with local rules, optional cloud checks, and NSFW map-art scanning.";
   const body = readFileSync("docs/modrinth-body.md", "utf8");
-  const loaders = ["bukkit", "spigot", "paper", "purpur", "folia"];
+  const loaders = ["bukkit", "spigot", "paper", "purpur"];
 
   const projectResponse = await api(token, "/project/neomoderation");
   const lookup = classifyModrinthProjectLookup(projectResponse.status);
@@ -357,13 +427,14 @@ async function main() {
   try {
     if (cmd === "open") await cmdOpen();
     else if (cmd === "check") await cmdCheck();
+    else if (cmd === "status") await cmdStatus();
     else if (cmd === "inspect") await cmdInspect();
     else if (cmd === "patdebug") await cmdPatDebug();
     else if (cmd === "patdom") await cmdPatDom();
     else if (cmd === "publish") await cmdPublish(args[0], args[1]);
     else if (cmd === "promote") await cmdPromote(args[0], args[1]);
     else {
-      console.log("commands: open | check | inspect | patdebug | patdom | publish <jar> <version> | promote <jar> <version>");
+      console.log("commands: open | check | status | inspect | patdebug | patdom | publish <jar> <version> | promote <jar> <version>");
       process.exitCode = 1;
     }
   } catch (e) {

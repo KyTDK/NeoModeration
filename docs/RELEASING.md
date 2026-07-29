@@ -14,6 +14,9 @@ root and replace only values explicitly shown as variables or placeholders.
   Chrome on port 9223. Keep that browser profile private.
 - Treat a publisher's successful exit as evidence that its operation completed,
   not proof that the result is publicly visible. Complete the public audit.
+- Keep marketplace compatibility inside the verified Minecraft
+  1.18.2–1.21.x range. Do not advertise the Folia loader until the plugin uses
+  Folia schedulers and declares tested Folia support.
 - A Modrinth upload is a draft. A maintainer must submit for review in the
   Modrinth UI; until the public API returns it, the project is unpublished.
 - `scripts/hangar-entercode.mjs` is account setup only. Do not run it as part
@@ -147,7 +150,7 @@ paths/text first so every command remains safe to copy and edit:
 ```sh
 SPIGOT_DESCRIPTION="/tmp/neomoderation-description.bbcode"
 SPIGOT_BANNER="media/banner.png"
-SPIGOT_TAGLINE="Automatic chat moderation for Minecraft"
+SPIGOT_TAGLINE="Monitor-first chat moderation for Minecraft"
 SPIGOT_ICON="media/icon-spigot.png"
 node scripts/spigot-publish.mjs describe "$SPIGOT_DESCRIPTION" --banner "$SPIGOT_BANNER"
 node scripts/spigot-publish.mjs tagline "$SPIGOT_TAGLINE"
@@ -161,6 +164,12 @@ reviewable, non-obfuscated artifact with the dedicated Maven profile. This JAR
 contains the same plugin code and shaded dependencies, but retains readable
 class names for moderation. Supply the authenticated API token through the
 environment. The publish contract is exactly `publish <jar> <version>`:
+
+Before any Modrinth mutation, inspect the signed-in moderation page. If the
+project is **Under review**, stop: do not upload another version, promote,
+resubmit, or message moderators. Wait for the current review to finish. A
+public project/API `404` can be normal while review is pending and must never
+be treated as permission to create a duplicate project.
 
 ```bash
 bash <<'MODRINTH_PUBLISH'
@@ -204,9 +213,10 @@ MODRINTH_PROMOTE
 
 Open `https://modrinth.com/plugin/neomoderation/moderation`, reply to any
 moderator feedback, and submit for review. Upload or promotion success does not
-make the project public. A `404`
-from `https://api.modrinth.com/v2/project/neomoderation` explicitly means the
-project remains unpublished; it is not a successful public audit.
+make the project public. A `404` from
+`https://api.modrinth.com/v2/project/neomoderation` means only that the project
+is not public. It can also be an existing project under review, so confirm its
+signed-in moderation status before planning any later mutation.
 
 ## 5. Publish Hangar
 

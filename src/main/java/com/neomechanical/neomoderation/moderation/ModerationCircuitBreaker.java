@@ -1,7 +1,7 @@
 package com.neomechanical.neomoderation.moderation;
 
+import java.util.EnumSet;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
 public final class ModerationCircuitBreaker {
@@ -12,8 +12,9 @@ public final class ModerationCircuitBreaker {
     private final Object lock = new Object();
     private int transientFailures;
     private long pausedUntilNanos;
-    private final AtomicBoolean transientPauseLogged = new AtomicBoolean();
-    private final AtomicBoolean clientAuthLogged = new AtomicBoolean();
+    private ModerationApiResult.Kind lastResultKind;
+    private final EnumSet<ModerationApiResult.Kind> loggedFailures =
+            EnumSet.noneOf(ModerationApiResult.Kind.class);
 
     public ModerationCircuitBreaker(Logger logger) {
         this.logger = logger;
@@ -23,8 +24,8 @@ public final class ModerationCircuitBreaker {
         synchronized (lock) {
             transientFailures = 0;
             pausedUntilNanos = 0L;
-            transientPauseLogged.set(false);
-            clientAuthLogged.set(false);
+            lastResultKind = null;
+            loggedFailures.clear();
         }
     }
 
@@ -34,17 +35,44 @@ public final class ModerationCircuitBreaker {
             if (pausedUntilNanos != 0L && now >= pausedUntilNanos) {
                 pausedUntilNanos = 0L;
                 transientFailures = 0;
-                transientPauseLogged.set(false);
+                loggedFailures.remove(ModerationApiResult.Kind.TRANSIENT_TRANSPORT);
             }
             return pausedUntilNanos == 0L;
         }
     }
 
+    public ModerationApiResult.Kind lastResultKind() {
+        synchronized (lock) {
+            return lastResultKind;
+        }
+    }
+
     public void record(ModerationApiResult result) {
         synchronized (lock) {
+            lastResultKind = result.kind();
             if (result.kind() == ModerationApiResult.Kind.CLIENT_AUTH) {
-                if (clientAuthLogged.compareAndSet(false, true)) {
-                    logger.warning("Cloud moderation rejected the request. Check your API key with /nmod status.");
+                transientFailures = 0;
+                if (loggedFailures.add(result.kind())) {
+                    logger.warning("Cloud moderation rejected the API key. Create or replace it at "
+                            + CloudRecovery.API_KEYS_URL + ", then run /nmod setup <key>.");
+                }
+                return;
+            }
+
+            if (result.kind() == ModerationApiResult.Kind.INSUFFICIENT_CREDITS) {
+                transientFailures = 0;
+                if (loggedFailures.add(result.kind())) {
+                    logger.warning("Cloud moderation has insufficient credits. Add credits at "
+                            + CloudRecovery.BILLING_URL + ", then run /nmod test <message>.");
+                }
+                return;
+            }
+
+            if (result.kind() == ModerationApiResult.Kind.CLIENT_REQUEST) {
+                transientFailures = 0;
+                if (loggedFailures.add(result.kind())) {
+                    logger.warning("Cloud moderation rejected the request without rejecting the API key. "
+                            + "Run /nmod doctor and verify moderation.api.endpoint.");
                 }
                 return;
             }
@@ -54,7 +82,7 @@ public final class ModerationCircuitBreaker {
                 if (transientFailures >= TRANSIENT_TRIP_THRESHOLD) {
                     pausedUntilNanos = System.nanoTime() + PAUSE_NANOS;
                     transientFailures = 0;
-                    if (transientPauseLogged.compareAndSet(false, true)) {
+                    if (loggedFailures.add(result.kind())) {
                         logger.warning("Cloud moderation paused for 60s after errors. Local rules still run. Use /nmod reload to resume early.");
                     }
                 }
@@ -63,8 +91,7 @@ public final class ModerationCircuitBreaker {
 
             transientFailures = 0;
             pausedUntilNanos = 0L;
-            transientPauseLogged.set(false);
-            clientAuthLogged.set(false);
+            loggedFailures.clear();
         }
     }
 }

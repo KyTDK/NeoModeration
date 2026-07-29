@@ -38,6 +38,7 @@ EXPECTED_VERSION = VERSION_MATCH.group(1) if VERSION_MATCH else None
 BOT_DIR = BASE_DIR / "mineflayer"
 RCON_PASSWORD = "neomod-version-local"
 USER_AGENT = "NeoModerationVerifier/1.0 (https://github.com/KyTDK/NeoModeration)"
+DOCKER_CLI_TIMEOUT_SECONDS = 30
 
 
 @dataclass
@@ -49,6 +50,41 @@ class Result:
 
 def log(message: str) -> None:
     print(message, flush=True)
+
+
+def docker_ready() -> tuple[bool, str]:
+    try:
+        completed = subprocess.run(
+            ["docker", "info"],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=DOCKER_CLI_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        return False, f"docker info timed out after {DOCKER_CLI_TIMEOUT_SECONDS}s"
+    if completed.returncode != 0:
+        detail = (completed.stderr or "docker info failed").strip().splitlines()[-1]
+        return False, detail
+    return True, "ready"
+
+
+def remove_container(name: str) -> tuple[bool, str]:
+    try:
+        completed = subprocess.run(
+            ["docker", "rm", "-f", name],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=DOCKER_CLI_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        return False, f"docker rm timed out after {DOCKER_CLI_TIMEOUT_SECONDS}s"
+    if completed.returncode != 0 and "No such container" not in (completed.stderr or ""):
+        return False, (completed.stderr or "docker rm failed").strip().splitlines()[-1]
+    return True, "removed"
 
 
 def paper_download_url(version: str) -> str:
@@ -128,7 +164,10 @@ def wait_rcon(port: int, timeout: float = 180.0) -> bool:
 
 def ensure_bot() -> None:
     BOT_DIR.mkdir(parents=True, exist_ok=True)
-    if not (BOT_DIR / "node_modules/mineflayer").exists():
+    # A cancelled npm install can leave the package directory present but empty.
+    # Check the package manifest, not just the directory, before trusting the cache.
+    mineflayer = BOT_DIR / "node_modules/mineflayer"
+    if not (mineflayer / "package.json").is_file() or not (mineflayer / "index.js").is_file():
         subprocess.run(["npm", "install", "mineflayer", "--prefix", str(BOT_DIR), "--no-save"], check=True, timeout=180)
     (BOT_DIR / "chat.mjs").write_text(
         """import mineflayer from 'mineflayer';
@@ -155,7 +194,9 @@ def run_container(version: str, image: str, index: int) -> Result:
     server_jar = work / "server.jar"
     log_path = work / "logs/latest.log"
 
-    subprocess.run(["docker", "rm", "-f", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    removed, remove_detail = remove_container(name)
+    if not removed:
+        return Result(version, False, f"Docker cleanup unavailable: {remove_detail}")
     work.mkdir(parents=True, exist_ok=True)
     (work / "plugins").mkdir(exist_ok=True)
     download_server(version, server_jar)
@@ -221,6 +262,7 @@ def run_container(version: str, image: str, index: int) -> Result:
         ],
         check=True,
         stdout=subprocess.DEVNULL,
+        timeout=120,
     )
 
     try:
@@ -297,7 +339,7 @@ def run_container(version: str, image: str, index: int) -> Result:
             enforce_count = chunk.count(enforce_log)
         checks["enforceChatOnce"] = enforce_count == 1
 
-        # 1.4.0 coverage: doctor exposes the new modules (rendered synchronously),
+        # Coverage modules: doctor exposes the new modules (rendered synchronously),
         # and the enforce detection above must have been persisted to the SQLite
         # case history. The /nmod cases render is async, so verify the DB directly.
         doctor_out = plain(rcon("neomod doctor", rcon_port))
@@ -305,7 +347,9 @@ def run_container(version: str, image: str, index: int) -> Result:
         checks["caseLogged"] = case_logged(work / "plugins/NeoModeration/cases.db")
         return Result(version, all(checks.values()), json.dumps(checks, sort_keys=True))
     finally:
-        subprocess.run(["docker", "rm", "-f", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        removed, remove_detail = remove_container(name)
+        if not removed:
+            log(f"[WARN] Could not remove {name}: {remove_detail}")
 
 
 def case_logged(db_path: Path) -> bool:
@@ -332,6 +376,10 @@ def case_logged(db_path: Path) -> bool:
 def main() -> int:
     if not JAR.exists():
         print(f"Missing jar: {JAR}", file=sys.stderr)
+        return 2
+    ready, ready_detail = docker_ready()
+    if not ready:
+        print(f"Docker is unavailable: {ready_detail}", file=sys.stderr)
         return 2
     ensure_bot()
     results = []

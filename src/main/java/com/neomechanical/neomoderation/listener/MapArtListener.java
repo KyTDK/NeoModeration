@@ -101,6 +101,9 @@ public final class MapArtListener implements Listener {
             handleFlaggedMap(player, mapItem, mapId, "mapart.blocked");
             return;
         }
+        if (!plugin.coordinator().isRemoteCallAllowed()) {
+            return;
+        }
         if (!scannedMaps.add(mapId)) {
             return;
         }
@@ -120,6 +123,7 @@ public final class MapArtListener implements Listener {
                         plugin.settings().api(),
                         plugin.settings().categories()
                 );
+                plugin.coordinator().recordApiResult(result);
                 if (!isCacheableResult(result)) {
                     scannedMaps.remove(mapId);
                     return;

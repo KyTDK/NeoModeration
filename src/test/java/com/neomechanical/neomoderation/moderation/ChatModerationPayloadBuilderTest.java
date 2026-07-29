@@ -35,6 +35,20 @@ class ChatModerationPayloadBuilderTest {
         assertTrue(json.contains("\"sexual\":0.7"));
         assertTrue(json.contains("\"hate\":1.0"));
         assertTrue(json.contains("\"harassment\":0.7"));
+        assertTrue(json.contains("\"billing\":{\"contentClass\":\"general\"}"));
         assertTrue(json.contains("\"persistence\":\"no_store\""));
+    }
+
+    @Test
+    void reservesNsfwBillingClassForTheNsfwMapArtPath() {
+        ModerationCategorySettings categories = ModerationCategorySettings.from(new YamlConfiguration());
+
+        String text = ModerationPayloadBuilder.buildText("Player", "uuid", "hello", categories);
+        String image = ModerationPayloadBuilder.buildImage("Player", "uuid", "base64", categories);
+
+        assertTrue(text.contains("\"contentClass\":\""
+                + ModerationPayloadBuilder.GENERAL_BILLING_CONTENT_CLASS + "\""));
+        assertTrue(image.contains("\"contentClass\":\""
+                + ModerationPayloadBuilder.NSFW_BILLING_CONTENT_CLASS + "\""));
     }
 }
