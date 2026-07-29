@@ -115,32 +115,51 @@ try {
 
   // ── Step 3 Dependencies: select only the verified 1.18.2–1.21.x range ──────
   const paperVersions = await supportedPaperVersions();
-  for (const paperVersion of paperVersions) {
-    const box = await p.eval(`(function(){
-      var t=${JSON.stringify(paperVersion)};
-      var label=Array.prototype.slice.call(document.querySelectorAll('span,div,label')).find(function(e){return (e.childNodes.length===1?e.innerText:'').trim()===t;});
-      if(!label) return null;
-      label.scrollIntoView({block:'center'});
-      var row=label.parentElement, cb=null;
-      for(var i=0;i<3 && row;i++){ cb=row.querySelector('input[type=checkbox]'); if(cb) break; row=row.parentElement; }
-      if(!cb) return null;
-      if(cb.checked) return {checked:true};
-      var b=cb.getBoundingClientRect(); return {x:b.x+b.width/2, y:b.y+b.height/2};
-    })()`);
-    if (!box) throw new Error(`Hangar Paper dependency ${paperVersion} was not found.`);
-    if (!box.checked) {
-      await p.clickAt(box.x, box.y);
-      await sleep(120);
-      const checked = await p.eval(`(function(){
+  const availablePaperVersions = await p.eval(`Array.prototype.slice.call(
+    document.querySelectorAll('.ml-4 input[type=checkbox]')
+  ).map(function(e){ return e.value; })`);
+  const desiredPaperVersions = new Set(paperVersions);
+  for (const paperVersion of availablePaperVersions) {
+    const shouldBeChecked = desiredPaperVersions.has(paperVersion);
+    let finalState = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const state = await p.eval(`(function(){
         var t=${JSON.stringify(paperVersion)};
-        var label=Array.prototype.slice.call(document.querySelectorAll('span,div,label')).find(function(e){return (e.childNodes.length===1?e.innerText:'').trim()===t;});
-        if(!label) return false;
-        var row=label.parentElement, cb=null;
-        for(var i=0;i<3 && row;i++){ cb=row.querySelector('input[type=checkbox]'); if(cb) break; row=row.parentElement; }
-        return !!(cb && cb.checked);
+        var cb=Array.prototype.slice.call(document.querySelectorAll('.ml-4 input[type=checkbox]')).find(function(e){
+          return e.value===t;
+        });
+        if(!cb) return null;
+        cb.scrollIntoView({block:'center'});
+        var b=cb.getBoundingClientRect();
+        return {checked:cb.checked, x:b.x+b.width/2, y:b.y+b.height/2};
       })()`);
-      if (!checked) throw new Error(`Hangar Paper dependency ${paperVersion} was not selected.`);
+      if (!state) throw new Error(`Hangar Paper dependency ${paperVersion} was not found.`);
+      finalState = state.checked;
+      if (finalState === shouldBeChecked) break;
+      await p.clickAt(state.x, state.y);
+      await sleep(120);
     }
+    finalState = await p.eval(`(function(){
+      var t=${JSON.stringify(paperVersion)};
+      var cb=Array.prototype.slice.call(document.querySelectorAll('.ml-4 input[type=checkbox]')).find(function(e){
+        return e.value===t;
+      });
+      return cb ? cb.checked : null;
+    })()`);
+    if (finalState !== shouldBeChecked) {
+      throw new Error(
+        `Hangar Paper dependency ${paperVersion} did not retain checked=${shouldBeChecked}.`
+      );
+    }
+  }
+  const selectedPaperVersions = await p.eval(`Array.prototype.slice.call(
+    document.querySelectorAll('.ml-4 input[type=checkbox]:checked')
+  ).map(function(e){ return e.value; }).sort()`);
+  const expectedPaperVersions = [...desiredPaperVersions].sort();
+  if (JSON.stringify(selectedPaperVersions) !== JSON.stringify(expectedPaperVersions)) {
+    throw new Error(
+      "Hangar Paper dependency selection did not exactly match the verified compatibility range."
+    );
   }
   await sleep(500);
   await bottom(); await sleep(400);
@@ -149,13 +168,29 @@ try {
   await sleep(2500);
 
   // ── Step 4 Changelog: type into the markdown editor ───────────────────────
-  const editorBox = await p.eval(`(function(){
-    var el=document.querySelector('.cm-content, .CodeMirror, [contenteditable=true], .ProseMirror, textarea');
-    if(!el) return null; el.scrollIntoView({block:'center'});
-    var b=el.getBoundingClientRect(); return {x:b.x+Math.min(80,b.width/2), y:b.y+Math.min(40,b.height/2)};
+  const changelogValue = await p.eval(`(function(){
+    var desired=${JSON.stringify(changelog)};
+    var host=document.querySelector('.CodeMirror');
+    if(host && host.CodeMirror){
+      host.scrollIntoView({block:'center'});
+      host.CodeMirror.setValue(desired);
+      host.CodeMirror.save();
+      host.CodeMirror.focus();
+      return host.CodeMirror.getValue();
+    }
+    var textarea=document.querySelector('textarea.text-left, textarea');
+    if(!textarea) return '';
+    textarea.scrollIntoView({block:'center'});
+    var set=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set;
+    set.call(textarea, desired);
+    textarea.dispatchEvent(new Event('input',{bubbles:true}));
+    textarea.dispatchEvent(new Event('change',{bubbles:true}));
+    return textarea.value;
   })()`);
-  if (!editorBox) throw new Error("Hangar changelog editor was not found.");
-  await p.clickAt(editorBox.x, editorBox.y); await sleep(400); await p.send("Input.insertText", { text: changelog }); await sleep(1000);
+  if (changelogValue !== changelog) {
+    throw new Error("Hangar changelog editor did not retain the requested release notes.");
+  }
+  await sleep(1000);
 
   // ── Submit ────────────────────────────────────────────────────────────────
   await bottom(); await sleep(400);
