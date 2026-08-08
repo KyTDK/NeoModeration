@@ -14,5 +14,8 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: maven
-      - run: mvn -Dproguard.skip=true test
+      - name: Test from an empty Maven repository
+        run: |
+          fresh_maven_repository="$(mktemp -d)"
+          mvn -B -U -Dmaven.repo.local="$fresh_maven_repository" -Dproguard.skip=true test
       - run: python3 scripts/translate-locales.py --check

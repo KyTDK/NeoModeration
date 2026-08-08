@@ -294,9 +294,9 @@ class ProductionHygieneTest {
                         && hangar.contains("if (!artifactDataNext) throw new Error(\"Hangar Next button was not found for the artifact-data step.\");")
                         && hangar.contains("if (!dependenciesNext) throw new Error(\"Hangar Next button was not found for the dependencies step.\");"),
                 "Hangar must require every named Next-step transition");
-        assertTrue(hangar.contains("if (!editorBox) throw new Error(\"Hangar changelog editor was not found.\");")
+        assertTrue(hangar.contains("if (changelogValue !== changelog) {")
                         && hangar.contains("if (!created) throw new Error(\"Hangar Create button was not found.\");"),
-                "Hangar must require the changelog editor and Create control");
+                "Hangar must verify retained changelog content and require the Create control");
         assertTrue(hangar.contains("if (!published) throw new Error")
                         && hangar.contains("} finally {\n  p.close();\n}"),
                 "Hangar must stop when creation did not leave the new-version page");
