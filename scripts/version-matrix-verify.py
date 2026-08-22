@@ -20,8 +20,13 @@ VERSIONS = [
     ("1.19.4", "ghcr.io/pterodactyl/yolks:java_17"),
     ("1.20.6", "ghcr.io/pterodactyl/yolks:java_21"),
     ("1.21.11", "ghcr.io/pterodactyl/yolks:java_21"),
-    # Paper 26.x is the only line PaperMC still marks SUPPORTED; it requires Java 25.
-    ("26.2", "ghcr.io/pterodactyl/yolks:java_25"),
+    # Paper 26.x (the only line PaperMC still marks SUPPORTED) is deliberately
+    # absent: this harness drives chat through mineflayer, and minecraft-data
+    # ships protocol support only up to 26.1 — a 26.2 entry would fail the
+    # monitorChatOnce/enforceChatOnce steps for protocol reasons, not plugin
+    # ones, and block a release. 26.2 is verified by hand instead (build 112,
+    # Java 25). Add ("26.x", "ghcr.io/pterodactyl/yolks:java_25") once
+    # minecraft-data covers that protocol, and run it before trusting it.
 ]
 BASE_DIR = Path("/tmp/neomod-version-matrix")
 REPORT_PATH = BASE_DIR / "results.json"

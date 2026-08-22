@@ -23,6 +23,11 @@ root and replace only values explicitly shown as variables or placeholders.
   silently hides the plugin from every search for a supported server.
   Do not advertise the Folia loader until the plugin uses Folia schedulers and
   declares tested Folia support.
+- The automated matrix covers 1.18.2-1.21.11 only. It drives chat through
+  mineflayer, whose `minecraft-data` ships protocol support up to 26.1, so a
+  26.2 entry fails the chat steps for protocol reasons rather than plugin ones.
+  Verify the 26.x line by hand until that support lands, and keep the published
+  copy honest about which versions are machine-verified.
 - A Modrinth upload is a draft. A maintainer must submit for review in the
   Modrinth UI; until the public API returns it, the project is unpublished.
 - `scripts/hangar-entercode.mjs` is account setup only. Do not run it as part
