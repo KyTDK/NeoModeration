@@ -1,0 +1,28 @@
+target/
+*.iml
+.idea/
+.DS_Store
+dependency-reduced-pom.xml
+__pycache__/
+*.pyc
+.worktrees/
+
+# Local AI/tooling - never track
+.superpowers/
+.claude/
+.cursor/
+.opencode/
+.vscode/
+CLAUDE.md
+HANDOFF.md
+
+# Deploy / release tooling - keep locally, never push (per owner request)
+# Root-level only - .github/scripts is intentionally kept for integrity gate
+/scripts/
+/docs/
+/media/
+infographic.md
+
+# Build artifacts that look like releases
+*.jar
+!src/**/*.jar
