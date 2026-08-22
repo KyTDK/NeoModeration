@@ -45,6 +45,23 @@ class OfflineModerationEngineTest {
     }
 
     @Test
+    void flagsBannedWordsEndingInTerminalPunctuation() {
+        OfflineModerationSettings s = settings(false, List.of("scam"), List.of(), List.of(), List.of());
+
+        // Leetspeak maps '!' to 'i', which is right inside a word ("sc4m!ng") but
+        // wrong at a boundary: "scam!" became "scami" and stopped matching.
+        assertTrue(OfflineModerationEngine.evaluate("this is a scam!", s).flagged());
+        assertTrue(OfflineModerationEngine.evaluate("scam!!!", s).flagged());
+    }
+
+    @Test
+    void stillTreatsInnerExclamationMarksAsLeetspeakLetters() {
+        OfflineModerationSettings s = settings(false, List.of("bitch"), List.of(), List.of(), List.of());
+
+        assertTrue(OfflineModerationEngine.evaluate("you b!tch", s).flagged());
+    }
+
+    @Test
     void flagsConfiguredUrlFragmentsAndOptionalAnyUrlMode() {
         OfflineModerationSettings fragmentOnly =
                 settings(false, List.of(), List.of("grabify.link", "discord.gg/free"), List.of(), List.of());
@@ -95,6 +112,17 @@ class OfflineModerationEngineTest {
         assertEquals("free **** now", OfflineModerationEngine.censor("free $c4m now", s));
         assertEquals("free * * * *", OfflineModerationEngine.censor("free s c a m", s));
         assertEquals("clean message", OfflineModerationEngine.censor("clean message", s));
+    }
+
+    @Test
+    void censorAndEvaluateAgreeOnTerminalPunctuation() {
+        OfflineModerationSettings s = settings(false, List.of("scam"), List.of(), List.of(), List.of());
+
+        // evaluate() and censor() normalize through two separate code paths that
+        // must stay in step; fixing one and not the other silently lets censor
+        // pass through a word the detector already flagged.
+        assertTrue(OfflineModerationEngine.evaluate("this is a scam!", s).flagged());
+        assertEquals("this is a ****!", OfflineModerationEngine.censor("this is a scam!", s));
     }
 
     @Test

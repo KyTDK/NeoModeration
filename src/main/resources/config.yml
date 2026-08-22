@@ -28,11 +28,52 @@ moderation:
     blockAnyUrl: false
     # Treat "b4dw0rd" style spellings as their plain-text equivalent.
     normalizeLeetspeak: true
-    # Safe setup examples only. Replace or extend these with your server's
-    # reviewed policy; NeoModeration does not ship a complete profanity list.
+    # A starter English policy so a new install detects real abuse immediately —
+    # you should still review and extend it for your server's own standards.
+    # New installs run in monitor mode (above), so these only log until you run
+    # /nmod mode enforce. Manage the list in-game with /nmod ban and /nmod allow.
+    # Matching is whole-word, so "assignment" and "Scunthorpe" stay clean;
+    # inflections are listed explicitly rather than matched as prefixes.
+    # "badword" is kept so the documented check /nmod test badword still works.
     bannedWords:
       - "badword"
       - "scam"
+      - "fuck"
+      - "fucks"
+      - "fucked"
+      - "fucking"
+      - "fucker"
+      - "fuckers"
+      - "motherfucker"
+      - "motherfuckers"
+      - "shit"
+      - "shits"
+      - "shitty"
+      - "bullshit"
+      - "bitch"
+      - "bitches"
+      - "cunt"
+      - "cunts"
+      - "asshole"
+      - "assholes"
+      - "bastard"
+      - "bastards"
+      - "dickhead"
+      - "whore"
+      - "whores"
+      - "slut"
+      - "sluts"
+      - "nigger"
+      - "niggers"
+      - "nigga"
+      - "niggas"
+      - "faggot"
+      - "faggots"
+      - "retard"
+      - "retarded"
+      - "wanker"
+      - "twat"
+      - "kys"
     bannedUrls:
       - "grabify.link"
       - "discord.gg/free"

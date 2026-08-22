@@ -159,8 +159,14 @@ public final class OfflineModerationEngine {
         int count = 0;
         boolean pendingSpace = false;
         for (int i = 0; i < value.length(); i++) {
-            char c = Character.toLowerCase(value.charAt(i));
-            c = normalizeLeetspeak ? normalizeLeet(c) : c;
+            char raw = Character.toLowerCase(value.charAt(i));
+            char c = normalizeLeetspeak ? normalizeLeet(raw) : raw;
+            // '!' is leetspeak for 'i' inside a word ("b!tch") but ordinary
+            // punctuation at a boundary. Converting it unconditionally turned
+            // "scam!" into "scami", which no whole-word rule could match.
+            if (raw == '!' && !isBetweenWordCharacters(value, i)) {
+                c = raw;
+            }
             if (Character.isLetterOrDigit(c)) {
                 if (pendingSpace && builder.length() > 0) {
                     builder.append(' ');
@@ -307,8 +313,13 @@ public final class OfflineModerationEngine {
         StringBuilder builder = new StringBuilder(value.length());
         boolean pendingSpace = false;
         for (int i = 0; i < value.length(); i++) {
-            char c = Character.toLowerCase(value.charAt(i));
-            c = normalizeLeetspeak ? normalizeLeet(c) : c;
+            char raw = Character.toLowerCase(value.charAt(i));
+            char c = normalizeLeetspeak ? normalizeLeet(raw) : raw;
+            // Keep in step with normalizeWithMap: '!' is a leetspeak 'i' only
+            // between word characters, otherwise it is ordinary punctuation.
+            if (raw == '!' && !isBetweenWordCharacters(value, i)) {
+                c = raw;
+            }
             if (Character.isLetterOrDigit(c)) {
                 if (pendingSpace && builder.length() > 0) {
                     builder.append(' ');
@@ -320,6 +331,14 @@ public final class OfflineModerationEngine {
             }
         }
         return builder.toString();
+    }
+
+    private static boolean isBetweenWordCharacters(String value, int index) {
+        if (index <= 0 || index >= value.length() - 1) {
+            return false;
+        }
+        return Character.isLetterOrDigit(value.charAt(index - 1))
+                && Character.isLetterOrDigit(value.charAt(index + 1));
     }
 
     private static String normalizeWord(String value, boolean normalizeLeetspeak) {
