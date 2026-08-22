@@ -89,8 +89,13 @@ Aliases: `/neomod`, `/nmod`, `/neomoderation`.
 ## Compatibility
 
 Supports Bukkit, Spigot, Paper, and Purpur on Minecraft 1.18.2 through the
-1.21.x line. The release matrix verifies Paper 1.18.2, 1.19.4, 1.20.6, and
-1.21.11.
+current Paper calendar releases (26.1, 26.2). The release matrix verifies Paper
+1.18.2, 1.19.4, 1.20.6, 1.21.11, and 26.2.
+
+Paper marks the whole `1.x` line end-of-life as of 2026-06-15; 26.1 and 26.2 are
+the only versions it still supports. NeoModeration runs on both schemes because
+it compiles against the stable Bukkit API and reaches newer Paper APIs
+reflectively.
 
 ## Map-art scanning
 

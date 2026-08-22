@@ -42,4 +42,4 @@ Local rules never leave your server. With a cloud key, checked messages are sent
 
 ## Compatibility
 
-Supports Bukkit, Spigot, Paper, and Purpur on Minecraft 1.18.2 through the 1.21.x line. Verified on Paper 1.18.2, 1.19.4, 1.20.6, and 1.21.11.
+Supports Bukkit, Spigot, Paper, and Purpur on Minecraft 1.18.2 through the current Paper calendar releases (26.1, 26.2). Verified on Paper 1.18.2, 1.19.4, 1.20.6, 1.21.11, and 26.2 — including the supported 26.x line, not just the end-of-life 1.x line.

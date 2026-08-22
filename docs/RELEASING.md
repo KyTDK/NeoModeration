@@ -14,9 +14,15 @@ root and replace only values explicitly shown as variables or placeholders.
   Chrome on port 9223. Keep that browser profile private.
 - Treat a publisher's successful exit as evidence that its operation completed,
   not proof that the result is publicly visible. Complete the public audit.
-- Keep marketplace compatibility inside the verified Minecraft
-  1.18.2–1.21.x range. Do not advertise the Folia loader until the plugin uses
-  Folia schedulers and declares tested Folia support.
+- Keep marketplace compatibility inside the verified range: Minecraft 1.18.2
+  through the 1.21 line, plus the current Paper calendar releases (26.x).
+  `scripts/release-compatibility.mjs` is the single gate — it accepts `1.18.2`
+  to `1.21.x` and calendar majors from `MIN_CALENDAR_MAJOR` (26) upward.
+  **Do not narrow it back to `^1\.`**: Paper moved to calendar versioning and
+  marked every `1.x` release end-of-life on 2026-06-15, so a `^1\.`-only gate
+  silently hides the plugin from every search for a supported server.
+  Do not advertise the Folia loader until the plugin uses Folia schedulers and
+  declares tested Folia support.
 - A Modrinth upload is a draft. A maintainer must submit for review in the
   Modrinth UI; until the public API returns it, the project is unpublished.
 - `scripts/hangar-entercode.mjs` is account setup only. Do not run it as part

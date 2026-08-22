@@ -99,15 +99,19 @@ class ProductionHygieneTest {
                 assert.equal(isSupportedMinecraftVersion("1.21.11"), true);
                 assert.equal(isSupportedMinecraftVersion("1.18.1"), false);
                 assert.equal(isSupportedMinecraftVersion("1.22"), false);
+                assert.equal(isSupportedMinecraftVersion("26.1"), true);
+                assert.equal(isSupportedMinecraftVersion("26.1.2"), true);
+                assert.equal(isSupportedMinecraftVersion("26.2"), true);
+                assert.equal(isSupportedMinecraftVersion("25.1"), false);
                 assert.deepEqual(
-                  supportedMinecraftVersions(["1.18.1", "1.18.2", "1.21.11", "1.22"]),
-                  ["1.18.2", "1.21.11"]
+                  supportedMinecraftVersions(["1.18.1", "1.18.2", "1.21.11", "1.22", "26.2"]),
+                  ["1.18.2", "1.21.11", "26.2"]
                 );
                 assert.deepEqual(hangarPaperVersions([
                   { version: "1.18", subVersions: ["1.18.2", "1.18.1"] },
                   { version: "1.21", subVersions: ["1.21.11", "1.21"] },
                   { version: "26.1", subVersions: ["26.1.1"] }
-                ]), ["1.18.2", "1.21.11", "1.21"]);
+                ]), ["1.18.2", "1.21.11", "1.21", "26.1.1"]);
                 """);
         assertTrue(contract.exitCode() == 0,
                 () -> "Modrinth contract fixture failed:\n" + contract.output());
@@ -410,7 +414,8 @@ class ProductionHygieneTest {
                         && !modrinthBody.contains("detects swearing")
                         && !modrinthBody.contains("works the instant you install")
                         && modrinthBody.contains("safe setup examples")
-                        && modrinthBody.contains("1.18.2 through the 1.21.x")
+                        && modrinthBody.contains("1.18.2 through the current paper calendar releases")
+                        && modrinthBody.contains("26.2")
                         && !modrinthBody.contains("folia")
                         && modrinthPublisher.contains("monitor-first")
                         && !modrinthPublisher.contains("\"folia\"")

@@ -20,6 +20,8 @@ VERSIONS = [
     ("1.19.4", "ghcr.io/pterodactyl/yolks:java_17"),
     ("1.20.6", "ghcr.io/pterodactyl/yolks:java_21"),
     ("1.21.11", "ghcr.io/pterodactyl/yolks:java_21"),
+    # Paper 26.x is the only line PaperMC still marks SUPPORTED; it requires Java 25.
+    ("26.2", "ghcr.io/pterodactyl/yolks:java_25"),
 ]
 BASE_DIR = Path("/tmp/neomod-version-matrix")
 REPORT_PATH = BASE_DIR / "results.json"
