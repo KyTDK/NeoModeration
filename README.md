@@ -6,7 +6,7 @@ Chat **and map-art** moderation for Minecraft. Matches configurable word/link ru
 
 ## Setup
 
-1. Drop `NeoModeration-1.5.0.jar` into `plugins/` and restart.
+1. Drop `NeoModeration-1.5.1.jar` into `plugins/` and restart.
 2. Run `/nmod test badword`. It should show the bundled local rule as **FLAGGED** and the result as **monitor alert only**. This is a dry run, and a fresh install does not block or punish anyone.
 3. Optional: for context-aware cloud moderation, [sign up](https://neomechanical.com/signup?src=neomoderation), create an API key with `events:write` + `usage:read`, then save it:
 
