@@ -1,0 +1,112 @@
+# Evasion-resistance corpus for the offline engine.
+#
+# Format:  <EXPECT> <TAB> <message>
+#   FLAG = must be detected (an obfuscated form of a banned word)
+#   PASS = must NOT be detected (clean chat, or a Scunthorpe-style trap)
+#
+# Banned list used by the harness: badword, fuck, shit, bitch, ass, kys, nigger
+#
+# --- baseline: plain forms -------------------------------------------------
+FLAG	fuck
+FLAG	what the FUCK was that
+FLAG	you little bitch
+FLAG	shit
+FLAG	badword
+FLAG	kys
+#
+# --- partial separation (the most common evasion by far) -------------------
+FLAG	f uck
+FLAG	fu ck
+FLAG	fuc k
+FLAG	f u c k
+FLAG	sh it happens
+FLAG	bi tch
+FLAG	ni gger
+FLAG	bad word
+FLAG	b a d w o r d
+#
+# --- punctuation separation ------------------------------------------------
+FLAG	f.uck
+FLAG	f-u-c-k
+FLAG	f_u_c_k
+FLAG	s.h.i.t
+FLAG	b*i*t*c*h
+FLAG	f/u/c/k
+#
+# --- repeated characters ---------------------------------------------------
+FLAG	fuuuck
+FLAG	fuckkk
+FLAG	ffuck
+FLAG	shiiiit
+FLAG	biiitch
+FLAG	fuuuuuuck you
+#
+# --- diacritics ------------------------------------------------------------
+FLAG	fúck
+FLAG	fück
+FLAG	shït
+FLAG	bïtch
+FLAG	fůck
+#
+# --- fullwidth and mathematical alphanumerics ------------------------------
+FLAG	ｆｕｃｋ
+FLAG	𝐟𝐮𝐜𝐤
+FLAG	𝘴𝘩𝘪𝘵
+FLAG	𝙗𝙞𝙩𝙘𝙝
+#
+# --- homoglyphs (Cyrillic / Greek lookalikes) ------------------------------
+FLAG	fυck
+FLAG	fuсk
+FLAG	ѕhit
+FLAG	bitсh
+#
+# --- zero-width and format characters --------------------------------------
+FLAG	f​uck
+FLAG	sh‍it
+FLAG	b­itch
+#
+# --- leetspeak (already supported; guards against regression) --------------
+FLAG	f4ggot is not on the list but n1gger is
+FLAG	b4dw0rd
+FLAG	sh1t
+FLAG	b1tch
+#
+# --- combined -------------------------------------------------------------
+FLAG	ｆ　ú　ｃｋ
+FLAG	F U C K
+FLAG	f.ú.c.k
+FLAG	ffuuuu ck
+#
+# --- Scunthorpe traps: must stay clean -------------------------------------
+PASS	scunthorpe
+PASS	assignment deadline is tomorrow
+PASS	classic analysis of the build
+PASS	the bass drop in that song
+PASS	walking through tall grass
+PASS	passing the test
+PASS	the cockpit of the plane
+PASS	shiitake mushrooms are tasty
+PASS	assassin's creed is a good game
+PASS	i am in the class right now
+PASS	please pass me the compass
+PASS	mass production of glass
+PASS	basshunter played at the party
+PASS	this is a masterpiece
+PASS	assess the damage first
+#
+# --- ordinary Minecraft chat: must stay clean ------------------------------
+PASS	anyone got spare cobblestone
+PASS	meet me at 120 64 -340
+PASS	i need 3 stacks of iron for the farm
+PASS	the nether portal broke again
+PASS	gg wp everyone that was fun
+PASS	we are running 1.20.4 now
+PASS	x 128 y 64 z -1024
+PASS	trading diamonds for emeralds at spawn
+PASS	brb dinner back in 10
+PASS	who griefed the storage room
+PASS	lol that creeper got me again
+PASS	can someone craft me an elytra please
+PASS	the villager trading hall is done
+PASS	my base is at the ice spikes biome
+PASS	does anyone have a spare shulker box
