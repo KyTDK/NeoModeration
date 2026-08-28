@@ -21,6 +21,19 @@ Chat **and map-art** moderation for Minecraft. Matches configurable word/link ru
 /nmod mode enforce
 ```
 
+## Why add cloud moderation?
+
+Players do not always type abuse exactly as expected. In Neomechanical's
+published 10-string benchmark, replacing letters with digits, adding accents,
+or putting punctuation between letters caused a leading free moderation
+endpoint to flag 4/10 strings instead of 10/10. Neomechanical's additive
+normalisation restored 10/10 for each of those transforms and added no flags
+across eight ordinary clean chat lines.
+
+The sample is deliberately small and English-only. [Review the results, method,
+and limitations](https://neomechanical.com/r/neomoderation_github?to=obfuscation)
+before deciding whether cloud checks fit your server.
+
 ## Coverage
 
 Beyond chat, all running on local rules (no API key needed):
