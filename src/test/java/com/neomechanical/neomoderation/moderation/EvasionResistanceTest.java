@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * numbers that matter together — how many obfuscations are caught, and how many
  * innocent lines are wrongly caught — because either alone is easy to game.</p>
  *
- * <p>Baseline when this was written (1.5.0): <b>10 of 51</b> obfuscations
+ * <p>Reproduced 1.5.0 baseline: <b>18 of 51</b> obfuscations
  * detected, 0 false positives.</p>
  */
 class EvasionResistanceTest {
