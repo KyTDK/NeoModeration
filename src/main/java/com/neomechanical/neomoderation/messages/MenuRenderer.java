@@ -7,6 +7,8 @@ import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.ChatColor;
 
 import java.util.List;
+import java.util.regex.MatchResult;
+import java.util.regex.Pattern;
 
 /**
  * Builds clickable menu lines. Player form uses Bungee components (click to
@@ -33,8 +35,18 @@ public final class MenuRenderer {
     private MenuRenderer() {
     }
 
+    private static final Pattern HEX_SEQUENCE = Pattern.compile("&x((?:&[0-9a-fA-F]){6})");
+
+    /**
+     * Translates {@code &} color codes including {@code &x&R&R&G&G&B&B} hex
+     * sequences. Hex is handled here rather than by Bukkit because the compile
+     * API predates hex support — the runtime behavior is identical on modern
+     * servers, and this keeps unit tests honest.
+     */
     static String translate(String legacy) {
-        return ChatColor.translateAlternateColorCodes('&', legacy);
+        String hexed = HEX_SEQUENCE.matcher(legacy)
+                .replaceAll((MatchResult match) -> "§x" + match.group(1).replace("&", "§"));
+        return ChatColor.translateAlternateColorCodes('&', hexed);
     }
 
     /** Static line (header, divider, hint): same text both forms. */
