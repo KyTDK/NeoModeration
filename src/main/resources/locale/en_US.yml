@@ -15,6 +15,9 @@ help:
     admin: "&f&lAdmin"
   entry: " &b{usage} &8- &7{desc}"
   footer: "&8&m--------------------------------------"
+  dashboard: "&x&0&0&F&F&A&A&lNeoModeration &8v{version} &7● &f{mode} &8| &7Cloud: &f{cloud} &8| &7Detections: &b{total}"
+  page: "&8Page {page}/2 · &7try &b/nmod help {next}"
+  hint: "&8Click a command to run it · hover any entry for help"
   usage:
     setup: "/nmod setup <key>"
     status: "/nmod status"
@@ -43,7 +46,7 @@ help:
     url: "banned links"
     allow: "exceptions that always win"
     action: "punishments on detect"
-    test: "preview the bundled rule; never acts"
+    test: "safe preview, never acts"
     doctor: "diagnose your setup"
     cases: "detection history"
     usage: "cloud credits and limits"
