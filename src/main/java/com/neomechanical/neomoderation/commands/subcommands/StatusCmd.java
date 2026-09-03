@@ -44,7 +44,11 @@ public class StatusCmd implements SubCommand {
         ModerationSettings settings = plugin.settings();
         boolean hasKey = !settings.api().apiKey().isBlank();
         boolean monitor = settings.mode() == ModerationMode.MONITOR;
-        plugin.messages().send(sender, "status.title");
+        plugin.messages().send(sender, "help.dashboard", Map.of(
+                "version", plugin.getDescription().getVersion(),
+                "mode", monitor ? "MONITOR" : "ENFORCE",
+                "cloud", hasKey ? "CONFIGURED" : "OFF",
+                "total", String.valueOf(plugin.monitorStats().total())));
         plugin.messages().send(sender, "status.enabled", Map.of(
                 "value", settings.enabled() ? "ON" : "OFF"
         ));
