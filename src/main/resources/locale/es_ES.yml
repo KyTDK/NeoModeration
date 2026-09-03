@@ -16,7 +16,7 @@ help:
   footer: "&8&m--------------------------------------"
   dashboard: "&x&0&0&F&F&A&A&lNeoModeration &8v{version} &7● &f{mode} &8| &7Nube: &f{cloud} &8| &7Detecciones: &b{total}"
   page: "&8Página {page}/2 · &7prueba &b/nmod help {next}"
-  hint: "&8Haz clic en un comando para ejecutarlo · pasa el cursor para ayuda"
+  hint: "&8Haz clic en un comando para ejecutarlo · deja el puntero encima para ver ayuda"
   usage:
     setup: "/nmod setup <clave>"
     status: "/nmod status"

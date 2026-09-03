@@ -80,7 +80,7 @@
                                 <artifactItem>
                                     <groupId>net.md-5</groupId>
                                     <artifactId>bungeecord-chat</artifactId>
-                                    <version>1.8-SNAPSHOT</version>
+                                    <version>1.16-R0.4</version>
                                     <type>jar</type>
                                     <outputDirectory>${project.build.directory}/proguard-libs</outputDirectory>
                                     <destFileName>bungeecord-chat.jar</destFileName>
@@ -197,7 +197,7 @@
         <dependency>
             <groupId>net.md-5</groupId>
             <artifactId>bungeecord-chat</artifactId>
-            <version>1.8-SNAPSHOT</version>
+            <version>1.16-R0.4</version>
             <scope>provided</scope>
         </dependency>
         <dependency>

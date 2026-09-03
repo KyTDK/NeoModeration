@@ -24,7 +24,9 @@ class ProductionHygieneTest {
                 Path.of("pom.xml"),
                 Path.of("README.md"),
                 Path.of("src/main/resources/plugin.yml"),
-                Path.of("src/main/resources/config.yml")
+                Path.of("src/main/resources/config.yml"),
+                Path.of("src/main/resources/locale/en_US.yml"),
+                Path.of("src/main/resources/locale/es_ES.yml")
         );
         // Forbidden markers are constructed at runtime to avoid the markers themselves
         // appearing as literals in tracked content (which would trigger the public integrity gate).
