@@ -14,6 +14,9 @@ help:
     admin: "&f&lAdministración"
   entry: " &b{usage} &8- &7{desc}"
   footer: "&8&m--------------------------------------"
+  dashboard: "&x&0&0&F&F&A&A&lNeoModeration &8v{version} &7● &f{mode} &8| &7Nube: &f{cloud} &8| &7Detecciones: &b{total}"
+  page: "&8Página {page}/2 · &7prueba &b/nmod help {next}"
+  hint: "&8Haz clic en un comando para ejecutarlo · pasa el cursor para ayuda"
   usage:
     setup: "/nmod setup <clave>"
     status: "/nmod status"
@@ -42,7 +45,7 @@ help:
     url: "enlaces bloqueados"
     allow: "excepciones que siempre ganan"
     action: "castigos al detectar"
-    test: "probar la regla incluida; nunca actúa"
+    test: "vista previa segura; nunca actúa"
     doctor: "diagnosticar la configuración"
     cases: "historial de detecciones"
     usage: "créditos y límites de nube"
@@ -62,7 +65,6 @@ key:
   saved: "{prefix} &aClave API guardada. &7Ejecuta &e/nmod doctor &7para verificar autenticación y créditos y luego &e/nmod test hello&7."
   cleared: "{prefix} &eClave API eliminada. Solo reglas locales."
 status:
-  title: "&8&m----------&r &x&0&0&F&F&A&A&lEstado NeoModeration &8&m----------"
   enabled: "&7Estado: &f{value}"
   mode: "&7Modo: &f{value}"
   cloud: "&7Protección: &f{value}"
@@ -132,6 +134,11 @@ mode:
   stats-line: "&8  - &7{reason}: &b{count}"
   set-monitor: "{prefix} &eModo monitor activado. &7Las detecciones se registran y avisan, pero no se bloquea ni castiga. Usa &e/nmod mode enforce &7cuando estés listo."
   set-enforce: "{prefix} &aModo enforce activado. &7El contenido marcado se bloquea y se ejecutan las acciones."
+cloudmode:
+  usage: "{prefix} &cUso: &e/{label} cloudmode <monitor|enforce>"
+  current: "{prefix} &7Modo de nube: &f{value}"
+  set-monitor: "{prefix} &eModo monitor de nube activado. &7Las decisiones de la nube solo se avisan; tus reglas locales no cambian."
+  set-enforce: "{prefix} &aModo aplicar de nube activado. &7Las decisiones de la nube ahora bloquean y sancionan como las reglas locales."
 test:
   usage: "{prefix} &cUso: &e/{label} test <mensaje>&7. Primera prueba: &e/{label} test badword &7(previsualización segura; el modo monitor nunca bloquea)."
   title: "{prefix} &7Probando: &f{message}"

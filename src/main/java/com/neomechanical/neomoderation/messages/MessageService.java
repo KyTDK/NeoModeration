@@ -1,8 +1,10 @@
 package com.neomechanical.neomoderation.messages;
 
+import net.md_5.bungee.api.chat.BaseComponent;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
@@ -10,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -21,7 +24,7 @@ public final class MessageService {
                     Map.entry("error.no-api-key",
                             "{prefix} &cNo API key configured. Please run &e/nmod setup <apiKey>"),
                     Map.entry("help.usage.test", "/nmod test <msg>"),
-                    Map.entry("help.desc.test", "preview a decision"),
+                    Map.entry("help.desc.test", "preview the bundled rule; never acts"),
                     Map.entry("setup.done",
                             "{prefix} &a&lSuccess! &7Cloud moderation is now &aactive&7. Chat is being scanned."),
                     Map.entry("key.saved", "{prefix} &aAPI key saved successfully."),
@@ -37,7 +40,7 @@ public final class MessageService {
                     Map.entry("error.no-api-key",
                             "{prefix} &cNo hay clave API. Usa &e/nmod setup <apiKey>"),
                     Map.entry("help.usage.test", "/nmod test <msj>"),
-                    Map.entry("help.desc.test", "previsualizar una decisión"),
+                    Map.entry("help.desc.test", "probar la regla incluida; nunca actúa"),
                     Map.entry("setup.done",
                             "{prefix} &a&lListo! &7Moderación en la nube &aactiva&7."),
                     Map.entry("key.saved", "{prefix} &aClave API guardada."),
@@ -95,6 +98,49 @@ public final class MessageService {
         // and rebrandable from one place.
         message = message.replace("{prefix}", active.getString("prefix", fallback.getString("prefix", "")));
         return ChatColor.translateAlternateColorCodes('&', message);
+    }
+
+    /**
+     * Shared dashboard header line (version, mode, cloud state, detection
+     * count). Every command output opens with this so the plugin reads as one
+     * surface; all wording stays in the {@code help.dashboard} locale key.
+     */
+    public String dashboardLine(String version, String mode, String cloud, long total) {
+        return format("help.dashboard", Map.of(
+                "version", version,
+                "mode", mode,
+                "cloud", cloud,
+                "total", String.valueOf(total)));
+    }
+
+    /** Sends {@link #dashboardLine} as a plain-text line. */
+    public void sendDashboard(CommandSender sender, String version, String mode, String cloud, long total) {
+        sender.sendMessage(dashboardLine(version, mode, cloud, total));
+    }
+
+    /** Shared closing divider; every command output ends with this. */
+    public String footerLine() {
+        return format("help.footer", Map.of());
+    }
+
+    /** Sends {@link #footerLine} as a plain-text line. */
+    public void sendFooter(CommandSender sender) {
+        sender.sendMessage(footerLine());
+    }
+
+    /**
+     * Sends a pre-rendered menu page: component lines to players (clickable),
+     * legacy-text lines to console and other non-player senders.
+     */
+    public void sendMenu(CommandSender sender, List<MenuRenderer.Line> lines) {        if (sender instanceof Player player) {
+            for (MenuRenderer.Line line : lines) {
+                player.spigot().sendMessage(line.player());
+            }
+            return;
+        }
+        for (MenuRenderer.Line line : lines) {
+            sender.sendMessage(line.console());
+        }
     }
 
     /**

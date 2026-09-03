@@ -2,12 +2,12 @@
 
 Chat **and map-art** moderation for Minecraft. Matches configurable word/link rules and detects spam locally, then can block detections when you explicitly enable enforcement. The bundled `badword` and `scam` entries are safe setup examples, not a complete profanity list. Optional Neomechanical cloud checks add context-aware scanning, including NSFW detection on filled maps.
 
-**Safe to try:** new installations start in **monitor mode** — detections are logged and alerted to staff, but nothing is blocked or punished until you turn enforcement on. See exactly what data stays on your server with `/nmod privacy` ([privacy details](docs/PRIVACY.md)).
+**Safe to try:** new installations enforce the local word/URL lists immediately, while cloud judgements start in **monitor mode** — cloud detections are logged and alerted to staff, but nothing cloud-flagged is blocked until you run `/nmod cloudmode enforce`. See exactly what data stays on your server with `/nmod privacy` ([privacy details](docs/PRIVACY.md)).
 
 ## Setup
 
-1. Drop `NeoModeration-1.5.1.jar` into `plugins/` and restart.
-2. Run `/nmod test badword`. It should show the bundled local rule as **FLAGGED** and the result as **monitor alert only**. This is a dry run, and a fresh install does not block or punish anyone.
+1. Drop `NeoModeration-1.6.0.jar` into `plugins/` and restart.
+2. Run `/nmod test badword`. It should show the bundled local rule as **FLAGGED** and the result as **blocked**. This is a dry run: the preview itself never blocks or punishes anyone.
 3. Optional: for context-aware cloud moderation, [sign up](https://neomechanical.com/signup?src=neomoderation), create an API key with `events:write` + `usage:read`, then save it:
 
 ```text
@@ -141,7 +141,7 @@ moderation:
 - With a key, checked chat is sent to `https://api.neomechanical.com/v1/events` with `no_store` retention and training disabled. Details: [docs/PRIVACY.md](docs/PRIVACY.md).
 - Mute is built into NeoModeration (no Essentials required).
 - If the cloud is down, chat keeps working (fail-open) and local rules still run.
-- Servers upgrading from 1.2.x keep enforcing exactly as before; monitor mode is only the default for brand-new installs.
+- Servers upgrading from 1.2.x keep enforcing exactly as before; local rules now enforce by default on brand-new installs, while cloud judgements stay in monitor until `/nmod cloudmode enforce`.
 - Edit `plugins/NeoModeration/config.yml` for advanced options.
 
 ## Maintainers

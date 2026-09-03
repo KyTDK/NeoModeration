@@ -9,6 +9,11 @@
 # Language file to use from the /locale folder (en_US, es_ES, or your own).
 locale: "en_US"
 
+# Check GitHub once at startup for a newer NeoModeration and log one line if
+# there is one. Sends nothing about your server and never downloads anything.
+# Word-list moderation ages badly, so an old install quietly misses more.
+updateCheck: true
+
 moderation:
   # Master switch. When false, NeoModeration does nothing.
   enabled: true
@@ -17,9 +22,18 @@ moderation:
   #   monitor = detect, alert staff, and count what WOULD happen, but never
   #             block a message or punish a player. Great for evaluating.
   #   enforce = block flagged content and run the actions configured below.
-  # New installations start in monitor mode so you can trial NeoModeration
-  # safely. When you're happy with the decisions, run:  /nmod mode enforce
-  mode: "monitor"
+  #
+  # This is the mode for LOCAL rules: the word and URL lists below, and
+  # anti-spam. You wrote those lists, so a new install enforces them straight
+  # away and protects chat from the first minute. Switch back any time with
+  # /nmod mode monitor.
+  mode: "enforce"
+
+  # The same setting for CLOUD decisions, which are judgements made by a model
+  # rather than a list you wrote. A new install only ALERTS on these until you
+  # have watched it decide for a while, then run:  /nmod cloudmode enforce
+  # Remove this key entirely to make cloud decisions follow "mode" above.
+  cloudMode: "monitor"
 
   # ---- Local rules (no API key required, evaluate instantly) --------------
   offline:
@@ -28,10 +42,9 @@ moderation:
     blockAnyUrl: false
     # Treat "b4dw0rd" style spellings as their plain-text equivalent.
     normalizeLeetspeak: true
-    # A starter English policy so a new install detects real abuse immediately —
+    # A starter English policy so a new install blocks real abuse immediately —
     # you should still review and extend it for your server's own standards.
-    # New installs run in monitor mode (above), so these only log until you run
-    # /nmod mode enforce. Manage the list in-game with /nmod ban and /nmod allow.
+    # Manage the list in-game with /nmod ban and /nmod allow.
     # Matching is whole-word, so "assignment" and "Scunthorpe" stay clean;
     # inflections are listed explicitly rather than matched as prefixes.
     # "badword" is kept so the documented check /nmod test badword still works.

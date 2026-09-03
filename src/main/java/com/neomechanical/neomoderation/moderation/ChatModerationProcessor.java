@@ -78,7 +78,8 @@ public final class ChatModerationProcessor {
             return ChatDecision.allow();
         }
         return toDecision(
-                handler.handle(player, "chat", "platform", message, DetectionHandler.Disposition.BLOCK),
+                handler.handle(player, "chat", "platform", message, DetectionHandler.Disposition.BLOCK,
+                        DetectionHandler.Source.CLOUD),
                 null);
     }
 

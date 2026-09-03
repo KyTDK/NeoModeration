@@ -9,11 +9,15 @@ import java.util.List;
 /**
  * What the console says when the plugin comes up.
  *
- * A new install trials in monitor mode with no API key, so by design it blocks
- * nothing. Startup used to log a single "NeoModeration enabled.", which gives an
- * admin no way to tell that apart from a plugin that simply is not working --
- * and 22 Spigot downloads have so far produced one bStats server, so that is the
- * moment the install is won or lost.
+ * From 1.6.0 a new install enforces the local word, URL and spam rules straight
+ * away, and only monitors cloud decisions. Before that it monitored everything,
+ * so a fresh install blocked nothing at all and looked identical to a plugin
+ * that simply was not working -- 99 downloads had produced 4 retained servers.
+ *
+ * <p>Existing installs are never switched to enforce behind the operator's back:
+ * their config.yml keeps whatever it already said. Instead, when this build
+ * finds itself monitoring everything, it says so and names the one command that
+ * changes it.
  *
  * This states plainly what is running, what is not, and the one command that
  * changes it. Kept as a pure function of settings so it is testable without a
@@ -42,6 +46,12 @@ public final class StartupSummary {
                     + "or punished. Run /nmod mode enforce when you are happy with the decisions.");
         } else {
             lines.add("Mode: ENFORCE - flagged content is blocked and the configured actions run.");
+        }
+        if (!settings.api().apiKey().isBlank()) {
+            lines.add(settings.cloudMode() == ModerationMode.MONITOR
+                    ? "Cloud mode: MONITOR - cloud decisions are alerted only. "
+                            + "Run /nmod cloudmode enforce once you trust them."
+                    : "Cloud mode: ENFORCE - cloud decisions block and punish like local ones.");
         }
 
         lines.add("Active now: " + String.join(", ", activeProtections(settings)) + ".");

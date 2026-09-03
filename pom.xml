@@ -6,7 +6,7 @@
 
     <groupId>com.neomechanical</groupId>
     <artifactId>NeoModeration</artifactId>
-    <version>1.5.1</version>
+    <version>1.6.0</version>
     <packaging>jar</packaging>
 
     <name>NeoModeration</name>
@@ -77,6 +77,14 @@
                                     <outputDirectory>${project.build.directory}/proguard-libs</outputDirectory>
                                     <destFileName>spigot-api.jar</destFileName>
                                 </artifactItem>
+                                <artifactItem>
+                                    <groupId>net.md-5</groupId>
+                                    <artifactId>bungeecord-chat</artifactId>
+                                    <version>1.8-SNAPSHOT</version>
+                                    <type>jar</type>
+                                    <outputDirectory>${project.build.directory}/proguard-libs</outputDirectory>
+                                    <destFileName>bungeecord-chat.jar</destFileName>
+                                </artifactItem>
                             </artifactItems>
                             <skip>${proguard.skip}</skip>
                         </configuration>
@@ -135,6 +143,7 @@
                     <maxMemory>512m</maxMemory>
                     <libs>
                         <lib>${project.build.directory}/proguard-libs/spigot-api.jar</lib>
+                        <lib>${project.build.directory}/proguard-libs/bungeecord-chat.jar</lib>
                         <lib>${java.home}/jmods/java.base.jmod</lib>
                         <lib>${java.home}/jmods/java.logging.jmod</lib>
                         <lib>${java.home}/jmods/java.net.http.jmod</lib>
@@ -183,6 +192,13 @@
                     <artifactId>bungeecord-chat</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+        <!-- Provided by Spigot/Paper at runtime; used for clickable + hoverable menu entries. -->
+        <dependency>
+            <groupId>net.md-5</groupId>
+            <artifactId>bungeecord-chat</artifactId>
+            <version>1.8-SNAPSHOT</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.bstats</groupId>

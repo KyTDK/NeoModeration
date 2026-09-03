@@ -1,5 +1,6 @@
 package com.neomechanical.neomoderation.config;
 
+import com.neomechanical.neomoderation.config.BukkitConfigView;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
 
@@ -10,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class MapArtSettingsTest {
     @Test
     void appliesProductionSafeDefaults() {
-        MapArtSettings settings = MapArtSettings.from(new YamlConfiguration());
+        MapArtSettings settings = MapArtSettings.from(new BukkitConfigView(new YamlConfiguration()));
 
         assertTrue(settings.enabled());
         assertTrue(settings.scanOnHold());
@@ -27,7 +28,7 @@ class MapArtSettingsTest {
         config.set("moderation.mapArt.confiscate", false);
         config.set("moderation.mapArt.cacheSize", 250);
 
-        MapArtSettings settings = MapArtSettings.from(config);
+        MapArtSettings settings = MapArtSettings.from(new BukkitConfigView(config));
 
         assertFalse(settings.enabled());
         assertFalse(settings.scanOnHold());
@@ -40,6 +41,6 @@ class MapArtSettingsTest {
         YamlConfiguration config = new YamlConfiguration();
         config.set("moderation.mapArt.cacheSize", 1);
 
-        assertEquals(16, MapArtSettings.from(config).cacheSize());
+        assertEquals(16, MapArtSettings.from(new BukkitConfigView(config)).cacheSize());
     }
 }

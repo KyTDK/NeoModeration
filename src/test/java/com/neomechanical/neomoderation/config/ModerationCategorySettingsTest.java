@@ -1,5 +1,6 @@
 package com.neomechanical.neomoderation.config;
 
+import com.neomechanical.neomoderation.config.BukkitConfigView;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +14,7 @@ class ModerationCategorySettingsTest {
         YamlConfiguration config = new YamlConfiguration();
         config.set("moderation.categories.sexual", true);
         config.set("moderation.categories.hate", false);
-        ModerationCategorySettings settings = ModerationCategorySettings.from(config);
+        ModerationCategorySettings settings = ModerationCategorySettings.from(new BukkitConfigView(config));
 
         assertEquals(0.7D, settings.threshold("sexual"));
         assertTrue(settings.isEnabled("sexual"));
@@ -23,7 +24,7 @@ class ModerationCategorySettingsTest {
 
     @Test
     void missingCategoriesDefaultToEnabledAtDefaultThreshold() {
-        ModerationCategorySettings settings = ModerationCategorySettings.from(new YamlConfiguration());
+        ModerationCategorySettings settings = ModerationCategorySettings.from(new BukkitConfigView(new YamlConfiguration()));
 
         assertEquals(0.7D, settings.threshold("violence"));
         assertTrue(settings.isEnabled("violence"));
@@ -37,7 +38,7 @@ class ModerationCategorySettingsTest {
         config.set("moderation.categories.hate", "0.85");
         config.set("moderation.categories.spam", 5);
         config.set("moderation.categories.scam", -1);
-        ModerationCategorySettings settings = ModerationCategorySettings.from(config);
+        ModerationCategorySettings settings = ModerationCategorySettings.from(new BukkitConfigView(config));
 
         assertEquals(0.4D, settings.threshold("sexual"));
         assertTrue(settings.isEnabled("sexual"));

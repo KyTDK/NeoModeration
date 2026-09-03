@@ -135,6 +135,7 @@ class ChatModerationCoordinatorTest {
         return new ModerationSettings(
                 true,
                 ModerationMode.ENFORCE,
+                ModerationMode.ENFORCE,
                 new ModerationApiSettings(endpoint, "test-key", 100, 100),
                 new OfflineModerationSettings(true, false, true, List.of(), List.of(), List.of(), List.of()),
                 new ModerationCategorySettings(Map.of()),

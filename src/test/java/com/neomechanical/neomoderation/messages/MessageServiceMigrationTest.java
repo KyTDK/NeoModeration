@@ -56,15 +56,15 @@ class MessageServiceMigrationTest {
         YamlConfiguration onDisk = new YamlConfiguration();
         onDisk.set("setup.done",
                 "{prefix} &a&lListo! &7Moderación en la nube &aactiva&7.");
-        onDisk.set("help.desc.test", "previsualizar una decisión");
+        onDisk.set("help.desc.test", "probar la regla incluida; nunca actúa");
 
         YamlConfiguration bundled = new YamlConfiguration();
         bundled.set("setup.done", "Clave guardada; ejecuta /nmod doctor.");
-        bundled.set("help.desc.test", "probar la regla incluida; nunca actúa");
+        bundled.set("help.desc.test", "vista previa segura; nunca actúa");
 
         assertTrue(MessageService.mergeBundledLocale("es_ES", onDisk, bundled));
         assertEquals("Clave guardada; ejecuta /nmod doctor.", onDisk.getString("setup.done"));
-        assertEquals("probar la regla incluida; nunca actúa",
+        assertEquals("vista previa segura; nunca actúa",
                 onDisk.getString("help.desc.test"));
     }
 

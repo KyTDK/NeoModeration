@@ -6,6 +6,7 @@ authors:
   - NeoDevs
 prefix: NeoModeration
 api-version: 1.18
+folia-supported: true
 softdepend: [ LuckPerms ]
 commands:
   neomod:

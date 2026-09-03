@@ -58,11 +58,17 @@ public class TestCmd implements SubCommand {
         String message = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
         ModerationSettings settings = plugin.settings();
 
+        plugin.messages().sendDashboard(sender,
+                plugin.getDescription().getVersion(),
+                settings.mode().name(),
+                settings.cloudMode().name(),
+                plugin.monitorStats().total());
         plugin.messages().send(sender, "test.title", Map.of("message", message));
 
         if (!settings.enabled()) {
             plugin.messages().send(sender, "test.disabled");
             sendOutcome(sender, settings, false);
+            plugin.messages().sendFooter(sender);
             return;
         }
 
@@ -76,6 +82,7 @@ public class TestCmd implements SubCommand {
         if (!shouldCheckCloud(local.flagged())) {
             plugin.messages().send(sender, "test.cloud-skipped-local");
             sendOutcome(sender, settings, true);
+            plugin.messages().sendFooter(sender);
             return;
         }
 
@@ -84,11 +91,13 @@ public class TestCmd implements SubCommand {
                     "url", CloudRecovery.SIGNUP_URL
             ));
             sendOutcome(sender, settings, false);
+            plugin.messages().sendFooter(sender);
             return;
         }
         if (!plugin.coordinator().isRemoteCallAllowed()) {
             plugin.messages().send(sender, "test.cloud-skipped-circuit");
             sendOutcome(sender, settings, !settings.failOpen());
+            plugin.messages().sendFooter(sender);
             return;
         }
 
@@ -110,6 +119,7 @@ public class TestCmd implements SubCommand {
                 plugin.messages().send(sender, cloudMessageKey(result.kind()), placeholders);
                 sendOutcome(sender, settings, cloudDetected(result, settings.failOpen()));
                 plugin.messages().send(sender, "test.note");
+                plugin.messages().sendFooter(sender);
             });
         });
     }

@@ -111,6 +111,7 @@ class MapArtListenerTest {
         return new ModerationSettings(
                 true,
                 ModerationMode.MONITOR,
+                ModerationMode.MONITOR,
                 new ModerationApiSettings("https://api.neomechanical.com/v1/events", "test-key", 100, 100),
                 new OfflineModerationSettings(true, false, true, List.of(), List.of(), List.of(), List.of()),
                 new ModerationCategorySettings(Map.of()),

@@ -1,6 +1,6 @@
 package com.neomechanical.neomoderation.config;
 
-import org.bukkit.configuration.file.FileConfiguration;
+
 
 /**
  * Controls NSFW scanning of filled maps (map art). Scanning requires a cloud API key;
@@ -15,7 +15,7 @@ public record MapArtSettings(
 ) {
     private static final int DEFAULT_CACHE_SIZE = 1000;
 
-    public static MapArtSettings from(FileConfiguration config) {
+    public static MapArtSettings from(ConfigView config) {
         int cacheSize = config.getInt("moderation.mapArt.cacheSize", DEFAULT_CACHE_SIZE);
         return new MapArtSettings(
                 config.getBoolean("moderation.mapArt.enabled", true),

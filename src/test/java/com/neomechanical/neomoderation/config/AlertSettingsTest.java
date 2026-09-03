@@ -1,5 +1,6 @@
 package com.neomechanical.neomoderation.config;
 
+import com.neomechanical.neomoderation.config.BukkitConfigView;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
 
@@ -9,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AlertSettingsTest {
     @Test
     void alertsDefaultToEnabledWithMessagePreview() {
-        ModerationSettings settings = ModerationSettings.from(new YamlConfiguration());
+        ModerationSettings settings = ModerationSettings.from(new BukkitConfigView(new YamlConfiguration()));
 
         assertTrue(settings.alerts().enabled());
         assertTrue(settings.alerts().includeMessage());
@@ -20,7 +21,7 @@ class AlertSettingsTest {
         YamlConfiguration config = new YamlConfiguration();
         config.set("moderation.alerts.enabled", false);
         config.set("moderation.alerts.includeMessage", false);
-        ModerationSettings settings = ModerationSettings.from(config);
+        ModerationSettings settings = ModerationSettings.from(new BukkitConfigView(config));
 
         assertFalse(settings.alerts().enabled());
         assertFalse(settings.alerts().includeMessage());
