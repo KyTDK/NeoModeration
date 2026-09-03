@@ -60,7 +60,9 @@ public class HelpCmd implements SubCommand {
 
     @Override
     public void execute(CommandSender sender, String label, String[] args) {
-        int page = args.length > 0 && args[0].equals("2") ? 2 : 1;
+        // The dispatcher passes the full args array including the subcommand
+        // name ("/nmod help 2" arrives as {"help", "2"}), so scan every arg.
+        int page = java.util.Arrays.stream(args).anyMatch("2"::equals) ? 2 : 1;
         Map<String, List<String>> sections = page == 2 ? PAGE_TWO : PAGE_ONE;
         List<MenuRenderer.Line> lines = new ArrayList<>();
         lines.add(MenuRenderer.text(dashboard()));

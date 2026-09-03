@@ -94,6 +94,17 @@ class HelpCmdTest {
     }
 
     @Test
+    void pageTwoReachedThroughDispatcherArgConvention() {
+        // NeoModerationCommand passes the full args array including the
+        // subcommand name, so "/nmod help 2" arrives as {"help", "2"}.
+        Fixture f = fixture(Map.of("status", fake("status"), "key", fake("key")));
+        f.help().execute(f.sender(), "nmod", new String[]{"help", "2"});
+        List<String> console = consoleLines(f);
+        assertTrue(console.stream().anyMatch(l -> l.contains("/nmod key")));
+        assertFalse(console.stream().anyMatch(l -> l.contains("/nmod status")));
+    }
+
+    @Test
     void commandsWithoutPermissionAreHidden() {
         Fixture f = fixture(Map.of("status", fake("status")));
         when(f.sender().hasPermission(anyString())).thenReturn(false);
