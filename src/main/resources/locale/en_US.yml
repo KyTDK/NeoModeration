@@ -66,7 +66,6 @@ key:
   saved: "{prefix} &aAPI key saved. &7Run &e/nmod doctor &7to verify authentication and credits, then &e/nmod test hello&7."
   cleared: "{prefix} &eAPI key removed. Only local rules will apply."
 status:
-  title: "&8&m----------&r &x&0&0&F&F&A&A&lNeoModeration Status &8&m----------"
   enabled: "&7Status: &f{value}"
   mode: "&7Mode: &f{value}"
   cloud: "&7Protection: &f{value}"

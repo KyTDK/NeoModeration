@@ -117,6 +117,12 @@ class CloudHealthIsolationTest {
         }
         when(plugin.messages()).thenReturn(messages);
         when(plugin.caseLog()).thenReturn(mock(CaseLog.class));
+        org.bukkit.plugin.PluginDescriptionFile desc = mock(org.bukkit.plugin.PluginDescriptionFile.class);
+        when(desc.getVersion()).thenReturn("1.5.1");
+        when(plugin.getDescription()).thenReturn(desc);
+        com.neomechanical.neomoderation.moderation.MonitorStats stats =
+                mock(com.neomechanical.neomoderation.moderation.MonitorStats.class);
+        when(plugin.monitorStats()).thenReturn(stats);
         doAnswer(invocation -> {
             invocation.<Runnable>getArgument(0).run();
             return null;

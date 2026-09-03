@@ -96,17 +96,15 @@ public class HelpCmd implements SubCommand {
     }
 
     private String dashboard() {
-        String mode = plugin.settings().mode().name();
-        String cloud = plugin.settings().cloudMode().name();
-        return plugin.messages().format("help.dashboard", Map.of(
-                "version", plugin.getDescription().getVersion(),
-                "mode", mode,
-                "cloud", cloud,
-                "total", String.valueOf(plugin.monitorStats().total())));
+        return plugin.messages().dashboardLine(
+                plugin.getDescription().getVersion(),
+                plugin.settings().mode().name(),
+                plugin.settings().cloudMode().name(),
+                plugin.monitorStats().total());
     }
 
     private String divider() {
-        return plugin.messages().format("help.footer", Map.of());
+        return plugin.messages().footerLine();
     }
 
     private String sectionTitle(String key) {

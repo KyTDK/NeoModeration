@@ -101,11 +101,38 @@ public final class MessageService {
     }
 
     /**
+     * Shared dashboard header line (version, mode, cloud state, detection
+     * count). Every command output opens with this so the plugin reads as one
+     * surface; all wording stays in the {@code help.dashboard} locale key.
+     */
+    public String dashboardLine(String version, String mode, String cloud, long total) {
+        return format("help.dashboard", Map.of(
+                "version", version,
+                "mode", mode,
+                "cloud", cloud,
+                "total", String.valueOf(total)));
+    }
+
+    /** Sends {@link #dashboardLine} as a plain-text line. */
+    public void sendDashboard(CommandSender sender, String version, String mode, String cloud, long total) {
+        sender.sendMessage(dashboardLine(version, mode, cloud, total));
+    }
+
+    /** Shared closing divider; every command output ends with this. */
+    public String footerLine() {
+        return format("help.footer", Map.of());
+    }
+
+    /** Sends {@link #footerLine} as a plain-text line. */
+    public void sendFooter(CommandSender sender) {
+        sender.sendMessage(footerLine());
+    }
+
+    /**
      * Sends a pre-rendered menu page: component lines to players (clickable),
      * legacy-text lines to console and other non-player senders.
      */
-    public void sendMenu(CommandSender sender, List<MenuRenderer.Line> lines) {
-        if (sender instanceof Player player) {
+    public void sendMenu(CommandSender sender, List<MenuRenderer.Line> lines) {        if (sender instanceof Player player) {
             for (MenuRenderer.Line line : lines) {
                 player.spigot().sendMessage(line.player());
             }

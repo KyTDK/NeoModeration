@@ -17,6 +17,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -59,6 +60,9 @@ class HelpCmdTest {
             java.util.Map<?, ?> args = inv.getArgument(1);
             return args.isEmpty() ? inv.getArgument(0) : inv.getArgument(0) + args.toString();
         });
+        when(messages.dashboardLine(anyString(), anyString(), anyString(), anyLong()))
+                .thenReturn("dashboard");
+        when(messages.footerLine()).thenReturn("footer");
         CommandSender sender = mock(CommandSender.class);
         when(sender.hasPermission(anyString())).thenReturn(true);
         return new Fixture(plugin, messages, sender, new HelpCmd(plugin, commands));

@@ -65,7 +65,6 @@ key:
   saved: "{prefix} &aClave API guardada. &7Ejecuta &e/nmod doctor &7para verificar autenticación y créditos y luego &e/nmod test hello&7."
   cleared: "{prefix} &eClave API eliminada. Solo reglas locales."
 status:
-  title: "&8&m----------&r &x&0&0&F&F&A&A&lEstado NeoModeration &8&m----------"
   enabled: "&7Estado: &f{value}"
   mode: "&7Modo: &f{value}"
   cloud: "&7Protección: &f{value}"

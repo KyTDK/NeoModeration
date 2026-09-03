@@ -52,6 +52,11 @@ public class DoctorCmd implements SubCommand {
     @Override
     public void execute(CommandSender sender, String label, String[] args) {
         ModerationSettings settings = plugin.settings();
+        plugin.messages().sendDashboard(sender,
+                plugin.getDescription().getVersion(),
+                settings.mode().name(),
+                settings.cloudMode().name(),
+                plugin.monitorStats().total());
         plugin.messages().send(sender, "doctor.title");
 
         if (settings.enabled()) {
@@ -116,11 +121,13 @@ public class DoctorCmd implements SubCommand {
         if (settings.api().apiKey().isBlank()) {
             warn(sender, "Cloud", "no API key - local rules only. Sign up at "
                     + CloudRecovery.SIGNUP_URL + ", create a key, then run /nmod setup <key>");
+            plugin.messages().sendFooter(sender);
             return;
         }
 
         if (!isHttpUri(settings.api().endpoint())) {
             fail(sender, "Endpoint", "not a valid http(s) URL: " + settings.api().endpoint());
+            plugin.messages().sendFooter(sender);
             return;
         }
         pass(sender, "Endpoint", settings.api().endpoint());
@@ -149,11 +156,14 @@ public class DoctorCmd implements SubCommand {
                         fail(sender, "Account credits", "0 remaining - add credits at "
                                 + CloudRecovery.BILLING_URL + ", then run /nmod test hello");
                     }
+                    plugin.messages().sendFooter(sender);
                 });
             } catch (NeoMechanicalUsageClient.UsageException e) {
                 long ms = (System.nanoTime() - start) / 1_000_000L;
-                plugin.runSync(() -> fail(sender, failureCheck(e.kind()),
-                        failureDetail(e, ms)));
+                plugin.runSync(() -> {
+                    fail(sender, failureCheck(e.kind()), failureDetail(e, ms));
+                    plugin.messages().sendFooter(sender);
+                });
             }
         });
     }
