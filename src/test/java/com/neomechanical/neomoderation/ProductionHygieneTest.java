@@ -59,6 +59,16 @@ class ProductionHygieneTest {
         assertTrue(violations.isEmpty(), () -> "Production exception hygiene violations:\n" + String.join("\n", violations));
     }
 
+    @Test
+    void proguardConfigKeepsBukkitEventHandlers() throws IOException {
+        // Bukkit discovers @EventHandler methods reflectively: without an explicit
+        // keep rule ProGuard strips them as unused and listeners go silently dead
+        // (registered without errors, zero detections). Surfaces died this way.
+        String conf = Files.readString(Path.of("proguard.conf"));
+        assertTrue(conf.contains("org.bukkit.event.Listener") && conf.contains("EventHandler"),
+                "proguard.conf must keep @EventHandler methods in Bukkit Listeners");
+    }
+
     private static Stream<String> scan(Path path) {
         try {
             List<String> lines = Files.readAllLines(path);
