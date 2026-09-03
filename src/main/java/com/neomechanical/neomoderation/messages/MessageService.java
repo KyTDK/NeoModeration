@@ -1,8 +1,10 @@
 package com.neomechanical.neomoderation.messages;
 
+import net.md_5.bungee.api.chat.BaseComponent;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
@@ -10,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -95,6 +98,22 @@ public final class MessageService {
         // and rebrandable from one place.
         message = message.replace("{prefix}", active.getString("prefix", fallback.getString("prefix", "")));
         return ChatColor.translateAlternateColorCodes('&', message);
+    }
+
+    /**
+     * Sends a pre-rendered menu page: component lines to players (clickable),
+     * legacy-text lines to console and other non-player senders.
+     */
+    public void sendMenu(CommandSender sender, List<MenuRenderer.Line> lines) {
+        if (sender instanceof Player player) {
+            for (MenuRenderer.Line line : lines) {
+                player.spigot().sendMessage(line.player());
+            }
+            return;
+        }
+        for (MenuRenderer.Line line : lines) {
+            sender.sendMessage(line.console());
+        }
     }
 
     /**
