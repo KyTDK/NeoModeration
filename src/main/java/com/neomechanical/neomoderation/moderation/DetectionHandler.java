@@ -23,6 +23,17 @@ public final class DetectionHandler {
         BLOCK
     }
 
+    /**
+     * Which engine decided. Local rules are deterministic and admin-authored;
+     * cloud decisions are model judgements. They are allowed to run at different
+     * enforcement levels, so a fresh install can block what the admin configured
+     * while still only alerting on what the model believes.
+     */
+    public enum Source {
+        LOCAL,
+        CLOUD
+    }
+
     private final NeoModerationPlugin plugin;
     private final ChatModerationActionExecutor actionExecutor;
     private final MonitorStats monitorStats;
@@ -45,10 +56,17 @@ public final class DetectionHandler {
 
     /** Safe from any thread. Returns the disposition the caller must apply. */
     public Disposition handle(Player player, String surface, String reason, String message, Disposition requested) {
+        return handle(player, surface, reason, message, requested, Source.LOCAL);
+    }
+
+    /** Safe from any thread. Returns the disposition the caller must apply. */
+    public Disposition handle(Player player, String surface, String reason, String message,
+                              Disposition requested, Source source) {
         ModerationSettings settings = plugin.settings();
         monitorStats.record(reason);
 
-        boolean alertOnly = settings.mode() == ModerationMode.MONITOR || requested == Disposition.ALLOW;
+        ModerationMode effectiveMode = source == Source.CLOUD ? settings.cloudMode() : settings.mode();
+        boolean alertOnly = effectiveMode == ModerationMode.MONITOR || requested == Disposition.ALLOW;
         int strikeCount = 0;
         Optional<ModerationAction> escalation = Optional.empty();
         if (!alertOnly) {
@@ -61,7 +79,7 @@ public final class DetectionHandler {
         String actionsText = actionsText(settings, effective, strikeCount, escalation);
 
         Optional<ModerationAction> escalationAction = escalation;
-        plugin.runSync(() -> {
+        plugin.runForEntity(player, () -> {
             if (effective == Disposition.BLOCK) {
                 actionExecutor.execute(player, settings.actions());
             }

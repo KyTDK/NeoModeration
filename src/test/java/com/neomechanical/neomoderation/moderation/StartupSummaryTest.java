@@ -1,5 +1,6 @@
 package com.neomechanical.neomoderation.moderation;
 
+import com.neomechanical.neomoderation.config.BukkitConfigView;
 import com.neomechanical.neomoderation.config.ModerationSettings;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
@@ -26,7 +27,7 @@ class StartupSummaryTest {
         // unlike `mode`, which deliberately parses as enforce for upgrade safety.
         config.set("moderation.enabled", true);
         config.set("moderation.mode", "monitor");
-        return ModerationSettings.from(config);
+        return ModerationSettings.from(new BukkitConfigView(config));
     }
 
     @Test
@@ -49,7 +50,7 @@ class StartupSummaryTest {
         YamlConfiguration config = new YamlConfiguration();
         config.set("moderation.enabled", true);
         config.set("moderation.mode", "enforce");
-        List<String> lines = StartupSummary.lines(ModerationSettings.from(config), VERSION);
+        List<String> lines = StartupSummary.lines(ModerationSettings.from(new BukkitConfigView(config)), VERSION);
 
         assertTrue(joined(lines).contains("ENFORCE"));
         assertFalse(joined(lines).contains("/nmod mode enforce"));
@@ -81,7 +82,7 @@ class StartupSummaryTest {
         config.set("moderation.enabled", true);
         config.set("moderation.mode", "monitor");
         config.set("moderation.api.apiKey", "nm_live_example");
-        List<String> lines = StartupSummary.lines(ModerationSettings.from(config), VERSION);
+        List<String> lines = StartupSummary.lines(ModerationSettings.from(new BukkitConfigView(config)), VERSION);
 
         assertFalse(joined(lines).contains("/nmod setup"), joined(lines));
     }
@@ -90,7 +91,7 @@ class StartupSummaryTest {
     void reportsWhenModerationIsSwitchedOffEntirely() {
         YamlConfiguration config = new YamlConfiguration();
         config.set("moderation.enabled", false);
-        List<String> lines = StartupSummary.lines(ModerationSettings.from(config), VERSION);
+        List<String> lines = StartupSummary.lines(ModerationSettings.from(new BukkitConfigView(config)), VERSION);
 
         assertTrue(joined(lines).toLowerCase().contains("disabled"), joined(lines));
     }

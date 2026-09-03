@@ -132,6 +132,11 @@ mode:
   stats-line: "&8  - &7{reason}: &b{count}"
   set-monitor: "{prefix} &eModo monitor activado. &7Las detecciones se registran y avisan, pero no se bloquea ni castiga. Usa &e/nmod mode enforce &7cuando estés listo."
   set-enforce: "{prefix} &aModo enforce activado. &7El contenido marcado se bloquea y se ejecutan las acciones."
+cloudmode:
+  usage: "{prefix} &cUso: &e/{label} cloudmode <monitor|enforce>"
+  current: "{prefix} &7Modo de nube: &f{value}"
+  set-monitor: "{prefix} &eModo monitor de nube activado. &7Las decisiones de la nube solo se avisan; tus reglas locales no cambian."
+  set-enforce: "{prefix} &aModo aplicar de nube activado. &7Las decisiones de la nube ahora bloquean y sancionan como las reglas locales."
 test:
   usage: "{prefix} &cUso: &e/{label} test <mensaje>&7. Primera prueba: &e/{label} test badword &7(previsualización segura; el modo monitor nunca bloquea)."
   title: "{prefix} &7Probando: &f{message}"

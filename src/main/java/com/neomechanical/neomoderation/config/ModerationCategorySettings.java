@@ -1,6 +1,6 @@
 package com.neomechanical.neomoderation.config;
 
-import org.bukkit.configuration.file.FileConfiguration;
+
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -27,7 +27,7 @@ public record ModerationCategorySettings(Map<String, Double> thresholds) {
             "selfHarm"
     };
 
-    public static ModerationCategorySettings from(FileConfiguration config) {
+    public static ModerationCategorySettings from(ConfigView config) {
         Map<String, Double> thresholds = new LinkedHashMap<>();
         for (String key : CATEGORY_KEYS) {
             thresholds.put(key, parseThreshold(config.get("moderation.categories." + key)));

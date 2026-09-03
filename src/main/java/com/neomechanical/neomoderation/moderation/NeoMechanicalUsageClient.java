@@ -25,6 +25,7 @@ public final class NeoMechanicalUsageClient {
             request = HttpRequest.newBuilder(URI.create(usageUrl(apiSettings.endpoint())))
                     .timeout(Duration.ofSeconds(10))
                     .header("Accept", "application/json")
+                    .header("User-Agent", ClientIdentity.userAgent())
                     .header("Authorization", "Bearer " + apiSettings.apiKey())
                     .GET()
                     .build();

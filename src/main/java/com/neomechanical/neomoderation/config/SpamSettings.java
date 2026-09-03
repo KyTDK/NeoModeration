@@ -1,6 +1,6 @@
 package com.neomechanical.neomoderation.config;
 
-import org.bukkit.configuration.file.FileConfiguration;
+
 
 /**
  * Local anti-spam thresholds. A value of 0 (or below) disables that individual
@@ -16,7 +16,7 @@ public record SpamSettings(
         int maxCharRun,
         int commandsPer10s
 ) {
-    public static SpamSettings from(FileConfiguration config) {
+    public static SpamSettings from(ConfigView config) {
         return new SpamSettings(
                 config.getBoolean("moderation.spam.enabled", true),
                 config.getInt("moderation.spam.messagesPer10s", 5),

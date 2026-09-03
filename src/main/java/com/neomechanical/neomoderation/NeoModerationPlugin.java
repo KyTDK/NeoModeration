@@ -1,6 +1,7 @@
 package com.neomechanical.neomoderation;
 
 import com.neomechanical.neomoderation.commands.NeoModerationCommand;
+import com.neomechanical.neomoderation.config.BukkitConfigView;
 import com.neomechanical.neomoderation.config.ModerationSettings;
 import com.neomechanical.neomoderation.listener.ChatModerationListener;
 import com.neomechanical.neomoderation.listener.MapArtListener;
@@ -19,13 +20,21 @@ import com.neomechanical.neomoderation.moderation.PlayerMuteService;
 import com.neomechanical.neomoderation.moderation.SpamDetector;
 import com.neomechanical.neomoderation.moderation.StartupSummary;
 import com.neomechanical.neomoderation.moderation.StrikeService;
+import com.neomechanical.neomoderation.platform.PlatformScheduler;
 import org.bstats.bukkit.Metrics;
 import org.bstats.charts.SimplePie;
+import com.neomechanical.neomoderation.moderation.ClientIdentity;
+import com.neomechanical.neomoderation.moderation.ModerationApiResult;
+import com.neomechanical.neomoderation.moderation.UpdateChecker;
+import com.neomechanical.neomoderation.platform.InstallTelemetry;
 import org.bukkit.command.PluginCommand;
+import org.bukkit.entity.Entity;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class NeoModerationPlugin extends JavaPlugin {
     private static final int BSTATS_PLUGIN_ID = 32542;
+    /** Size of the word list shipped in config.yml, used to tell default from customised. */
+    private static final int BUNDLED_WORD_COUNT = 38;
 
     private ChatModerationCoordinator coordinator;
     private ModerationSettings settings;
@@ -37,10 +46,12 @@ public final class NeoModerationPlugin extends JavaPlugin {
     private StrikeService strikeService;
     private CaseLog caseLog;
     private DetectionHandler detectionHandler;
+    private PlatformScheduler scheduler;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        scheduler = new PlatformScheduler(this);
         reloadModerationConfig();
         muteService = new PlayerMuteService(this);
         coordinator = new ChatModerationCoordinator(getLogger());
@@ -81,7 +92,9 @@ public final class NeoModerationPlugin extends JavaPlugin {
             command.setExecutor(executor);
             command.setTabCompleter(executor);
         }
+        ClientIdentity.configure(getDescription().getVersion(), scheduler.platformName());
         registerMetrics();
+        checkForUpdates();
         // A fresh install trials in monitor mode with no API key, so it blocks
         // nothing by design. Saying so is the difference between "working as
         // intended" and "this plugin does nothing", which is the judgement an
@@ -89,14 +102,70 @@ public final class NeoModerationPlugin extends JavaPlugin {
         StartupSummary.lines(settings, getDescription().getVersion()).forEach(getLogger()::info);
     }
 
+    /**
+     * Registers every custom chart. Each id here must also exist on bstats.org
+     * or its data is silently discarded on arrival -- which is exactly what
+     * happened to the original three charts, leaving no way to tell an armed
+     * install from an inert one.
+     */
     private void registerMetrics() {
         Metrics metrics = new Metrics(this, BSTATS_PLUGIN_ID);
+
+        // Retained from earlier versions so their history stays continuous.
         metrics.addCustomChart(new SimplePie("moderation_mode",
                 () -> settings.mode().name().toLowerCase(java.util.Locale.ROOT)));
         metrics.addCustomChart(new SimplePie("cloud_enabled",
                 () -> settings.api().apiKey().isBlank() ? "local_only" : "local_and_cloud"));
         metrics.addCustomChart(new SimplePie("chat_censor",
-                () -> settings.chatCensorLocal() ? "censor" : "block"));
+                () -> InstallTelemetry.censorState(settings)));
+
+        // Is this install actually protecting anything?
+        metrics.addCustomChart(new SimplePie("protection_state",
+                () -> InstallTelemetry.protectionState(settings)));
+        metrics.addCustomChart(new SimplePie("has_ever_detected",
+                () -> InstallTelemetry.hasEverDetected(monitorStats.total())));
+        metrics.addCustomChart(new SimplePie("detections_bucket",
+                () -> InstallTelemetry.detectionsBucket(monitorStats.total())));
+
+        // Is the cloud unconfigured, or configured and failing?
+        metrics.addCustomChart(new SimplePie("cloud_state", () -> {
+            ModerationApiResult.Kind kind = coordinator.lastCloudResultKind();
+            return InstallTelemetry.cloudState(
+                    settings,
+                    !coordinator.isRemoteCallAllowed(),
+                    kind == null ? null : kind.name());
+        }));
+
+        // What did the operator actually configure?
+        metrics.addCustomChart(new SimplePie("word_list_state",
+                () -> InstallTelemetry.wordListState(settings, BUNDLED_WORD_COUNT)));
+        metrics.addCustomChart(new SimplePie("surfaces_armed",
+                () -> InstallTelemetry.surfacesArmed(settings.surfaces())));
+        metrics.addCustomChart(new SimplePie("spam_state",
+                () -> InstallTelemetry.spamState(settings)));
+        metrics.addCustomChart(new SimplePie("strike_state",
+                () -> InstallTelemetry.strikeState(settings)));
+        metrics.addCustomChart(new SimplePie("map_art_state",
+                () -> InstallTelemetry.mapArtState(settings)));
+        metrics.addCustomChart(new SimplePie("locale_state",
+                () -> InstallTelemetry.localeState(getConfig().getString("locale", "en_US"))));
+
+        // Did Folia and proxy support reach anyone?
+        metrics.addCustomChart(new SimplePie("platform_family",
+                () -> InstallTelemetry.platformFamily(getServer().getName(), scheduler.isFolia())));
+    }
+
+    /**
+     * Checks for a newer release once, off the server thread, and says so once.
+     * Never nags and never downloads anything.
+     */
+    private void checkForUpdates() {
+        if (!getConfig().getBoolean("updateCheck", true)) {
+            return;
+        }
+        String current = getDescription().getVersion();
+        runAsync(() -> UpdateChecker.findNewerVersion(current, ClientIdentity.userAgent())
+                .ifPresent(latest -> UpdateChecker.updateLines(latest, current).forEach(getLogger()::warning)));
     }
 
     @Override
@@ -111,7 +180,7 @@ public final class NeoModerationPlugin extends JavaPlugin {
 
     public void reloadModerationConfig() {
         reloadConfig();
-        settings = ModerationSettings.from(getConfig(), getLogger());
+        settings = ModerationSettings.from(new BukkitConfigView(getConfig()), getLogger());
         messages = MessageService.load(this, getConfig().getString("locale", "en_US"));
         if (coordinator != null) {
             coordinator.resetCircuit();
@@ -125,11 +194,23 @@ public final class NeoModerationPlugin extends JavaPlugin {
     }
 
     public void runAsync(Runnable task) {
-        getServer().getScheduler().runTaskAsynchronously(this, task);
+        scheduler.runAsync(task);
     }
 
     public void runSync(Runnable task) {
-        getServer().getScheduler().runTask(this, task);
+        scheduler.runGlobal(task);
+    }
+
+    /**
+     * Run work that touches one entity. On Folia this must be the entity's own
+     * scheduler, so every punishment and player message goes through here.
+     */
+    public void runForEntity(Entity entity, Runnable task) {
+        scheduler.runForEntity(entity, task);
+    }
+
+    public PlatformScheduler scheduler() {
+        return scheduler;
     }
 
     public ModerationSettings settings() {

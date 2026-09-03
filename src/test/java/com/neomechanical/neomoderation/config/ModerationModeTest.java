@@ -1,5 +1,6 @@
 package com.neomechanical.neomoderation.config;
 
+import com.neomechanical.neomoderation.config.BukkitConfigView;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
 
@@ -20,13 +21,13 @@ class ModerationModeTest {
     @Test
     void missingModeKeyKeepsExistingServersEnforcing() {
         YamlConfiguration config = new YamlConfiguration();
-        assertEquals(ModerationMode.ENFORCE, ModerationSettings.from(config).mode());
+        assertEquals(ModerationMode.ENFORCE, ModerationSettings.from(new BukkitConfigView(config)).mode());
     }
 
     @Test
     void monitorModeIsReadFromConfig() {
         YamlConfiguration config = new YamlConfiguration();
         config.set("moderation.mode", "monitor");
-        assertEquals(ModerationMode.MONITOR, ModerationSettings.from(config).mode());
+        assertEquals(ModerationMode.MONITOR, ModerationSettings.from(new BukkitConfigView(config)).mode());
     }
 }

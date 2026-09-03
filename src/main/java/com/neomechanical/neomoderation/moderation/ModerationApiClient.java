@@ -52,6 +52,7 @@ public final class ModerationApiClient {
             request = HttpRequest.newBuilder(URI.create(apiSettings.endpoint()))
                     .timeout(Duration.ofMillis(totalMs))
                     .header("Content-Type", "application/json")
+                    .header("User-Agent", ClientIdentity.userAgent())
                     .header("Authorization", "Bearer " + apiSettings.apiKey())
                     .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
                     .build();

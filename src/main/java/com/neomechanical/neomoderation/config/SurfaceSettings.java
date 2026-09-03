@@ -1,6 +1,6 @@
 package com.neomechanical.neomoderation.config;
 
-import org.bukkit.configuration.file.FileConfiguration;
+
 
 import java.util.List;
 import java.util.Locale;
@@ -37,7 +37,7 @@ public record SurfaceSettings(
         }
     }
 
-    public static SurfaceSettings from(FileConfiguration config) {
+    public static SurfaceSettings from(ConfigView config) {
         List<String> commands = config.getStringList("moderation.surfaces.scannedCommands").stream()
                 .map(value -> value == null ? "" : value.trim().toLowerCase(Locale.ROOT))
                 .map(value -> value.startsWith("/") ? value.substring(1) : value)

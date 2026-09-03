@@ -1,5 +1,6 @@
 package com.neomechanical.neomoderation.moderation;
 
+import com.neomechanical.neomoderation.config.BukkitConfigView;
 import com.neomechanical.neomoderation.config.ModerationCategorySettings;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,6 @@ class ChatModerationResponseParserTest {
         config.set("moderation.categories.spam", false);
         config.set("moderation.categories.illicit", false);
         config.set("moderation.categories.selfHarm", false);
-        return ChatModerationResponseParser.matchesPositiveSignal(body, ModerationCategorySettings.from(config));
+        return ChatModerationResponseParser.matchesPositiveSignal(body, ModerationCategorySettings.from(new BukkitConfigView(config)));
     }
 }

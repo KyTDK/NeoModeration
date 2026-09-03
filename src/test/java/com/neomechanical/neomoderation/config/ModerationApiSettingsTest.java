@@ -1,5 +1,6 @@
 package com.neomechanical.neomoderation.config;
 
+import com.neomechanical.neomoderation.config.BukkitConfigView;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
 
@@ -11,7 +12,7 @@ class ModerationApiSettingsTest {
         YamlConfiguration config = new YamlConfiguration();
         config.set("moderation.api.endpoint", "https://api.neomechanical.com/v1/moderation/chat");
 
-        ModerationApiSettings settings = ModerationApiSettings.from(config);
+        ModerationApiSettings settings = ModerationApiSettings.from(new BukkitConfigView(config));
 
         assertEquals("https://api.neomechanical.com/v1/events", settings.endpoint());
     }
@@ -21,7 +22,7 @@ class ModerationApiSettingsTest {
         YamlConfiguration config = new YamlConfiguration();
         config.set("moderation.api.endpoint", "https://moderation.example.test/v1/events");
 
-        ModerationApiSettings settings = ModerationApiSettings.from(config);
+        ModerationApiSettings settings = ModerationApiSettings.from(new BukkitConfigView(config));
 
         assertEquals("https://moderation.example.test/v1/events", settings.endpoint());
     }

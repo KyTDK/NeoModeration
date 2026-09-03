@@ -17,7 +17,6 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.MapMeta;
 import org.bukkit.map.MapView;
-import org.bukkit.scheduler.BukkitRunnable;
 
 import java.lang.reflect.Method;
 import java.util.Collections;
@@ -108,9 +107,7 @@ public final class MapArtListener implements Listener {
             return;
         }
 
-        new BukkitRunnable() {
-            @Override
-            public void run() {
+        plugin.runAsync(() -> {
                 String base64Image = MapArtScanner.getBase64Image(mapId);
                 if (base64Image == null) {
                     scannedMaps.remove(mapId);
@@ -131,15 +128,13 @@ public final class MapArtListener implements Listener {
                 if (!result.isFlagged()) {
                     return;
                 }
-                new BukkitRunnable() {
-                    @Override
-                    public void run() {
-                        flaggedMaps.add(mapId);
-                        handleFlaggedMap(player, mapItem, mapId, "mapart.confiscated");
-                    }
-                }.runTask(plugin);
-            }
-        }.runTaskAsynchronously(plugin);
+                // Folia: confiscation edits this player's inventory, so it must run
+                // on that player's entity scheduler rather than any global thread.
+                plugin.runForEntity(player, () -> {
+                    flaggedMaps.add(mapId);
+                    handleFlaggedMap(player, mapItem, mapId, "mapart.confiscated");
+                });
+        });
     }
 
     /** Main thread only. Monitor mode alerts staff instead of messaging/confiscating. */

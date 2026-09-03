@@ -1,5 +1,6 @@
 package com.neomechanical.neomoderation.moderation;
 
+import com.neomechanical.neomoderation.config.BukkitConfigView;
 import com.neomechanical.neomoderation.config.ModerationCategorySettings;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
@@ -22,7 +23,7 @@ class ChatModerationPayloadBuilderTest {
         config.set("moderation.categories.sexual", true);
         config.set("moderation.categories.hate", false);
         config.set("moderation.categories.harassment", true);
-        ModerationCategorySettings categories = ModerationCategorySettings.from(config);
+        ModerationCategorySettings categories = ModerationCategorySettings.from(new BukkitConfigView(config));
 
         String json = ModerationPayloadBuilder.buildText("Player\"One", "uuid-123", "hello\\world", categories);
 
@@ -41,7 +42,7 @@ class ChatModerationPayloadBuilderTest {
 
     @Test
     void reservesNsfwBillingClassForTheNsfwMapArtPath() {
-        ModerationCategorySettings categories = ModerationCategorySettings.from(new YamlConfiguration());
+        ModerationCategorySettings categories = ModerationCategorySettings.from(new BukkitConfigView(new YamlConfiguration()));
 
         String text = ModerationPayloadBuilder.buildText("Player", "uuid", "hello", categories);
         String image = ModerationPayloadBuilder.buildImage("Player", "uuid", "base64", categories);

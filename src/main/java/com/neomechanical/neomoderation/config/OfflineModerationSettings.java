@@ -1,6 +1,6 @@
 package com.neomechanical.neomoderation.config;
 
-import org.bukkit.configuration.file.FileConfiguration;
+
 
 import java.util.List;
 
@@ -13,7 +13,7 @@ public record OfflineModerationSettings(
         List<String> allowedWords,
         List<String> allowedUrls
 ) {
-    public static OfflineModerationSettings from(FileConfiguration config) {
+    public static OfflineModerationSettings from(ConfigView config) {
         return new OfflineModerationSettings(
                 config.getBoolean("moderation.offline.enabled", true),
                 config.getBoolean("moderation.offline.blockAnyUrl", false),

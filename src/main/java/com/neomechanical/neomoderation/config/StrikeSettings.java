@@ -1,6 +1,6 @@
 package com.neomechanical.neomoderation.config;
 
-import org.bukkit.configuration.file.FileConfiguration;
+
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,7 +16,7 @@ public record StrikeSettings(boolean enabled, int decayMinutes, List<Escalation>
     public record Escalation(int atStrikes, ModerationAction action) {
     }
 
-    public static StrikeSettings from(FileConfiguration config) {
+    public static StrikeSettings from(ConfigView config) {
         List<Escalation> ladder = new ArrayList<>();
         for (Map<?, ?> raw : config.getMapList("moderation.strikes.escalation")) {
             int atStrikes = parseInt(raw.get("atStrikes"));

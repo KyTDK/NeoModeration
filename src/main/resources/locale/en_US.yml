@@ -133,6 +133,11 @@ mode:
   stats-line: "&8  - &7{reason}: &b{count}"
   set-monitor: "{prefix} &eMonitor mode on. &7Detections are logged and alerted, but nothing is blocked or punished. Use &e/nmod mode enforce &7when ready."
   set-enforce: "{prefix} &aEnforce mode on. &7Flagged content is now blocked and configured actions run."
+cloudmode:
+  usage: "{prefix} &cUsage: &e/{label} cloudmode <monitor|enforce>"
+  current: "{prefix} &7Cloud mode: &f{value}"
+  set-monitor: "{prefix} &eCloud monitor mode on. &7Cloud decisions are alerted only; your local rules are unaffected."
+  set-enforce: "{prefix} &aCloud enforce mode on. &7Cloud decisions now block and punish like local rules."
 test:
   usage: "{prefix} &cUsage: &e/{label} test <message>&7. First check: &e/{label} test badword &7(a safe preview; monitor mode never blocks)."
   title: "{prefix} &7Testing: &f{message}"

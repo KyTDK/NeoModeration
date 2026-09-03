@@ -1,6 +1,6 @@
 package com.neomechanical.neomoderation.config;
 
-import org.bukkit.configuration.file.FileConfiguration;
+
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,6 +10,7 @@ import java.util.logging.Logger;
 public record ModerationSettings(
         boolean enabled,
         ModerationMode mode,
+        ModerationMode cloudMode,
         ModerationApiSettings api,
         OfflineModerationSettings offline,
         ModerationCategorySettings categories,
@@ -25,7 +26,7 @@ public record ModerationSettings(
         boolean chatCensorLocal
 ) {
     public record AlertSettings(boolean enabled, boolean includeMessage) {
-        public static AlertSettings from(FileConfiguration config) {
+        public static AlertSettings from(ConfigView config) {
             return new AlertSettings(
                     config.getBoolean("moderation.alerts.enabled", true),
                     config.getBoolean("moderation.alerts.includeMessage", true)
@@ -33,14 +34,15 @@ public record ModerationSettings(
         }
     }
 
-    public static ModerationSettings from(FileConfiguration config) {
+    public static ModerationSettings from(ConfigView config) {
         return from(config, null);
     }
 
-    public static ModerationSettings from(FileConfiguration config, Logger logger) {
+    public static ModerationSettings from(ConfigView config, Logger logger) {
         return new ModerationSettings(
                 config.getBoolean("moderation.enabled", false),
                 ModerationMode.parse(config.getString("moderation.mode", "enforce")),
+                parseCloudMode(config),
                 ModerationApiSettings.from(config),
                 OfflineModerationSettings.from(config),
                 ModerationCategorySettings.from(config),
@@ -57,7 +59,28 @@ public record ModerationSettings(
         );
     }
 
-    private static List<ModerationAction> loadActions(FileConfiguration config, Logger logger) {
+    /**
+     * Cloud decisions can run at a different confidence to local ones.
+     *
+     * <p>A local word-list hit is deterministic and the admin wrote the list, so
+     * enforcing it on a fresh install is safe. A cloud category score is a
+     * judgement made by a model the admin has never seen, so a fresh install
+     * only alerts on it until they have watched it decide. That is the whole
+     * reason for a separate key.
+     *
+     * <p>When {@code moderation.cloudMode} is absent -- every config written
+     * before 1.6.0 -- it follows {@code moderation.mode}, so upgrading changes
+     * nothing.
+     */
+    private static ModerationMode parseCloudMode(ConfigView config) {
+        Object raw = config.get("moderation.cloudMode");
+        if (raw == null) {
+            return ModerationMode.parse(config.getString("moderation.mode", "enforce"));
+        }
+        return ModerationMode.parse(String.valueOf(raw));
+    }
+
+    private static List<ModerationAction> loadActions(ConfigView config, Logger logger) {
         List<ModerationAction> loaded = new ArrayList<>();
         List<Map<?, ?>> rawActions = config.getMapList("moderation.actions");
         for (Map<?, ?> rawAction : rawActions) {
