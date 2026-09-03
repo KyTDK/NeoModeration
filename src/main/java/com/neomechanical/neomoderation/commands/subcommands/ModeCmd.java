@@ -1,21 +1,17 @@
 package com.neomechanical.neomoderation.commands.subcommands;
 
 import com.neomechanical.neomoderation.NeoModerationPlugin;
-import com.neomechanical.neomoderation.commands.SubCommand;
+import com.neomechanical.neomoderation.commands.ModeSubCommand;
 import com.neomechanical.neomoderation.config.ModerationMode;
 import org.bukkit.command.CommandSender;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
-public class ModeCmd implements SubCommand {
-    private final NeoModerationPlugin plugin;
-
+public class ModeCmd extends ModeSubCommand {
     public ModeCmd(NeoModerationPlugin plugin) {
-        this.plugin = plugin;
+        super(plugin, "moderation.mode", "mode");
     }
 
     @Override
@@ -34,22 +30,7 @@ public class ModeCmd implements SubCommand {
     }
 
     @Override
-    public void execute(CommandSender sender, String label, String[] args) {
-        if (args.length < 2) {
-            showStatus(sender);
-            return;
-        }
-        String requested = args[1].toLowerCase(Locale.ROOT);
-        if (!"monitor".equals(requested) && !"enforce".equals(requested)) {
-            plugin.messages().send(sender, "mode.usage", Map.of("label", label));
-            return;
-        }
-        plugin.getConfig().set("moderation.mode", requested);
-        plugin.saveAndReload();
-        plugin.messages().send(sender, "monitor".equals(requested) ? "mode.set-monitor" : "mode.set-enforce");
-    }
-
-    private void showStatus(CommandSender sender) {
+    protected void showCurrent(CommandSender sender) {
         boolean monitor = plugin.settings().mode() == ModerationMode.MONITOR;
         plugin.messages().send(sender, "mode.current", Map.of(
                 "value", monitor ? "MONITOR (observe only)" : "ENFORCE"
@@ -68,13 +49,5 @@ public class ModeCmd implements SubCommand {
 
     private static long hoursSince(Instant since) {
         return Math.max(0, Duration.between(since, Instant.now()).toHours());
-    }
-
-    @Override
-    public List<String> onTabComplete(CommandSender sender, String[] args) {
-        if (args.length == 2) {
-            return SubCommand.filterPrefix(args[1], "monitor", "enforce");
-        }
-        return List.of();
     }
 }
