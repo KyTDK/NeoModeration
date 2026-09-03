@@ -184,6 +184,13 @@
                 </exclusion>
             </exclusions>
         </dependency>
+        <!-- Provided by Spigot/Paper at runtime; used for clickable + hoverable menu entries. -->
+        <dependency>
+            <groupId>net.md-5</groupId>
+            <artifactId>bungeecord-chat</artifactId>
+            <version>1.8-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
         <dependency>
             <groupId>org.bstats</groupId>
             <artifactId>bstats-bukkit</artifactId>
