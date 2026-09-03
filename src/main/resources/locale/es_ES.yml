@@ -14,6 +14,9 @@ help:
     admin: "&f&lAdministración"
   entry: " &b{usage} &8- &7{desc}"
   footer: "&8&m--------------------------------------"
+  dashboard: "&x&0&0&F&F&A&A&lNeoModeration &8v{version} &7● &f{mode} &8| &7Nube: &f{cloud} &8| &7Detecciones: &b{total}"
+  page: "&8Página {page}/2 · &7prueba &b/nmod help {next}"
+  hint: "&8Haz clic en un comando para ejecutarlo · pasa el cursor para ayuda"
   usage:
     setup: "/nmod setup <clave>"
     status: "/nmod status"
@@ -42,7 +45,7 @@ help:
     url: "enlaces bloqueados"
     allow: "excepciones que siempre ganan"
     action: "castigos al detectar"
-    test: "probar la regla incluida; nunca actúa"
+    test: "vista previa segura; nunca actúa"
     doctor: "diagnosticar la configuración"
     cases: "historial de detecciones"
     usage: "créditos y límites de nube"
