@@ -95,9 +95,9 @@ public final class StartupSummary {
         if (settings.api().apiKey().isBlank()) {
             // The single biggest capability gap on a fresh install, and the only one
             // that needs a step outside the server.
-            inactive.add("cloud moderation and map-art scanning (no API key - "
-                    + "sign up at " + CloudRecovery.SIGNUP_URL
-                    + ", create a key, then run /nmod setup <key>)");
+            inactive.add("cloud AI moderation and map-art scanning (no API key - "
+                    + "catches obfuscated chat evasion & map NSFW; free evaluation at " + CloudRecovery.SIGNUP_URL
+                    + ", then run /nmod setup <key>)");
         }
         if (!settings.spam().enabled()) {
             inactive.add("anti-spam");
