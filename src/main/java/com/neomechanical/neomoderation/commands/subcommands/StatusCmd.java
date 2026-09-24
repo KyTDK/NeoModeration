@@ -47,7 +47,7 @@ public class StatusCmd implements SubCommand {
         plugin.messages().sendDashboard(sender,
                 plugin.getDescription().getVersion(),
                 monitor ? "MONITOR" : "ENFORCE",
-                hasKey ? "CONFIGURED" : "OFF",
+                hasKey ? settings.cloudMode().name() : "OFF",
                 plugin.monitorStats().total());
         plugin.messages().send(sender, "status.enabled", Map.of(
                 "value", settings.enabled() ? "ON" : "OFF"
@@ -57,7 +57,8 @@ public class StatusCmd implements SubCommand {
         ));
         plugin.messages().send(sender, "status.cloud", Map.of(
                 "value", hasKey
-                        ? "Local + cloud configured (" + settings.categories().enabledCount() + " categories)"
+                        ? "Local + cloud " + settings.cloudMode().name()
+                                + " (" + settings.categories().enabledCount() + " categories)"
                         : "Local only (no API key)"
         ));
         if (!hasKey) {

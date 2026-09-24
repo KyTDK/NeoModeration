@@ -2,7 +2,6 @@ package com.neomechanical.neomoderation.commands.subcommands;
 
 import com.neomechanical.neomoderation.NeoModerationPlugin;
 import com.neomechanical.neomoderation.commands.SubCommand;
-import com.neomechanical.neomoderation.config.ModerationMode;
 import com.neomechanical.neomoderation.config.ModerationSettings;
 import org.bukkit.command.CommandSender;
 
@@ -52,9 +51,11 @@ public class PrivacyCmd implements SubCommand {
         } else {
             plugin.messages().send(sender, "privacy.no-cloud");
         }
-        plugin.messages().send(sender, "privacy.mode", Map.of(
-                "value", settings.mode() == ModerationMode.MONITOR ? "monitor (observe only)" : "enforce"
-        ));
+        plugin.messages().send(sender, "privacy.mode", Map.of("value",
+                "local " + settings.mode().name().toLowerCase(java.util.Locale.ROOT)
+                        + ", cloud " + (cloud
+                        ? settings.cloudMode().name().toLowerCase(java.util.Locale.ROOT)
+                        : "off")));
         plugin.messages().send(sender, "privacy.metrics");
     }
 }
