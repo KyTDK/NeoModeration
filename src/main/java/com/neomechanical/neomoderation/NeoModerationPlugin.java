@@ -95,10 +95,9 @@ public final class NeoModerationPlugin extends JavaPlugin {
         ClientIdentity.configure(getDescription().getVersion(), scheduler.platformName());
         registerMetrics();
         checkForUpdates();
-        // A fresh install trials in monitor mode with no API key, so it blocks
-        // nothing by design. Saying so is the difference between "working as
-        // intended" and "this plugin does nothing", which is the judgement an
-        // admin makes in the first few minutes.
+        // A fresh install blocks bundled local-rule matches without punishing
+        // players, while cloud judgements start in monitor mode. The startup
+        // summary makes the active protection and limits visible to admins.
         StartupSummary.lines(settings, getDescription().getVersion()).forEach(getLogger()::info);
     }
 

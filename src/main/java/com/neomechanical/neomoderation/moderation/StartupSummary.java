@@ -1,6 +1,7 @@
 package com.neomechanical.neomoderation.moderation;
 
 import com.neomechanical.neomoderation.config.ModerationMode;
+import com.neomechanical.neomoderation.config.ModerationAction;
 import com.neomechanical.neomoderation.config.ModerationSettings;
 
 import java.util.ArrayList;
@@ -9,10 +10,9 @@ import java.util.List;
 /**
  * What the console says when the plugin comes up.
  *
- * From 1.6.0 a new install enforces the local word, URL and spam rules straight
- * away, and only monitors cloud decisions. Before that it monitored everything,
- * so a fresh install blocked nothing at all and looked identical to a plugin
- * that simply was not working -- 99 downloads had produced 4 retained servers.
+ * A new install blocks local word, URL and spam matches without automatic
+ * punishment, and only monitors cloud decisions. The summary makes that
+ * distinction visible at the first start.
  *
  * <p>Existing installs are never switched to enforce behind the operator's back:
  * their config.yml keeps whatever it already said. Instead, when this build
@@ -42,16 +42,19 @@ public final class StartupSummary {
 
         boolean monitor = settings.mode() == ModerationMode.MONITOR;
         if (monitor) {
-            lines.add("Mode: MONITOR - detections are logged and alerted, but nothing is blocked "
-                    + "or punished. Run /nmod mode enforce when you are happy with the decisions.");
+            lines.add("Local mode: MONITOR - local detections alert staff without blocking or punishment. "
+                    + "Run /nmod mode enforce when you are happy with the rules.");
         } else {
-            lines.add("Mode: ENFORCE - flagged content is blocked and the configured actions run.");
+            lines.add(settings.actions().isEmpty()
+                    ? "Local mode: ENFORCE - flagged content is blocked; no automatic punishment or chat clearing."
+                    : "Local mode: ENFORCE - flagged content is blocked; extra actions: "
+                            + ModerationAction.describe(settings.actions()) + ".");
         }
         if (!settings.api().apiKey().isBlank()) {
             lines.add(settings.cloudMode() == ModerationMode.MONITOR
                     ? "Cloud mode: MONITOR - cloud decisions are alerted only. "
                             + "Run /nmod cloudmode enforce once you trust them."
-                    : "Cloud mode: ENFORCE - cloud decisions block and punish like local ones.");
+                    : "Cloud mode: ENFORCE - cloud decisions block and use configured extra actions.");
         }
 
         lines.add("Active now: " + String.join(", ", activeProtections(settings)) + ".");
@@ -62,7 +65,7 @@ public final class StartupSummary {
         }
 
         if (monitor) {
-            lines.add("Try /nmod test badword now: it previews the bundled local rule, but MONITOR "
+            lines.add("Try /nmod test badword now: it previews the bundled local rule; local MONITOR "
                     + "mode never blocks or punishes. Use /nmod mode enforce only when ready.");
         } else {
             lines.add("Verify the bundled local rule with /nmod test badword; tests never execute actions.");

@@ -5,6 +5,9 @@ import com.neomechanical.neomoderation.config.ModerationSettings;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -12,19 +15,24 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * A fresh install starts in monitor mode with no API key, so it deliberately
- * blocks nothing. Startup previously logged one line -- "NeoModeration enabled."
- * -- which leaves an admin with no way to tell working-as-designed from broken.
- * 22 Spigot downloads have produced 1 bStats server, so that distinction matters.
+ * Startup must describe the settings that actually ship, including the safe
+ * block-only default, rather than a fixture that can drift from config.yml.
  */
 class StartupSummaryTest {
-    private static final String VERSION = "1.4.1";
+    private static final String VERSION = "test-version";
 
-    private static ModerationSettings bundledDefaults() {
+    private static ModerationSettings bundledDefaults() throws IOException {
         YamlConfiguration config = new YamlConfiguration();
-        // Mirrors the shipped config.yml: enabled, trialling in monitor mode.
-        // `enabled` must be set explicitly -- it parses as false when absent,
-        // unlike `mode`, which deliberately parses as enforce for upgrade safety.
+        try {
+            config.loadFromString(Files.readString(Path.of("src/main/resources/config.yml")));
+        } catch (org.bukkit.configuration.InvalidConfigurationException e) {
+            throw new IllegalStateException("shipped config.yml is not valid YAML", e);
+        }
+        return ModerationSettings.from(new BukkitConfigView(config));
+    }
+
+    private static ModerationSettings monitorSettings() {
+        YamlConfiguration config = new YamlConfiguration();
         config.set("moderation.enabled", true);
         config.set("moderation.mode", "monitor");
         return ModerationSettings.from(new BukkitConfigView(config));
@@ -32,32 +40,30 @@ class StartupSummaryTest {
 
     @Test
     void saysWhenNothingWillBeBlocked() {
-        List<String> lines = StartupSummary.lines(bundledDefaults(), VERSION);
+        List<String> lines = StartupSummary.lines(monitorSettings(), VERSION);
 
         assertTrue(joined(lines).contains("MONITOR"), joined(lines));
-        assertTrue(joined(lines).toLowerCase().contains("nothing is blocked"), joined(lines));
+        assertTrue(joined(lines).contains("local detections alert staff without blocking"), joined(lines));
     }
 
     @Test
     void namesTheCommandThatTurnsEnforcementOn() {
-        List<String> lines = StartupSummary.lines(bundledDefaults(), VERSION);
+        List<String> lines = StartupSummary.lines(monitorSettings(), VERSION);
 
         assertTrue(joined(lines).contains("/nmod mode enforce"), joined(lines));
     }
 
     @Test
-    void enforceModeDoesNotNagAboutMonitor() {
-        YamlConfiguration config = new YamlConfiguration();
-        config.set("moderation.enabled", true);
-        config.set("moderation.mode", "enforce");
-        List<String> lines = StartupSummary.lines(ModerationSettings.from(new BukkitConfigView(config)), VERSION);
+    void enforceModeDoesNotNagAboutMonitor() throws IOException {
+        List<String> lines = StartupSummary.lines(bundledDefaults(), VERSION);
 
         assertTrue(joined(lines).contains("ENFORCE"));
         assertFalse(joined(lines).contains("/nmod mode enforce"));
+        assertTrue(joined(lines).contains("no automatic punishment or chat clearing"));
     }
 
     @Test
-    void listsProtectionsThatAreActuallyRunning() {
+    void listsProtectionsThatAreActuallyRunning() throws IOException {
         // Anti-spam and the local word/URL rules need no API key, so they are the
         // honest answer to "is this doing anything yet?".
         List<String> lines = StartupSummary.lines(bundledDefaults(), VERSION);
@@ -68,7 +74,7 @@ class StartupSummaryTest {
     }
 
     @Test
-    void saysCloudIsOffAndHowToTurnItOn() {
+    void saysCloudIsOffAndHowToTurnItOn() throws IOException {
         List<String> lines = StartupSummary.lines(bundledDefaults(), VERSION);
 
         String text = joined(lines);
@@ -97,30 +103,30 @@ class StartupSummaryTest {
     }
 
     @Test
-    void alwaysPointsAtStatusForTheFullPicture() {
+    void alwaysPointsAtStatusForTheFullPicture() throws IOException {
         List<String> lines = StartupSummary.lines(bundledDefaults(), VERSION);
 
         assertTrue(joined(lines).contains("/nmod status"), joined(lines));
     }
 
     @Test
-    void includesTheVersionSoBugReportsAreActionable() {
+    void includesTheVersionSoBugReportsAreActionable() throws IOException {
         List<String> lines = StartupSummary.lines(bundledDefaults(), VERSION);
 
         assertTrue(joined(lines).contains(VERSION), joined(lines));
     }
 
     @Test
-    void givesFreshInstallsAnExactSafeTestPath() {
+    void givesFreshInstallsAnExactSafeTestPath() throws IOException {
         List<String> lines = StartupSummary.lines(bundledDefaults(), VERSION);
 
         String text = joined(lines);
         assertTrue(text.contains("/nmod test badword"), text);
-        assertTrue(text.contains("never blocks or punishes"), text);
+        assertTrue(text.contains("never execute actions"), text);
     }
 
     @Test
-    void staysShortEnoughToReadInAConsole() {
+    void staysShortEnoughToReadInAConsole() throws IOException {
         // A wall of text at startup is ignored exactly like a single line is.
         List<String> lines = StartupSummary.lines(bundledDefaults(), VERSION);
 
