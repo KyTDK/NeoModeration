@@ -3,6 +3,7 @@ package com.neomechanical.neomoderation.platform;
 import com.neomechanical.neomoderation.config.ModerationMode;
 import com.neomechanical.neomoderation.config.ModerationSettings;
 import com.neomechanical.neomoderation.config.SurfaceSettings;
+import com.neomechanical.neomoderation.config.SurfaceSettings.SurfaceMode;
 
 import java.util.Locale;
 
@@ -37,19 +38,55 @@ public final class InstallTelemetry {
     private InstallTelemetry() {
     }
 
-    /** What is actually protecting this server right now. */
+    /** Configured checks with their prerequisites present; cloud health is reported separately. */
     public static String protectionState(ModerationSettings settings) {
         if (!settings.enabled()) {
             return "disabled";
         }
-        boolean local = settings.offline().enabled() || settings.spam().enabled();
-        if (!local && settings.api().apiKey().isBlank()) {
+        boolean hasLocalRules = settings.offline().enabled()
+                && (settings.offline().blockAnyUrl()
+                        || !settings.offline().bannedWords().isEmpty()
+                        || !settings.offline().bannedUrls().isEmpty());
+        boolean chatRules = hasLocalRules && settings.scanAsyncChat();
+        boolean surfaceRules = hasLocalRules && settings.surfaces().enabledCount() > 0;
+        boolean chatSpam = settings.spam().enabled() && settings.scanAsyncChat()
+                && (settings.spam().messagesPer10s() > 0
+                        || settings.spam().duplicateLimit() > 0
+                        || settings.spam().capsPercent() > 0
+                        || settings.spam().maxCharRun() > 0);
+        boolean commandSpam = settings.spam().enabled()
+                && settings.surfaces().command() != SurfaceMode.OFF
+                && settings.spam().commandsPer10s() > 0;
+        boolean local = chatRules || surfaceRules || chatSpam || commandSpam;
+        boolean localEnforces = settings.mode() == ModerationMode.ENFORCE
+                && (chatRules || chatSpam
+                        || (surfaceRules && (enforces(settings.surfaces().sign())
+                                || enforces(settings.surfaces().book())
+                                || enforces(settings.surfaces().anvil())
+                                || enforces(settings.surfaces().command())))
+                        || (commandSpam && enforces(settings.surfaces().command())));
+        boolean cloud = !settings.api().apiKey().isBlank()
+                && ((settings.scanAsyncChat() && settings.categories().enabledCount() > 0)
+                        || settings.mapArt().enabled());
+        if (!local && !cloud) {
             return "nothing_armed";
         }
-        if (settings.mode() == ModerationMode.MONITOR) {
-            return settings.cloudMode() == ModerationMode.MONITOR ? "monitor_all" : "monitor_local_only";
+        if (!local) {
+            return settings.cloudMode() == ModerationMode.MONITOR
+                    ? "monitor_cloud_only" : "enforce_cloud_only";
+        }
+        if (!cloud) {
+            return localEnforces ? "enforce_local_only" : "monitor_local_only";
+        }
+        if (!localEnforces) {
+            return settings.cloudMode() == ModerationMode.MONITOR
+                    ? "monitor_all" : "monitor_local_enforce_cloud";
         }
         return settings.cloudMode() == ModerationMode.MONITOR ? "enforce_local_monitor_cloud" : "enforce_all";
+    }
+
+    private static boolean enforces(SurfaceMode mode) {
+        return mode == SurfaceMode.BLOCK || mode == SurfaceMode.CENSOR;
     }
 
     /**
@@ -99,7 +136,7 @@ public final class InstallTelemetry {
         return "1000+";
     }
 
-    /** The blunt version of the above: has this install ever done anything? */
+    /** Whether a detection happened since this server started, despite the historical chart ID. */
     public static String hasEverDetected(long total) {
         return total > 0 ? "yes" : "no";
     }

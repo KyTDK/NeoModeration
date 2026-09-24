@@ -66,9 +66,9 @@ public class DoctorCmd implements SubCommand {
         }
 
         if (settings.mode() == ModerationMode.MONITOR) {
-            warn(sender, "Mode", "monitor - detections are observed but never blocked/punished");
+            warn(sender, "Local mode", "monitor - local detections alert staff without blocking or punishment");
         } else {
-            pass(sender, "Mode", "enforce");
+            pass(sender, "Local mode", "enforce - local detections block matching content");
         }
 
         if (settings.offline().enabled()) {
@@ -83,7 +83,7 @@ public class DoctorCmd implements SubCommand {
         }
 
         if (settings.actions().isEmpty()) {
-            warn(sender, "Actions", "none - flagged chat is blocked without punishment");
+            pass(sender, "Actions", "block only - no automatic punishment or server-wide chat clear");
         } else {
             pass(sender, "Actions", ModerationAction.describe(settings.actions()));
         }
@@ -123,6 +123,12 @@ public class DoctorCmd implements SubCommand {
                     + CloudRecovery.SIGNUP_URL + ", create a key, then run /nmod setup <key>");
             plugin.messages().sendFooter(sender);
             return;
+        }
+
+        if (settings.cloudMode() == ModerationMode.MONITOR) {
+            warn(sender, "Cloud mode", "monitor - cloud decisions alert staff without blocking or punishment");
+        } else {
+            pass(sender, "Cloud mode", "enforce - cloud decisions block flagged content");
         }
 
         if (!isHttpUri(settings.api().endpoint())) {

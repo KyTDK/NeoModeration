@@ -28,19 +28,53 @@ class InstallTelemetryTest {
 
     @Test
     void separatesAnArmedInstallFromAnInertOne() {
-        assertEquals("enforce_all",
+        assertEquals("enforce_local_only",
                 InstallTelemetry.protectionState(settings("moderation.mode", "enforce",
                         "moderation.cloudMode", "enforce")));
-        assertEquals("monitor_all",
+        assertEquals("monitor_local_only",
                 InstallTelemetry.protectionState(settings("moderation.mode", "monitor",
                         "moderation.cloudMode", "monitor")));
     }
 
     @Test
-    void reportsTheNewDefaultAsItsOwnState() {
+    void reportsMixedLocalAndCloudModesWhenAKeyIsConfigured() {
         assertEquals("enforce_local_monitor_cloud",
                 InstallTelemetry.protectionState(settings("moderation.mode", "enforce",
-                        "moderation.cloudMode", "monitor")));
+                        "moderation.cloudMode", "monitor",
+                        "moderation.api.apiKey", "test-key")));
+    }
+
+    @Test
+    void reportsCloudOnlyAndMixedModesWhenThoseChecksAreArmed() {
+        assertEquals("monitor_cloud_only", InstallTelemetry.protectionState(settings(
+                "moderation.offline.enabled", "false",
+                "moderation.spam.enabled", "false",
+                "moderation.api.apiKey", "test-key",
+                "moderation.cloudMode", "monitor")));
+        assertEquals("monitor_local_enforce_cloud", InstallTelemetry.protectionState(settings(
+                "moderation.mode", "monitor",
+                "moderation.cloudMode", "enforce",
+                "moderation.api.apiKey", "test-key")));
+    }
+
+    @Test
+    void emptyLocalRulesAndDisabledSpamAreNotCountedAsProtection() {
+        assertEquals("nothing_armed", InstallTelemetry.protectionState(settings(
+                "moderation.spam.enabled", "false")));
+    }
+
+    @Test
+    void monitorOnlySignRuleIsNotReportedAsEnforcement() {
+        YamlConfiguration config = new YamlConfiguration();
+        config.set("moderation.enabled", true);
+        config.set("moderation.mode", "enforce");
+        config.set("moderation.chat.scanAsyncChat", false);
+        config.set("moderation.spam.enabled", false);
+        config.set("moderation.offline.bannedWords", java.util.List.of("badword"));
+        config.set("moderation.surfaces.sign", "monitor");
+
+        assertEquals("monitor_local_only", InstallTelemetry.protectionState(
+                ModerationSettings.from(new BukkitConfigView(config))));
     }
 
     @Test

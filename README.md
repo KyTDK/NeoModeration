@@ -81,7 +81,7 @@ Mute durations: `30s`, `5m`, `1h`, `1d` (or bare seconds).
 | `/nmod test <message>` | Preview how a message would be moderated |
 | `/nmod doctor` | Diagnose configuration, account API, and known event health |
 | `/nmod cases [player]` / `/nmod case <id>` | Browse the local detection history |
-| `/nmod preset <family\|community\|minimal>` | Apply a policy preset |
+| `/nmod preset <family\|community\|minimal>` | Tune cloud category thresholds; actions and local rules stay unchanged |
 | `/nmod allow word\|url add\|remove\|list` | Manage exceptions (always win) |
 | `/nmod privacy` | Show what data stays local vs. cloud |
 | `/nmod on` / `/nmod off` | Enable or disable |
