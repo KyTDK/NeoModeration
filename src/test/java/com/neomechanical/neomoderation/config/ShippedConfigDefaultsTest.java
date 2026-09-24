@@ -13,11 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Guards the enforcement defaults a fresh install actually receives.
  *
- * <p>Before 1.6.0 the shipped config monitored everything, so a new install
- * blocked nothing at all: an admin who installed a chat filter, swore in chat
- * and saw the message go through had no way to tell it from a broken plugin.
- * 99 downloads had produced 4 retained servers. These assertions exist because
- * that default is easy to reintroduce by accident and expensive when it happens.
+ * The local rules must work immediately, while unreviewed starter words must
+ * not trigger a mute, global chat clear or kick ladder on a fresh install.
  */
 class ShippedConfigDefaultsTest {
 
@@ -47,6 +44,15 @@ class ShippedConfigDefaultsTest {
     @Test
     void freshInstallHasModerationSwitchedOn() throws IOException {
         assertTrue(shipped().enabled());
+    }
+
+    @Test
+    void firstLocalMatchBlocksWithoutPunishingOrClearingEveryoneElseChat() throws IOException {
+        ModerationSettings settings = shipped();
+        assertTrue(settings.actions().isEmpty(),
+                "a starter word-list hit should block the message without clearing chat or muting a player");
+        assertTrue(!settings.strikes().enabled(),
+                "a new install should not kick a player after four unreviewed word-list matches");
     }
 
     @Test
