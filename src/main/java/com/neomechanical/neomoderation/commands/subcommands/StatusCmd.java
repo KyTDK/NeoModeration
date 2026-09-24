@@ -7,6 +7,7 @@ import com.neomechanical.neomoderation.config.ModerationMode;
 import com.neomechanical.neomoderation.config.ModerationSettings;
 import com.neomechanical.neomoderation.moderation.CloudRecovery;
 import com.neomechanical.neomoderation.moderation.ModerationApiResult;
+import com.neomechanical.neomoderation.moderation.ModerationCoverage;
 import org.bukkit.command.CommandSender;
 
 import java.util.List;
@@ -42,6 +43,7 @@ public class StatusCmd implements SubCommand {
     @Override
     public void execute(CommandSender sender, String label, String[] args) {
         ModerationSettings settings = plugin.settings();
+        ModerationCoverage coverage = ModerationCoverage.from(settings);
         boolean hasKey = !settings.api().apiKey().isBlank();
         boolean monitor = settings.mode() == ModerationMode.MONITOR;
         plugin.messages().sendDashboard(sender,
@@ -53,13 +55,18 @@ public class StatusCmd implements SubCommand {
                 "value", settings.enabled() ? "ON" : "OFF"
         ));
         plugin.messages().send(sender, "status.mode", Map.of(
-                "value", monitor ? "MONITOR (observe only - /nmod mode enforce to act)" : "ENFORCE"
+                "value", !coverage.hasLocalChecks() ? settings.mode().name() + " (no local checks armed)"
+                        : monitor ? "MONITOR (local detections alert only)"
+                        : !coverage.localEnforces() ? "ENFORCE (armed surface checks monitor only)"
+                        : "ENFORCE (local detections act)"
         ));
         plugin.messages().send(sender, "status.cloud", Map.of(
-                "value", hasKey
-                        ? "Local + cloud " + settings.cloudMode().name()
-                                + " (" + settings.categories().enabledCount() + " categories)"
-                        : "Local only (no API key)"
+                "value", !hasKey ? (coverage.hasLocalChecks()
+                        ? "local only (no API key)" : "no checks armed (no API key)")
+                        : !coverage.hasCloudChecks() ? "key saved, but no checks armed"
+                        : "text " + (coverage.cloudText() ? "on" : "off")
+                                + ", map art " + (coverage.mapArt() ? "on" : "off")
+                                + "; mode " + settings.cloudMode().name()
         ));
         if (!hasKey) {
             plugin.messages().send(sender, "status.cloud-no-key", Map.of(
@@ -88,7 +95,7 @@ public class StatusCmd implements SubCommand {
                         : "off"
         ));
         plugin.messages().send(sender, "status.coverage", Map.of(
-                "spam", settings.spam().enabled() ? "on" : "off",
+                "spam", coverage.spam() ? "on" : "off",
                 "strikes", settings.strikes().enabled() ? "on" : "off",
                 "surfaces", String.valueOf(settings.surfaces().enabledCount()),
                 "cases", settings.cases().enabled() && plugin.caseLog().isAvailable() ? "on" : "off"

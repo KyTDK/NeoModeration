@@ -114,7 +114,7 @@ public final class NeoModerationPlugin extends JavaPlugin {
         metrics.addCustomChart(new SimplePie("moderation_mode",
                 () -> settings.mode().name().toLowerCase(java.util.Locale.ROOT)));
         metrics.addCustomChart(new SimplePie("cloud_enabled",
-                () -> settings.api().apiKey().isBlank() ? "local_only" : "local_and_cloud"));
+                () -> InstallTelemetry.cloudEnabledState(settings)));
         metrics.addCustomChart(new SimplePie("chat_censor",
                 () -> InstallTelemetry.censorState(settings)));
 
@@ -139,7 +139,7 @@ public final class NeoModerationPlugin extends JavaPlugin {
         metrics.addCustomChart(new SimplePie("word_list_state",
                 () -> InstallTelemetry.wordListState(settings, BUNDLED_WORD_COUNT)));
         metrics.addCustomChart(new SimplePie("surfaces_armed",
-                () -> InstallTelemetry.surfacesArmed(settings.surfaces())));
+                () -> InstallTelemetry.surfacesArmed(settings)));
         metrics.addCustomChart(new SimplePie("spam_state",
                 () -> InstallTelemetry.spamState(settings)));
         metrics.addCustomChart(new SimplePie("strike_state",

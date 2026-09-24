@@ -74,6 +74,17 @@ class StartupSummaryTest {
     }
 
     @Test
+    void doesNotCallEmptyEnabledRulesActive() {
+        YamlConfiguration config = new YamlConfiguration();
+        config.set("moderation.enabled", true);
+        config.set("moderation.spam.enabled", false);
+        List<String> lines = StartupSummary.lines(ModerationSettings.from(new BukkitConfigView(config)), VERSION);
+
+        assertTrue(joined(lines).contains("nothing - every check is switched off"), joined(lines));
+        assertFalse(joined(lines).contains("0 word rules and 0 URL rules"), joined(lines));
+    }
+
+    @Test
     void saysCloudIsOffAndHowToTurnItOn() throws IOException {
         List<String> lines = StartupSummary.lines(bundledDefaults(), VERSION);
 

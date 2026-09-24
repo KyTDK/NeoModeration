@@ -17,11 +17,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class TestCmdDecisionTest {
     @Test
     void cleanMessagesAreAllowedAndDetectionsRespectTheActiveMode() {
-        assertEquals(TestCmd.Outcome.ALLOWED, TestCmd.outcome(true, false, ModerationMode.ENFORCE));
-        assertEquals(TestCmd.Outcome.ALLOWED, TestCmd.outcome(true, false, ModerationMode.MONITOR));
-        assertEquals(TestCmd.Outcome.ENFORCED, TestCmd.outcome(true, true, ModerationMode.ENFORCE));
-        assertEquals(TestCmd.Outcome.MONITORED, TestCmd.outcome(true, true, ModerationMode.MONITOR));
-        assertEquals(TestCmd.Outcome.ALLOWED, TestCmd.outcome(false, true, ModerationMode.ENFORCE));
+        assertEquals(TestCmd.Outcome.ALLOWED, TestCmd.outcome(true, false, ModerationMode.ENFORCE, false));
+        assertEquals(TestCmd.Outcome.ALLOWED, TestCmd.outcome(true, false, ModerationMode.MONITOR, false));
+        assertEquals(TestCmd.Outcome.ENFORCED, TestCmd.outcome(true, true, ModerationMode.ENFORCE, false));
+        assertEquals(TestCmd.Outcome.MONITORED, TestCmd.outcome(true, true, ModerationMode.MONITOR, false));
+        assertEquals(TestCmd.Outcome.ALLOWED, TestCmd.outcome(false, true, ModerationMode.ENFORCE, false));
+        assertEquals(TestCmd.Outcome.CENSORED, TestCmd.outcome(true, true, ModerationMode.ENFORCE, true));
+        assertEquals(TestCmd.Outcome.MONITORED, TestCmd.outcome(true, true, ModerationMode.MONITOR, true));
     }
 
     @Test
@@ -33,9 +35,9 @@ class TestCmdDecisionTest {
         ModerationSettings settings = ModerationSettings.from(new BukkitConfigView(config));
 
         assertEquals(TestCmd.Outcome.ENFORCED,
-                TestCmd.outcome(settings, true, DetectionHandler.Source.LOCAL));
+                TestCmd.outcome(settings, true, DetectionHandler.Source.LOCAL, false));
         assertEquals(TestCmd.Outcome.MONITORED,
-                TestCmd.outcome(settings, true, DetectionHandler.Source.CLOUD));
+                TestCmd.outcome(settings, true, DetectionHandler.Source.CLOUD, false));
     }
 
     @Test

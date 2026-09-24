@@ -40,31 +40,39 @@ public final class StartupSummary {
             return lines;
         }
 
+        ModerationCoverage coverage = ModerationCoverage.from(settings);
         boolean monitor = settings.mode() == ModerationMode.MONITOR;
-        if (monitor) {
+        if (!coverage.hasLocalChecks()) {
+            lines.add("Local mode: " + settings.mode() + " - no local checks are armed.");
+        } else if (monitor) {
             lines.add("Local mode: MONITOR - local detections alert staff without blocking or punishment. "
                     + "Run /nmod mode enforce when you are happy with the rules.");
+        } else if (!coverage.localEnforces()) {
+            lines.add("Local mode: ENFORCE - armed surface checks are monitor-only.");
         } else {
             lines.add(settings.actions().isEmpty()
                     ? "Local mode: ENFORCE - flagged content is blocked; no automatic punishment or chat clearing."
                     : "Local mode: ENFORCE - flagged content is blocked; extra actions: "
                             + ModerationAction.describe(settings.actions()) + ".");
         }
-        if (!settings.api().apiKey().isBlank()) {
+        if (coverage.hasCloudChecks()) {
             lines.add(settings.cloudMode() == ModerationMode.MONITOR
                     ? "Cloud mode: MONITOR - cloud decisions are alerted only. "
                             + "Run /nmod cloudmode enforce once you trust them."
-                    : "Cloud mode: ENFORCE - cloud decisions block and use configured extra actions.");
+                    : "Cloud mode: ENFORCE - flagged chat blocks where armed; map art follows its confiscation setting.");
         }
 
-        lines.add("Active now: " + String.join(", ", activeProtections(settings)) + ".");
+        lines.add("Active now: " + String.join(", ", activeProtections(settings, coverage)) + ".");
 
-        List<String> inactive = inactiveProtections(settings);
+        List<String> inactive = inactiveProtections(settings, coverage);
         if (!inactive.isEmpty()) {
             lines.add("Not active: " + String.join(", ", inactive) + ".");
         }
 
-        if (monitor) {
+        if (!settings.offline().enabled() || !settings.scanAsyncChat()
+                || !settings.offline().bannedWords().contains("badword")) {
+            lines.add("Use /nmod test <message> to preview configured content rules; tests never execute actions.");
+        } else if (monitor) {
             lines.add("Try /nmod test badword now: it previews the bundled local rule; local MONITOR "
                     + "mode never blocks or punishes. Use /nmod mode enforce only when ready.");
         } else {
@@ -75,17 +83,21 @@ public final class StartupSummary {
         return lines;
     }
 
-    private static List<String> activeProtections(ModerationSettings settings) {
+    private static List<String> activeProtections(ModerationSettings settings, ModerationCoverage coverage) {
         List<String> active = new ArrayList<>();
-        if (settings.spam().enabled()) {
-            active.add("anti-spam (rate, duplicates, caps)");
+        if (coverage.spam()) {
+            active.add("anti-spam checks");
         }
-        if (settings.offline().enabled()) {
+        if (coverage.localRules()) {
             active.add(settings.offline().bannedWords().size() + " word rules and "
-                    + settings.offline().bannedUrls().size() + " URL rules");
+                    + settings.offline().bannedUrls().size() + " URL rules"
+                    + (settings.offline().blockAnyUrl() ? " plus all URLs/IPs" : ""));
         }
-        if (!settings.api().apiKey().isBlank()) {
-            active.add("cloud moderation (" + settings.categories().enabledCount() + " categories)");
+        if (coverage.cloudText()) {
+            active.add("cloud text moderation (" + settings.categories().enabledCount() + " categories)");
+        }
+        if (coverage.mapArt()) {
+            active.add("cloud map-art scanning");
         }
         if (active.isEmpty()) {
             active.add("nothing - every check is switched off in config.yml");
@@ -93,19 +105,21 @@ public final class StartupSummary {
         return active;
     }
 
-    private static List<String> inactiveProtections(ModerationSettings settings) {
+    private static List<String> inactiveProtections(ModerationSettings settings, ModerationCoverage coverage) {
         List<String> inactive = new ArrayList<>();
         if (settings.api().apiKey().isBlank()) {
             // The single biggest capability gap on a fresh install, and the only one
             // that needs a step outside the server.
             inactive.add("cloud AI moderation and map-art scanning (no API key - "
-                    + "catches obfuscated chat evasion & map NSFW; free evaluation at " + CloudRecovery.SIGNUP_URL
+                    + "checks individual-message meaning and map imagery; account at " + CloudRecovery.SIGNUP_URL
                     + ", then run /nmod setup <key>)");
+        } else if (!coverage.hasCloudChecks()) {
+            inactive.add("cloud checks (text categories and map art are off)");
         }
-        if (!settings.spam().enabled()) {
+        if (!coverage.spam()) {
             inactive.add("anti-spam");
         }
-        if (!settings.offline().enabled()) {
+        if (!coverage.localRules()) {
             inactive.add("local word and URL rules");
         }
         return inactive;
