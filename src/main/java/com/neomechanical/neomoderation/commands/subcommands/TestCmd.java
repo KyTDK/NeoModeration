@@ -6,6 +6,7 @@ import com.neomechanical.neomoderation.config.ModerationAction;
 import com.neomechanical.neomoderation.config.ModerationMode;
 import com.neomechanical.neomoderation.config.ModerationSettings;
 import com.neomechanical.neomoderation.moderation.CloudRecovery;
+import com.neomechanical.neomoderation.moderation.DetectionHandler;
 import com.neomechanical.neomoderation.moderation.ModerationApiResult;
 import com.neomechanical.neomoderation.moderation.OfflineModerationEngine;
 import com.neomechanical.neomoderation.moderation.OfflineModerationResult;
@@ -16,8 +17,9 @@ import java.util.Arrays;
 import java.util.Map;
 
 /**
- * Dry-runs the full moderation pipeline on a sample message and explains every
- * decision. Never executes actions. A cloud check consumes one API request.
+ * Previews local content rules and, if reached, one cloud check. Rate, repeat,
+ * command, and map checks need live event context and are not simulated. Never
+ * executes actions. A cloud check consumes one API request.
  */
 public class TestCmd implements SubCommand {
     private static final String CONSOLE_UUID = "00000000-0000-0000-0000-000000000000";
@@ -64,10 +66,11 @@ public class TestCmd implements SubCommand {
                 settings.cloudMode().name(),
                 plugin.monitorStats().total());
         plugin.messages().send(sender, "test.title", Map.of("message", message));
+        plugin.messages().send(sender, "test.scope");
 
         if (!settings.enabled()) {
             plugin.messages().send(sender, "test.disabled");
-            sendOutcome(sender, settings, false);
+            sendOutcome(sender, settings, false, DetectionHandler.Source.LOCAL);
             plugin.messages().sendFooter(sender);
             return;
         }
@@ -81,7 +84,7 @@ public class TestCmd implements SubCommand {
 
         if (!shouldCheckCloud(local.flagged())) {
             plugin.messages().send(sender, "test.cloud-skipped-local");
-            sendOutcome(sender, settings, true);
+            sendOutcome(sender, settings, true, DetectionHandler.Source.LOCAL);
             plugin.messages().sendFooter(sender);
             return;
         }
@@ -90,13 +93,13 @@ public class TestCmd implements SubCommand {
             plugin.messages().send(sender, "test.cloud-skipped-key", Map.of(
                     "url", CloudRecovery.SIGNUP_URL
             ));
-            sendOutcome(sender, settings, false);
+            sendOutcome(sender, settings, false, DetectionHandler.Source.LOCAL);
             plugin.messages().sendFooter(sender);
             return;
         }
         if (!plugin.coordinator().isRemoteCallAllowed()) {
             plugin.messages().send(sender, "test.cloud-skipped-circuit");
-            sendOutcome(sender, settings, !settings.failOpen());
+            sendOutcome(sender, settings, !settings.failOpen(), DetectionHandler.Source.CLOUD);
             plugin.messages().sendFooter(sender);
             return;
         }
@@ -117,15 +120,17 @@ public class TestCmd implements SubCommand {
                     default -> Map.of("ms", ms);
                 };
                 plugin.messages().send(sender, cloudMessageKey(result.kind()), placeholders);
-                sendOutcome(sender, settings, cloudDetected(result, settings.failOpen()));
+                sendOutcome(sender, settings, cloudDetected(result, settings.failOpen()),
+                        DetectionHandler.Source.CLOUD);
                 plugin.messages().send(sender, "test.note");
                 plugin.messages().sendFooter(sender);
             });
         });
     }
 
-    private void sendOutcome(CommandSender sender, ModerationSettings settings, boolean detected) {
-        switch (outcome(settings.enabled(), detected, settings.mode())) {
+    private void sendOutcome(CommandSender sender, ModerationSettings settings, boolean detected,
+                             DetectionHandler.Source source) {
+        switch (outcome(settings, detected, source)) {
             case ALLOWED -> plugin.messages().send(sender, "test.would-allowed");
             case MONITORED -> plugin.messages().send(sender, "test.would-monitor");
             case ENFORCED -> plugin.messages().send(sender, "test.would-enforce", Map.of(
@@ -159,5 +164,9 @@ public class TestCmd implements SubCommand {
             return Outcome.ALLOWED;
         }
         return mode == ModerationMode.MONITOR ? Outcome.MONITORED : Outcome.ENFORCED;
+    }
+
+    static Outcome outcome(ModerationSettings settings, boolean detected, DetectionHandler.Source source) {
+        return outcome(settings.enabled(), detected, source.modeIn(settings));
     }
 }
