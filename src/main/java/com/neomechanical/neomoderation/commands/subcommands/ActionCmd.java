@@ -146,10 +146,7 @@ public class ActionCmd implements SubCommand {
     }
 
     private void resetActions(CommandSender sender) {
-        List<Map<String, Object>> defaults = new ArrayList<>();
-        defaults.add(buildActionMap(ModerationActionType.CLEAR_CHAT, DEFAULT_MUTE_SECONDS));
-        defaults.add(buildActionMap(ModerationActionType.MUTE, DEFAULT_MUTE_SECONDS));
-        saveActions(defaults);
+        saveActions(List.of());
         plugin.messages().send(sender, "action.reset");
     }
 

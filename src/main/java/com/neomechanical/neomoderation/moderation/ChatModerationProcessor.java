@@ -71,7 +71,7 @@ public final class ChatModerationProcessor {
                     censored);
         }
 
-        if (settings.api().apiKey().isBlank()) {
+        if (settings.api().apiKey().isBlank() || settings.categories().enabledCount() == 0) {
             return ChatDecision.allow();
         }
         if (!coordinator.isMessageFlagged(player, message, settings)) {

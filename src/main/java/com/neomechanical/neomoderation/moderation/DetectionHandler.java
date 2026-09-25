@@ -31,7 +31,11 @@ public final class DetectionHandler {
      */
     public enum Source {
         LOCAL,
-        CLOUD
+        CLOUD;
+
+        public ModerationMode modeIn(ModerationSettings settings) {
+            return this == CLOUD ? settings.cloudMode() : settings.mode();
+        }
     }
 
     private final NeoModerationPlugin plugin;
@@ -65,7 +69,7 @@ public final class DetectionHandler {
         ModerationSettings settings = plugin.settings();
         monitorStats.record(reason);
 
-        ModerationMode effectiveMode = source == Source.CLOUD ? settings.cloudMode() : settings.mode();
+        ModerationMode effectiveMode = source.modeIn(settings);
         boolean alertOnly = effectiveMode == ModerationMode.MONITOR || requested == Disposition.ALLOW;
         int strikeCount = 0;
         Optional<ModerationAction> escalation = Optional.empty();

@@ -2,7 +2,8 @@ package com.neomechanical.neomoderation.platform;
 
 import com.neomechanical.neomoderation.config.ModerationMode;
 import com.neomechanical.neomoderation.config.ModerationSettings;
-import com.neomechanical.neomoderation.config.SurfaceSettings;
+import com.neomechanical.neomoderation.config.SurfaceSettings.SurfaceMode;
+import com.neomechanical.neomoderation.moderation.ModerationCoverage;
 
 import java.util.Locale;
 
@@ -37,19 +38,38 @@ public final class InstallTelemetry {
     private InstallTelemetry() {
     }
 
-    /** What is actually protecting this server right now. */
+    /** Configured checks with their prerequisites present; cloud health is reported separately. */
     public static String protectionState(ModerationSettings settings) {
         if (!settings.enabled()) {
             return "disabled";
         }
-        boolean local = settings.offline().enabled() || settings.spam().enabled();
-        if (!local && settings.api().apiKey().isBlank()) {
+        ModerationCoverage coverage = ModerationCoverage.from(settings);
+        boolean local = coverage.hasLocalChecks();
+        boolean cloud = coverage.hasCloudChecks();
+        if (!local && !cloud) {
             return "nothing_armed";
         }
-        if (settings.mode() == ModerationMode.MONITOR) {
-            return settings.cloudMode() == ModerationMode.MONITOR ? "monitor_all" : "monitor_local_only";
+        if (!local) {
+            return settings.cloudMode() == ModerationMode.MONITOR
+                    ? "monitor_cloud_only" : "enforce_cloud_only";
+        }
+        if (!cloud) {
+            return coverage.localEnforces() ? "enforce_local_only" : "monitor_local_only";
+        }
+        if (!coverage.localEnforces()) {
+            return settings.cloudMode() == ModerationMode.MONITOR
+                    ? "monitor_all" : "monitor_local_enforce_cloud";
         }
         return settings.cloudMode() == ModerationMode.MONITOR ? "enforce_local_monitor_cloud" : "enforce_all";
+    }
+
+    /** Whether any configured local or cloud check can receive content. */
+    public static String cloudEnabledState(ModerationSettings settings) {
+        ModerationCoverage coverage = ModerationCoverage.from(settings);
+        if (coverage.hasLocalChecks()) {
+            return coverage.hasCloudChecks() ? "local_and_cloud" : "local_only";
+        }
+        return coverage.hasCloudChecks() ? "cloud_only" : "nothing_armed";
     }
 
     /**
@@ -99,14 +119,24 @@ public final class InstallTelemetry {
         return "1000+";
     }
 
-    /** The blunt version of the above: has this install ever done anything? */
+    /** Whether a detection happened since this server started, despite the historical chart ID. */
     public static String hasEverDetected(long total) {
         return total > 0 ? "yes" : "no";
     }
 
-    /** How many non-chat surfaces are armed, as a bucket. */
-    public static String surfacesArmed(SurfaceSettings surfaces) {
-        long count = surfaces.enabledCount();
+    /** Non-chat surfaces with an active local rule or command rate check. */
+    public static String surfacesArmed(ModerationSettings settings) {
+        ModerationCoverage coverage = ModerationCoverage.from(settings);
+        long count = 0;
+        if (coverage.offlineRulesConfigured()) {
+            count += settings.surfaces().sign() != SurfaceMode.OFF ? 1 : 0;
+            count += settings.surfaces().book() != SurfaceMode.OFF ? 1 : 0;
+            count += settings.surfaces().anvil() != SurfaceMode.OFF ? 1 : 0;
+        }
+        if ((coverage.offlineRulesConfigured() || coverage.commandSpam())
+                && settings.surfaces().command() != SurfaceMode.OFF) {
+            count++;
+        }
         return count == 0 ? "none" : String.valueOf(count);
     }
 
@@ -139,7 +169,7 @@ public final class InstallTelemetry {
 
     /** Anti-spam on/off, the other half of "is anything armed". */
     public static String spamState(ModerationSettings settings) {
-        return settings.spam().enabled() ? "on" : "off";
+        return ModerationCoverage.from(settings).spam() ? "on" : "off";
     }
 
     /** Whether local hits are censored or blocked outright. */
@@ -162,7 +192,8 @@ public final class InstallTelemetry {
 
     /** Map-art scanning: only meaningful when a key is present. */
     public static String mapArtState(ModerationSettings settings) {
-        if (!settings.mapArt().enabled()) {
+        if (!settings.enabled() || !settings.mapArt().enabled()
+                || (!settings.mapArt().scanOnHold() && !settings.mapArt().scanOnFrameInteract())) {
             return "off";
         }
         return settings.api().apiKey().isBlank() ? "on_but_no_key" : "on";

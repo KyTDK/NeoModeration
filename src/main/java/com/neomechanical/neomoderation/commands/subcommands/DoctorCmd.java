@@ -7,6 +7,7 @@ import com.neomechanical.neomoderation.config.ModerationMode;
 import com.neomechanical.neomoderation.config.ModerationSettings;
 import com.neomechanical.neomoderation.moderation.CloudRecovery;
 import com.neomechanical.neomoderation.moderation.ModerationApiResult;
+import com.neomechanical.neomoderation.moderation.ModerationCoverage;
 import com.neomechanical.neomoderation.moderation.NeoMechanicalUsageClient;
 import com.neomechanical.neomoderation.moderation.UsageSummary;
 import org.bukkit.command.CommandSender;
@@ -52,6 +53,7 @@ public class DoctorCmd implements SubCommand {
     @Override
     public void execute(CommandSender sender, String label, String[] args) {
         ModerationSettings settings = plugin.settings();
+        ModerationCoverage coverage = ModerationCoverage.from(settings);
         plugin.messages().sendDashboard(sender,
                 plugin.getDescription().getVersion(),
                 settings.mode().name(),
@@ -65,33 +67,46 @@ public class DoctorCmd implements SubCommand {
             fail(sender, "Moderation", "disabled - run /nmod on");
         }
 
-        if (settings.mode() == ModerationMode.MONITOR) {
-            warn(sender, "Mode", "monitor - detections are observed but never blocked/punished");
+        if (!coverage.hasLocalChecks()) {
+            warn(sender, "Local mode", settings.mode().name().toLowerCase() + " - no local checks are armed");
+        } else if (settings.mode() == ModerationMode.MONITOR) {
+            warn(sender, "Local mode", "monitor - local detections alert staff without blocking or punishment");
+        } else if (!coverage.localEnforces()) {
+            warn(sender, "Local mode", "enforce selected, but armed surface checks are monitor-only");
         } else {
-            pass(sender, "Mode", "enforce");
+            pass(sender, "Local mode", "enforce - local chat blocks or censors; surfaces follow their configured modes");
         }
 
-        if (settings.offline().enabled()) {
+        if (coverage.localRules()) {
             pass(sender, "Local rules", settings.offline().bannedWords().size() + " words, "
                     + settings.offline().bannedUrls().size() + " links, "
                     + (settings.offline().allowedWords().size() + settings.offline().allowedUrls().size())
                     + " exceptions");
-        } else if (settings.api().apiKey().isBlank()) {
-            fail(sender, "Local rules", "disabled and no API key - nothing is being moderated");
+        } else if (coverage.spam()) {
+            warn(sender, "Local rules", "no word or URL rule armed; anti-spam still active");
+        } else if (coverage.hasCloudChecks()) {
+            warn(sender, "Local rules", "no word or URL rule armed; only cloud checks configured");
         } else {
-            warn(sender, "Local rules", "disabled - only cloud moderation runs");
+            fail(sender, "Local rules", "no word, URL, anti-spam or cloud checks armed");
         }
 
         if (settings.actions().isEmpty()) {
-            warn(sender, "Actions", "none - flagged chat is blocked without punishment");
+            pass(sender, "Actions", "block only - no automatic punishment or server-wide chat clear");
         } else {
             pass(sender, "Actions", ModerationAction.describe(settings.actions()));
         }
 
-        pass(sender, "Anti-spam", settings.spam().enabled()
-                ? settings.spam().messagesPer10s() + " msgs/10s, dup x" + settings.spam().duplicateLimit()
-                        + ", caps " + settings.spam().capsPercent() + "%"
-                : "off");
+        if (coverage.spam()) {
+            pass(sender, "Anti-spam", coverage.chatSpam()
+                    ? settings.spam().messagesPer10s() + " msgs/10s, dup x" + settings.spam().duplicateLimit()
+                            + ", caps " + settings.spam().capsPercent() + "%"
+                            + (coverage.commandSpam() ? ", command " + settings.spam().commandsPer10s() + "/10s" : "")
+                    : "command " + settings.spam().commandsPer10s() + "/10s; chat thresholds off");
+        } else if (settings.spam().enabled()) {
+            warn(sender, "Anti-spam", "enabled, but no scanned surface has an active threshold");
+        } else {
+            pass(sender, "Anti-spam", "off");
+        }
         pass(sender, "Strikes", settings.strikes().enabled()
                 ? settings.strikes().escalation().size() + " rung(s), decay "
                         + settings.strikes().decayMinutes() + "m"
@@ -123,6 +138,14 @@ public class DoctorCmd implements SubCommand {
                     + CloudRecovery.SIGNUP_URL + ", create a key, then run /nmod setup <key>");
             plugin.messages().sendFooter(sender);
             return;
+        }
+
+        if (!coverage.hasCloudChecks()) {
+            warn(sender, "Cloud mode", "no cloud text or map-art checks armed");
+        } else if (settings.cloudMode() == ModerationMode.MONITOR) {
+            warn(sender, "Cloud mode", "monitor - cloud decisions alert staff without blocking or punishment");
+        } else {
+            pass(sender, "Cloud mode", "enforce - flagged chat blocks where armed; map art follows confiscation setting");
         }
 
         if (!isHttpUri(settings.api().endpoint())) {

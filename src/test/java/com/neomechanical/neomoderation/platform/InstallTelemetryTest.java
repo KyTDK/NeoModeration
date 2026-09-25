@@ -28,19 +28,103 @@ class InstallTelemetryTest {
 
     @Test
     void separatesAnArmedInstallFromAnInertOne() {
-        assertEquals("enforce_all",
+        assertEquals("enforce_local_only",
                 InstallTelemetry.protectionState(settings("moderation.mode", "enforce",
                         "moderation.cloudMode", "enforce")));
-        assertEquals("monitor_all",
+        assertEquals("monitor_local_only",
                 InstallTelemetry.protectionState(settings("moderation.mode", "monitor",
                         "moderation.cloudMode", "monitor")));
     }
 
     @Test
-    void reportsTheNewDefaultAsItsOwnState() {
+    void reportsMixedLocalAndCloudModesWhenAKeyIsConfigured() {
         assertEquals("enforce_local_monitor_cloud",
                 InstallTelemetry.protectionState(settings("moderation.mode", "enforce",
-                        "moderation.cloudMode", "monitor")));
+                        "moderation.cloudMode", "monitor",
+                        "moderation.api.apiKey", "test-key")));
+    }
+
+    @Test
+    void reportsCloudOnlyAndMixedModesWhenThoseChecksAreArmed() {
+        assertEquals("monitor_cloud_only", InstallTelemetry.protectionState(settings(
+                "moderation.offline.enabled", "false",
+                "moderation.spam.enabled", "false",
+                "moderation.api.apiKey", "test-key",
+                "moderation.cloudMode", "monitor")));
+        assertEquals("monitor_local_enforce_cloud", InstallTelemetry.protectionState(settings(
+                "moderation.mode", "monitor",
+                "moderation.cloudMode", "enforce",
+                "moderation.api.apiKey", "test-key")));
+    }
+
+    @Test
+    void emptyLocalRulesAndDisabledSpamAreNotCountedAsProtection() {
+        assertEquals("nothing_armed", InstallTelemetry.protectionState(settings(
+                "moderation.spam.enabled", "false")));
+    }
+
+    @Test
+    void antiSpamOnlyStillCountsAsLocalProtection() {
+        assertEquals("enforce_local_only", InstallTelemetry.protectionState(settings(
+                "moderation.offline.enabled", "false")));
+    }
+
+    @Test
+    void mapScanningWithNoEventTriggerIsNotArmed() {
+        YamlConfiguration config = new YamlConfiguration();
+        config.set("moderation.enabled", true);
+        config.set("moderation.offline.enabled", false);
+        config.set("moderation.spam.enabled", false);
+        config.set("moderation.api.apiKey", "test-key");
+        config.set("moderation.mapArt.scanOnHold", false);
+        config.set("moderation.mapArt.scanOnFrameInteract", false);
+        for (String category : com.neomechanical.neomoderation.config.ModerationCategorySettings.categoryKeys()) {
+            config.set("moderation.categories." + category, false);
+        }
+        ModerationSettings settings = ModerationSettings.from(new BukkitConfigView(config));
+
+        assertEquals("nothing_armed", InstallTelemetry.protectionState(settings));
+        assertEquals("off", InstallTelemetry.mapArtState(settings));
+    }
+
+    @Test
+    void auxiliaryChartsDoNotTreatSavedFlagsAsActiveChecks() {
+        YamlConfiguration config = new YamlConfiguration();
+        config.set("moderation.enabled", true);
+        config.set("moderation.offline.enabled", false);
+        config.set("moderation.spam.enabled", false);
+        config.set("moderation.surfaces.sign", "monitor");
+        config.set("moderation.api.apiKey", "test-key");
+        config.set("moderation.mapArt.enabled", false);
+        for (String category : com.neomechanical.neomoderation.config.ModerationCategorySettings.categoryKeys()) {
+            config.set("moderation.categories." + category, false);
+        }
+        ModerationSettings inert = ModerationSettings.from(new BukkitConfigView(config));
+
+        assertEquals("nothing_armed", InstallTelemetry.cloudEnabledState(inert));
+        assertEquals("none", InstallTelemetry.surfacesArmed(inert));
+        assertEquals("off", InstallTelemetry.spamState(inert));
+
+        config.set("moderation.surfaces.command", "block");
+        config.set("moderation.spam.enabled", true);
+        ModerationSettings commandSpam = ModerationSettings.from(new BukkitConfigView(config));
+        assertEquals("local_only", InstallTelemetry.cloudEnabledState(commandSpam));
+        assertEquals("1", InstallTelemetry.surfacesArmed(commandSpam));
+        assertEquals("on", InstallTelemetry.spamState(commandSpam));
+    }
+
+    @Test
+    void monitorOnlySignRuleIsNotReportedAsEnforcement() {
+        YamlConfiguration config = new YamlConfiguration();
+        config.set("moderation.enabled", true);
+        config.set("moderation.mode", "enforce");
+        config.set("moderation.chat.scanAsyncChat", false);
+        config.set("moderation.spam.enabled", false);
+        config.set("moderation.offline.bannedWords", java.util.List.of("badword"));
+        config.set("moderation.surfaces.sign", "monitor");
+
+        assertEquals("monitor_local_only", InstallTelemetry.protectionState(
+                ModerationSettings.from(new BukkitConfigView(config))));
     }
 
     @Test

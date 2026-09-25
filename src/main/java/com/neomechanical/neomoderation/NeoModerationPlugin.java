@@ -95,10 +95,9 @@ public final class NeoModerationPlugin extends JavaPlugin {
         ClientIdentity.configure(getDescription().getVersion(), scheduler.platformName());
         registerMetrics();
         checkForUpdates();
-        // A fresh install trials in monitor mode with no API key, so it blocks
-        // nothing by design. Saying so is the difference between "working as
-        // intended" and "this plugin does nothing", which is the judgement an
-        // admin makes in the first few minutes.
+        // A fresh install blocks bundled local-rule matches without punishing
+        // players, while cloud judgements start in monitor mode. The startup
+        // summary makes the active protection and limits visible to admins.
         StartupSummary.lines(settings, getDescription().getVersion()).forEach(getLogger()::info);
     }
 
@@ -115,7 +114,7 @@ public final class NeoModerationPlugin extends JavaPlugin {
         metrics.addCustomChart(new SimplePie("moderation_mode",
                 () -> settings.mode().name().toLowerCase(java.util.Locale.ROOT)));
         metrics.addCustomChart(new SimplePie("cloud_enabled",
-                () -> settings.api().apiKey().isBlank() ? "local_only" : "local_and_cloud"));
+                () -> InstallTelemetry.cloudEnabledState(settings)));
         metrics.addCustomChart(new SimplePie("chat_censor",
                 () -> InstallTelemetry.censorState(settings)));
 
@@ -140,7 +139,7 @@ public final class NeoModerationPlugin extends JavaPlugin {
         metrics.addCustomChart(new SimplePie("word_list_state",
                 () -> InstallTelemetry.wordListState(settings, BUNDLED_WORD_COUNT)));
         metrics.addCustomChart(new SimplePie("surfaces_armed",
-                () -> InstallTelemetry.surfacesArmed(settings.surfaces())));
+                () -> InstallTelemetry.surfacesArmed(settings)));
         metrics.addCustomChart(new SimplePie("spam_state",
                 () -> InstallTelemetry.spamState(settings)));
         metrics.addCustomChart(new SimplePie("strike_state",

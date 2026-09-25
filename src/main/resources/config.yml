@@ -24,8 +24,9 @@ moderation:
   #   enforce = block flagged content and run the actions configured below.
   #
   # This is the mode for LOCAL rules: the word and URL lists below, and
-  # anti-spam. You wrote those lists, so a new install enforces them straight
-  # away and protects chat from the first minute. Switch back any time with
+  # anti-spam. The bundled starter list blocks matching messages straight
+  # away, but it does not punish players or clear everyone else's chat. Review
+  # the list for your server's standards. Switch back any time with
   # /nmod mode monitor.
   mode: "enforce"
 
@@ -141,15 +142,13 @@ moderation:
     # How many map results to remember (safe + flagged) before old ones drop.
     cacheSize: 1000
 
-  # ---- What happens when a message/map is flagged -------------------------
-  # Order matters. Manage in-game with /nmod action ...
+  # ---- Extra actions after a message is blocked ---------------------------
+  # Empty by default: block the matching message, alert staff, log a case,
+  # but do not mute the player or clear chat for everyone. Opt into extra
+  # actions with /nmod action add ...; order matters.
   #   type: CLEAR_CHAT | MUTE | KICK | BAN
   #   MUTE also takes durationSeconds and an optional reason.
-  actions:
-    - type: CLEAR_CHAT
-    - type: MUTE
-      durationSeconds: 300
-      reason: "Inappropriate chat message"
+  actions: []
 
   # ---- Local anti-spam (no API key needed, runs before everything) --------
   # Set any limit to 0 to disable that single check.
@@ -170,10 +169,11 @@ moderation:
     commandsPer10s: 8
 
   # ---- Progressive enforcement (strikes) -----------------------------------
-  # Every detection adds a strike. Stay clean for decayMinutes and the counter
-  # resets. When a player's count reaches a rung below, that action also runs.
+  # Off on a new install. Turn on only after reviewing the word list and
+  # testing your policy: every enforced detection adds a strike, and a rung
+  # below can run a separate action even when actions above is empty.
   strikes:
-    enabled: true
+    enabled: false
     decayMinutes: 30
     escalation:
       - atStrikes: 4

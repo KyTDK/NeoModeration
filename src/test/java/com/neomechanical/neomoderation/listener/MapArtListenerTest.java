@@ -15,6 +15,7 @@ import com.neomechanical.neomoderation.moderation.ChatModerationCoordinator;
 import com.neomechanical.neomoderation.moderation.DetectionNotifier;
 import com.neomechanical.neomoderation.moderation.ModerationApiResult;
 import com.neomechanical.neomoderation.moderation.MonitorStats;
+import com.neomechanical.neomoderation.messages.MessageService;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerItemHeldEvent;
@@ -33,6 +34,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.withSettings;
 import static org.mockito.Mockito.when;
 
@@ -56,8 +59,18 @@ class MapArtListenerTest {
     }
 
     @Test
-    void previouslyFlaggedMapIsStillEnforcedWhileCloudCircuitIsOpen() throws Exception {
-        ModerationSettings settings = settings();
+    void cachedCloudVerdictObeysCloudMonitorEvenWhenLocalRulesEnforce() throws Exception {
+        assertCachedMapDecision(ModerationMode.ENFORCE, ModerationMode.MONITOR, false);
+    }
+
+    @Test
+    void cachedCloudVerdictCanEnforceEvenWhenLocalRulesMonitor() throws Exception {
+        assertCachedMapDecision(ModerationMode.MONITOR, ModerationMode.ENFORCE, true);
+    }
+
+    private static void assertCachedMapDecision(ModerationMode localMode, ModerationMode cloudMode,
+                                                boolean shouldConfiscate) throws Exception {
+        ModerationSettings settings = settings(localMode, cloudMode);
         try (ChatModerationCoordinator coordinator =
                      new ChatModerationCoordinator(Logger.getLogger("test"))) {
             coordinator.recordApiResult(ModerationApiResult.transientTransport());
@@ -71,6 +84,7 @@ class MapArtListenerTest {
             when(plugin.coordinator()).thenReturn(coordinator);
             when(plugin.monitorStats()).thenReturn(stats);
             when(plugin.notifier()).thenReturn(mock(DetectionNotifier.class));
+            when(plugin.messages()).thenReturn(mock(MessageService.class));
             when(plugin.getLogger()).thenReturn(Logger.getLogger("test"));
 
             MapArtListener listener = new MapArtListener(plugin);
@@ -95,8 +109,14 @@ class MapArtListenerTest {
 
             listener.onItemHeld(event);
 
-            assertEquals(1, stats.total());
-            assertEquals(1L, stats.byReason().get("map_art"));
+            if (shouldConfiscate) {
+                verify(inventory).remove(mapItem);
+                assertEquals(0, stats.total());
+            } else {
+                assertEquals(1, stats.total());
+                assertEquals(1L, stats.byReason().get("map_art"));
+                verify(inventory, never()).remove(mapItem);
+            }
         }
     }
 
@@ -107,11 +127,11 @@ class MapArtListenerTest {
         return (Set<Integer>) field.get(listener);
     }
 
-    private static ModerationSettings settings() {
+    private static ModerationSettings settings(ModerationMode localMode, ModerationMode cloudMode) {
         return new ModerationSettings(
                 true,
-                ModerationMode.MONITOR,
-                ModerationMode.MONITOR,
+                localMode,
+                cloudMode,
                 new ModerationApiSettings("https://api.neomechanical.com/v1/events", "test-key", 100, 100),
                 new OfflineModerationSettings(true, false, true, List.of(), List.of(), List.of(), List.of()),
                 new ModerationCategorySettings(Map.of()),

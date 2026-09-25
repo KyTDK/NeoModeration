@@ -62,11 +62,10 @@ public record ModerationSettings(
     /**
      * Cloud decisions can run at a different confidence to local ones.
      *
-     * <p>A local word-list hit is deterministic and the admin wrote the list, so
-     * enforcing it on a fresh install is safe. A cloud category score is a
-     * judgement made by a model the admin has never seen, so a fresh install
-     * only alerts on it until they have watched it decide. That is the whole
-     * reason for a separate key.
+     * <p>Local rules can block immediately without automatic punishment; cloud
+     * category scores are model judgements the operator has not reviewed yet.
+     * A fresh install only alerts on cloud decisions until the operator opts
+     * into enforcement. That is the reason for a separate key.
      *
      * <p>When {@code moderation.cloudMode} is absent -- every config written
      * before 1.6.0 -- it follows {@code moderation.mode}, so upgrading changes

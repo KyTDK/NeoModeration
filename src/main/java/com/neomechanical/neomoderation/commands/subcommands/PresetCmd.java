@@ -6,49 +6,38 @@ import com.neomechanical.neomoderation.config.ModerationAction;
 import com.neomechanical.neomoderation.config.ModerationCategorySettings;
 import org.bukkit.command.CommandSender;
 
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
 /**
- * One-command policy bundles. A preset sets cloud category thresholds and the
- * action list; it never touches the mode, the API key, or the local word/URL
- * rules, and every value can still be overridden afterwards.
+ * Cloud threshold presets. They do not change local rules, enforcement modes,
+ * the API key, or an operator's punishment policy.
  */
 public class PresetCmd implements SubCommand {
     private record Preset(String name, String summary, double defaultThreshold,
-                          Set<String> disabledCategories, List<Map<String, Object>> actions) {
+                          Set<String> disabledCategories) {
     }
 
     private static final List<Preset> PRESETS = List.of(
             new Preset(
                     "family",
-                    "strictest: all categories at 0.55, clear + 10m mute",
+                    "cloud: all categories at 0.55 (strict)",
                     0.55D,
-                    Set.of(),
-                    List.of(
-                            Map.of("type", "CLEAR_CHAT"),
-                            Map.of("type", "MUTE", "durationSeconds", 600, "reason", "Inappropriate chat message")
-                    )
+                    Set.of()
             ),
             new Preset(
                     "community",
-                    "balanced default: all categories at 0.7, clear + 5m mute",
+                    "cloud: all categories at 0.70",
                     0.7D,
-                    Set.of(),
-                    List.of(
-                            Map.of("type", "CLEAR_CHAT"),
-                            Map.of("type", "MUTE", "durationSeconds", 300, "reason", "Inappropriate chat message")
-                    )
+                    Set.of()
             ),
             new Preset(
                     "minimal",
-                    "severe content only at 0.8 (harassment/scam/spam off), clear only",
+                    "cloud: 0.80, with harassment/scam/spam off",
                     0.8D,
-                    Set.of("harassment", "scam", "spam"),
-                    List.of(Map.of("type", "CLEAR_CHAT"))
+                    Set.of("harassment", "scam", "spam")
             )
     );
 
@@ -65,7 +54,7 @@ public class PresetCmd implements SubCommand {
 
     @Override
     public String getDescription() {
-        return "Apply a policy preset (family, community, minimal).";
+        return "Apply a cloud threshold preset (family, community, minimal).";
     }
 
     @Override
@@ -99,7 +88,6 @@ public class PresetCmd implements SubCommand {
                     : preset.defaultThreshold();
             plugin.getConfig().set("moderation.categories." + category, value);
         }
-        plugin.getConfig().set("moderation.actions", toConfigMaps(preset.actions()));
         plugin.saveAndReload();
 
         plugin.messages().send(sender, "preset.applied", Map.of(
@@ -107,13 +95,6 @@ public class PresetCmd implements SubCommand {
                 "categories", String.valueOf(plugin.settings().categories().enabledCount()),
                 "actions", ModerationAction.describe(plugin.settings().actions())
         ));
-    }
-
-    /** Bukkit serializes LinkedHashMaps cleanly and keeps key order stable in config.yml. */
-    private static List<Map<String, Object>> toConfigMaps(List<Map<String, Object>> actions) {
-        return actions.stream()
-                .map(action -> (Map<String, Object>) new LinkedHashMap<>(action))
-                .toList();
     }
 
     @Override

@@ -1,10 +1,14 @@
 package com.neomechanical.neomoderation.commands.subcommands;
 
 import com.neomechanical.neomoderation.config.ModerationMode;
+import com.neomechanical.neomoderation.config.BukkitConfigView;
+import com.neomechanical.neomoderation.config.ModerationSettings;
+import com.neomechanical.neomoderation.moderation.DetectionHandler;
 import com.neomechanical.neomoderation.moderation.CloudRecovery;
 import com.neomechanical.neomoderation.moderation.ModerationApiResult;
 import com.neomechanical.neomoderation.moderation.NeoMechanicalUsageClient;
 import org.junit.jupiter.api.Test;
+import org.bukkit.configuration.file.YamlConfiguration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -13,11 +17,27 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class TestCmdDecisionTest {
     @Test
     void cleanMessagesAreAllowedAndDetectionsRespectTheActiveMode() {
-        assertEquals(TestCmd.Outcome.ALLOWED, TestCmd.outcome(true, false, ModerationMode.ENFORCE));
-        assertEquals(TestCmd.Outcome.ALLOWED, TestCmd.outcome(true, false, ModerationMode.MONITOR));
-        assertEquals(TestCmd.Outcome.ENFORCED, TestCmd.outcome(true, true, ModerationMode.ENFORCE));
-        assertEquals(TestCmd.Outcome.MONITORED, TestCmd.outcome(true, true, ModerationMode.MONITOR));
-        assertEquals(TestCmd.Outcome.ALLOWED, TestCmd.outcome(false, true, ModerationMode.ENFORCE));
+        assertEquals(TestCmd.Outcome.ALLOWED, TestCmd.outcome(true, false, ModerationMode.ENFORCE, false));
+        assertEquals(TestCmd.Outcome.ALLOWED, TestCmd.outcome(true, false, ModerationMode.MONITOR, false));
+        assertEquals(TestCmd.Outcome.ENFORCED, TestCmd.outcome(true, true, ModerationMode.ENFORCE, false));
+        assertEquals(TestCmd.Outcome.MONITORED, TestCmd.outcome(true, true, ModerationMode.MONITOR, false));
+        assertEquals(TestCmd.Outcome.ALLOWED, TestCmd.outcome(false, true, ModerationMode.ENFORCE, false));
+        assertEquals(TestCmd.Outcome.CENSORED, TestCmd.outcome(true, true, ModerationMode.ENFORCE, true));
+        assertEquals(TestCmd.Outcome.MONITORED, TestCmd.outcome(true, true, ModerationMode.MONITOR, true));
+    }
+
+    @Test
+    void previewUsesTheModeOfTheEngineThatFlaggedTheMessage() {
+        YamlConfiguration config = new YamlConfiguration();
+        config.set("moderation.enabled", true);
+        config.set("moderation.mode", "enforce");
+        config.set("moderation.cloudMode", "monitor");
+        ModerationSettings settings = ModerationSettings.from(new BukkitConfigView(config));
+
+        assertEquals(TestCmd.Outcome.ENFORCED,
+                TestCmd.outcome(settings, true, DetectionHandler.Source.LOCAL, false));
+        assertEquals(TestCmd.Outcome.MONITORED,
+                TestCmd.outcome(settings, true, DetectionHandler.Source.CLOUD, false));
     }
 
     @Test
