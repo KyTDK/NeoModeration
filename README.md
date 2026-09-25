@@ -6,7 +6,7 @@ Chat **and map-art** moderation for Minecraft. A starter English word list, conf
 
 ## Setup
 
-1. Drop `NeoModeration-1.6.1.jar` into `plugins/` and restart.
+1. Drop `NeoModeration-1.6.2.jar` into `plugins/` and restart.
 2. Run `/nmod test badword`. It should show the bundled local rule as **FLAGGED** and the result as **blocked**. This is a dry run: the preview itself never blocks or punishes anyone. Review the starter English word list in `config.yml`; it is a starting policy, not complete coverage. This command previews content rules; rate and repetition checks need live messages.
 3. Optional: for context-aware cloud moderation, [sign up](https://neomechanical.com/signup?src=neomoderation), create an API key with `events:write` + `usage:read`, then save it:
 
