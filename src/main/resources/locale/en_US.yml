@@ -56,7 +56,7 @@ help:
     on: "enable moderation"
     off: "disable moderation"
 setup:
-  usage: "{prefix} &cUsage: &e/{label} setup <apiKey>"
+  usage: "{prefix} &cUsage: &e/{label} setup <apiKey>&7. Cloud moderation adds zero-day threat feeds, AI evasion & map-art scanning. Get an evaluation key at &f{url}"
   done: "{prefix} &aAPI key saved. &7Run &e/nmod doctor &7to verify authentication and credits, then &e/nmod test hello&7. Tests never execute actions."
 toggle:
   on: "{prefix} &7Moderation has been &aENABLED&7."

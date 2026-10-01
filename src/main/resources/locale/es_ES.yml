@@ -55,7 +55,7 @@ help:
     on: "activar moderación"
     off: "desactivar moderación"
 setup:
-  usage: "{prefix} &cUso: &e/{label} setup <apiKey>"
+  usage: "{prefix} &cUso: &e/{label} setup <apiKey>&7. La moderación en la nube añade amenazas de día cero, evasión por IA y análisis de mapas. Obtén una clave de prueba en &f{url}"
   done: "{prefix} &aClave API guardada. &7Ejecuta &e/nmod doctor &7para verificar autenticación y créditos y luego &e/nmod test hello&7. Las pruebas nunca ejecutan acciones."
 toggle:
   on: "{prefix} &7Moderación &aACTIVADA&7."
