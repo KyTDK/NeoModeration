@@ -55,9 +55,17 @@ help:
     reload: "reload config from disk"
     on: "enable moderation"
     off: "disable moderation"
+    trial: "activate 14-day cloud trial"
 setup:
   usage: "{prefix} &cUsage: &e/{label} setup <apiKey>&7. Cloud moderation adds zero-day threat feeds, AI evasion & map-art scanning. Get an evaluation key at &f{url}"
   done: "{prefix} &aAPI key saved. &7Run &e/nmod doctor &7to verify authentication and credits, then &e/nmod test hello&7. Tests never execute actions."
+trial:
+  already-configured: "{prefix} &cThis server already has an active API key configured."
+  requesting: "{prefix} &7Connecting to NeoMechanical to activate your 14-day cloud trial..."
+  activated: "{prefix} &a14-day trial activated! Cloud protection is now live with zero-day threat feeds, AI evasion & map-art scanning. Trial expires on &f{expires}&a. Run &e/nmod doctor &ato verify."
+  already-claimed: "{prefix} &cThis Minecraft server installation has already used its 14-day trial. To continue with cloud protection, get an API key at &f{url}"
+  rate-limited: "{prefix} &cTrial rate limit reached for this network. Please try again later or sign up at &fhttps://neomechanical.com/signup?src=neomoderation"
+  failed: "{prefix} &cUnable to activate trial: &e{error}"
 toggle:
   on: "{prefix} &7Moderation has been &aENABLED&7."
   off: "{prefix} &7Moderation has been &cDISABLED&7."

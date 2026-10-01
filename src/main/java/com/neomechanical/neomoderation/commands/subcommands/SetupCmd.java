@@ -49,6 +49,10 @@ public class SetupCmd implements SubCommand {
             ));
             return;
         }
+        if (args.length == 2 && "trial".equalsIgnoreCase(args[1])) {
+            new TrialCmd(plugin).execute(sender, label, args);
+            return;
+        }
         String apiKey = String.join(" ", Arrays.copyOfRange(args, 1, args.length)).trim();
         if (apiKey.isEmpty()) {
             plugin.messages().send(sender, "setup.usage", Map.of(

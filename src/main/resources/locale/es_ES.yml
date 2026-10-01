@@ -54,9 +54,17 @@ help:
     reload: "recargar la configuración"
     on: "activar moderación"
     off: "desactivar moderación"
+    trial: "activar prueba de 14 días en la nube"
 setup:
   usage: "{prefix} &cUso: &e/{label} setup <apiKey>&7. La moderación en la nube añade amenazas de día cero, evasión por IA y análisis de mapas. Obtén una clave de prueba en &f{url}"
   done: "{prefix} &aClave API guardada. &7Ejecuta &e/nmod doctor &7para verificar autenticación y créditos y luego &e/nmod test hello&7. Las pruebas nunca ejecutan acciones."
+trial:
+  already-configured: "{prefix} &cEste servidor ya tiene una clave API activa configurada."
+  requesting: "{prefix} &7Conectando con NeoMechanical para activar tu prueba de 14 días en la nube..."
+  activated: "{prefix} &a¡Prueba de 14 días activada! La protección en la nube ya está activa con detección de amenazas, evasión por IA y análisis de mapas. Caduca el &f{expires}&a. Ejecuta &e/nmod doctor &apara verificar."
+  already-claimed: "{prefix} &cEsta instalación de servidor Minecraft ya ha utilizado su prueba de 14 días. Para continuar, obtén una clave API en &f{url}"
+  rate-limited: "{prefix} &cLímite de solicitudes de prueba alcanzado para esta red. Inténtalo más tarde o regístrate en &fhttps://neomechanical.com/signup?src=neomoderation"
+  failed: "{prefix} &cNo se pudo activar la prueba: &e{error}"
 toggle:
   on: "{prefix} &7Moderación &aACTIVADA&7."
   off: "{prefix} &7Moderación &cDESACTIVADA&7."
