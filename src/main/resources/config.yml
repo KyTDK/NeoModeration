@@ -90,7 +90,14 @@ moderation:
       - "kys"
     bannedUrls:
       - "grabify.link"
+      - "iplogger.org"
+      - "2no.co"
+      - "yip.su"
+      - "blasze.com"
       - "discord.gg/free"
+      - "discord-nitro"
+      - "discordnitro"
+      - "discord.gift"
     # Exceptions that always win over the rules above (manage with /nmod allow).
     # allowedWords are whole phrases: a banned word inside an allowed phrase is
     # ignored. allowedUrls are substring matches, exactly like bannedUrls, and
