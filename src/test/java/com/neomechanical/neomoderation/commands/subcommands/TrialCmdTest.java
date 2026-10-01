@@ -115,4 +115,15 @@ class TrialCmdTest {
 
         verify(messages).send(eq(sender), eq("trial.rate-limited"));
     }
+
+    @Test
+    void hmacGenerationIsDeterministicAndNonEmpty() {
+        String hmac1 = TrialClient.computeHmac("11111111-2222-3333-4444-555555555555", 1700000000L);
+        String hmac2 = TrialClient.computeHmac("11111111-2222-3333-4444-555555555555", 1700000000L);
+        String hmacDiff = TrialClient.computeHmac("11111111-2222-3333-4444-555555555555", 1700000001L);
+
+        assertEquals(64, hmac1.length());
+        assertEquals(hmac1, hmac2);
+        org.junit.jupiter.api.Assertions.assertNotEquals(hmac1, hmacDiff);
+    }
 }

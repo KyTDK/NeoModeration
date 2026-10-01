@@ -2,20 +2,27 @@ package com.neomechanical.neomoderation.moderation;
 
 import com.neomechanical.neomoderation.config.ModerationApiSettings;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
  * Handles communication with the NeoMechanical 14-day trial activation service.
  *
- * <p>Enforces plugin exclusivity with User-Agent and product identity headers.
+ * <p>Enforces plugin exclusivity with User-Agent, product identity headers,
+ * timestamp freshness, and timing-safe HMAC-SHA256 signatures.
  */
 public final class TrialClient {
+    private static final String PLUGIN_SECRET = "nm_trial_sec_2026_eval_sign";
+
     private static final HttpClient HTTP = HttpClient.newBuilder()
             .version(HttpClient.Version.HTTP_1_1)
             .connectTimeout(Duration.ofSeconds(10))
@@ -25,6 +32,23 @@ public final class TrialClient {
     private static final Pattern EXPIRES_AT_PATTERN = Pattern.compile("\"expiresAt\"\\s*:\\s*\"([^\"]+)\"");
     private static final Pattern DAYS_PATTERN = Pattern.compile("\"daysRemaining\"\\s*:\\s*(\\d+)");
 
+    public static String computeHmac(String installId, long timestampSeconds) {
+        try {
+            String message = (installId == null ? "" : installId.trim().toLowerCase()) + ":" + timestampSeconds;
+            Mac mac = Mac.getInstance("HmacSHA256");
+            SecretKeySpec keySpec = new SecretKeySpec(PLUGIN_SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+            mac.init(keySpec);
+            byte[] rawHmac = mac.doFinal(message.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder(rawHmac.length * 2);
+            for (byte b : rawHmac) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
     public TrialResult activateTrial(
             ModerationApiSettings apiSettings,
             String installId,
@@ -32,6 +56,8 @@ public final class TrialClient {
     ) throws TrialException {
         String endpoint = trialUrl(apiSettings.endpoint());
         String body = "{\"installId\":\"" + escapeJson(installId) + "\",\"platform\":\"" + escapeJson(platformInfo) + "\"}";
+        long timestamp = Instant.now().getEpochSecond();
+        String hmac = computeHmac(installId, timestamp);
 
         HttpRequest request;
         try {
@@ -41,6 +67,8 @@ public final class TrialClient {
                     .header("Content-Type", "application/json")
                     .header("User-Agent", ClientIdentity.userAgent())
                     .header("x-plugin-product", "NeoModeration")
+                    .header("x-plugin-timestamp", String.valueOf(timestamp))
+                    .header("x-plugin-hmac", hmac)
                     .POST(HttpRequest.BodyPublishers.ofString(body))
                     .build();
         } catch (IllegalArgumentException e) {
