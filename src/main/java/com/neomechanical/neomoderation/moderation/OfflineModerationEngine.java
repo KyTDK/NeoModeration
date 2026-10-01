@@ -26,12 +26,6 @@ import java.util.regex.Pattern;
  * per-message cost in the tens of microseconds even with a 400+ entry list.</p>
  */
 public final class OfflineModerationEngine {
-    private static final Pattern URL_PATTERN = Pattern.compile(
-            "(?i)(?:https?://|www\\.)\\S+|\\b[a-z0-9.-]+\\.[a-z]{2,}(?:/\\S*)?"
-    );
-    private static final Pattern IPV4_PATTERN = Pattern.compile(
-            "\\b(?:\\d{1,3}\\.){3}\\d{1,3}\\b"
-    );
 
     /**
      * A banned word as runs of identical characters. Matching requires each
@@ -79,8 +73,7 @@ public final class OfflineModerationEngine {
             }
         }
 
-        if (settings.blockAnyUrl()
-                && (URL_PATTERN.matcher(lowerMessage).find() || IPV4_PATTERN.matcher(lowerMessage).find())) {
+        if (settings.blockAnyUrl() && MinecraftThreatDetector.matchesUrlOrIp(lowerMessage)) {
             return OfflineModerationResult.flagged("blocked_url:any");
         }
 
@@ -135,8 +128,8 @@ public final class OfflineModerationEngine {
             }
         }
         if (settings.blockAnyUrl()) {
-            starRegexMatches(raw, lowerMirror.toString(), URL_PATTERN);
-            starRegexMatches(raw, lowerMirror.toString(), IPV4_PATTERN);
+            starRegexMatches(raw, lowerMirror.toString(), MinecraftThreatDetector.URL_PATTERN);
+            starRegexMatches(raw, lowerMirror.toString(), MinecraftThreatDetector.IPV4_PATTERN);
         }
 
         if (!rules.words().isEmpty()) {
