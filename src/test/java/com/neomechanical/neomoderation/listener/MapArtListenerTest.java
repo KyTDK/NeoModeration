@@ -14,6 +14,8 @@ import com.neomechanical.neomoderation.config.SurfaceSettings;
 import com.neomechanical.neomoderation.moderation.ChatModerationCoordinator;
 import com.neomechanical.neomoderation.moderation.DetectionNotifier;
 import com.neomechanical.neomoderation.moderation.ModerationApiResult;
+import com.neomechanical.neomoderation.moderation.ModerationApiClient;
+import com.neomechanical.neomoderation.moderation.MapArtScanner;
 import com.neomechanical.neomoderation.moderation.MonitorStats;
 import com.neomechanical.neomoderation.messages.MessageService;
 import org.bukkit.Material;
@@ -24,10 +26,9 @@ import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.MapMeta;
 import org.junit.jupiter.api.Test;
 
-import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.UUID;
 import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -37,6 +38,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.withSettings;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 class MapArtListenerTest {
@@ -73,10 +79,6 @@ class MapArtListenerTest {
         ModerationSettings settings = settings(localMode, cloudMode);
         try (ChatModerationCoordinator coordinator =
                      new ChatModerationCoordinator(Logger.getLogger("test"))) {
-            coordinator.recordApiResult(ModerationApiResult.transientTransport());
-            coordinator.recordApiResult(ModerationApiResult.transientTransport());
-            coordinator.recordApiResult(ModerationApiResult.transientTransport());
-            assertFalse(coordinator.isRemoteCallAllowed());
 
             MonitorStats stats = new MonitorStats();
             NeoModerationPlugin plugin = mock(NeoModerationPlugin.class);
@@ -88,7 +90,7 @@ class MapArtListenerTest {
             when(plugin.getLogger()).thenReturn(Logger.getLogger("test"));
 
             MapArtListener listener = new MapArtListener(plugin);
-            flaggedMaps(listener).add(7);
+
 
             MapMeta meta = mock(MapMeta.class, withSettings().extraInterfaces(LegacyMapId.class));
             when(((LegacyMapId) meta).getMapId()).thenReturn(7);
@@ -102,29 +104,83 @@ class MapArtListenerTest {
             Player player = mock(Player.class);
             when(player.getInventory()).thenReturn(inventory);
             when(player.getName()).thenReturn("Tester");
+            when(player.getUniqueId()).thenReturn(UUID.randomUUID());
 
             PlayerItemHeldEvent event = mock(PlayerItemHeldEvent.class);
             when(event.getPlayer()).thenReturn(player);
             when(event.getNewSlot()).thenReturn(0);
 
-            listener.onItemHeld(event);
+            ModerationApiClient client = mock(ModerationApiClient.class);
+            when(plugin.apiClient()).thenReturn(client);
+            when(client.moderateImage(anyString(), anyString(), anyString(), any(), any()))
+                    .thenReturn(ModerationApiResult.flagged());
+            doAnswer(call -> { ((Runnable) call.getArgument(0)).run(); return null; })
+                    .when(plugin).runAsync(any(Runnable.class));
+            doAnswer(call -> { ((Runnable) call.getArgument(1)).run(); return null; })
+                    .when(plugin).runForEntity(any(), any(Runnable.class));
+            try (var scanner = mockStatic(MapArtScanner.class)) {
+                scanner.when(() -> MapArtScanner.getBase64Image(7)).thenReturn("first-image");
+                listener.onItemHeld(event);
+                coordinator.recordApiResult(ModerationApiResult.transientTransport());
+                coordinator.recordApiResult(ModerationApiResult.transientTransport());
+                coordinator.recordApiResult(ModerationApiResult.transientTransport());
+                assertFalse(coordinator.isRemoteCallAllowed());
+                listener.onItemHeld(event);
+            }
+            verify(client, times(1)).moderateImage(anyString(), anyString(), anyString(), any(), any());
 
             if (shouldConfiscate) {
-                verify(inventory).remove(mapItem);
+                verify(inventory, times(2)).remove(mapItem);
                 assertEquals(0, stats.total());
             } else {
-                assertEquals(1, stats.total());
-                assertEquals(1L, stats.byReason().get("map_art"));
+                assertEquals(2, stats.total());
+                assertEquals(2L, stats.byReason().get("map_art"));
                 verify(inventory, never()).remove(mapItem);
             }
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private static Set<Integer> flaggedMaps(MapArtListener listener) throws Exception {
-        Field field = MapArtListener.class.getDeclaredField("flaggedMaps");
-        field.setAccessible(true);
-        return (Set<Integer>) field.get(listener);
+    @Test
+    void changingASafeMapRequiresAnotherCloudVerdict() {
+        ModerationSettings settings = settings(ModerationMode.ENFORCE, ModerationMode.ENFORCE);
+        NeoModerationPlugin plugin = mock(NeoModerationPlugin.class);
+        when(plugin.settings()).thenReturn(settings);
+        when(plugin.messages()).thenReturn(mock(MessageService.class));
+        ModerationApiClient client = mock(ModerationApiClient.class);
+        when(plugin.apiClient()).thenReturn(client);
+        when(client.moderateImage(anyString(), anyString(), anyString(), any(), any()))
+                .thenReturn(ModerationApiResult.clear(), ModerationApiResult.flagged());
+        doAnswer(call -> { ((Runnable) call.getArgument(0)).run(); return null; })
+                .when(plugin).runAsync(any(Runnable.class));
+        doAnswer(call -> { ((Runnable) call.getArgument(1)).run(); return null; })
+                .when(plugin).runForEntity(any(), any(Runnable.class));
+        MapMeta meta = mock(MapMeta.class, withSettings().extraInterfaces(LegacyMapId.class));
+        when(((LegacyMapId) meta).getMapId()).thenReturn(7);
+        ItemStack item = mock(ItemStack.class);
+        when(item.getType()).thenReturn(Material.MAP);
+        when(item.hasItemMeta()).thenReturn(true);
+        when(item.getItemMeta()).thenReturn(meta);
+        Player player = mock(Player.class);
+        PlayerInventory inventory = mock(PlayerInventory.class);
+        when(player.getInventory()).thenReturn(inventory);
+        when(inventory.getItem(0)).thenReturn(item);
+        when(player.getName()).thenReturn("Tester");
+        when(player.getUniqueId()).thenReturn(UUID.randomUUID());
+        PlayerItemHeldEvent event = mock(PlayerItemHeldEvent.class);
+        when(event.getPlayer()).thenReturn(player);
+        when(event.getNewSlot()).thenReturn(0);
+        try (ChatModerationCoordinator coordinator = new ChatModerationCoordinator(Logger.getLogger("test"));
+             var scanner = mockStatic(MapArtScanner.class)) {
+            when(plugin.coordinator()).thenReturn(coordinator);
+            scanner.when(() -> MapArtScanner.getBase64Image(7))
+                    .thenReturn("first-image", "second-image", "second-image");
+            MapArtListener listener = new MapArtListener(plugin);
+            listener.onItemHeld(event);
+            listener.onItemHeld(event);
+            listener.onItemHeld(event);
+            verify(client, times(2)).moderateImage(anyString(), anyString(), anyString(), any(), any());
+            verify(inventory, times(2)).remove(item);
+        }
     }
 
     private static ModerationSettings settings(ModerationMode localMode, ModerationMode cloudMode) {

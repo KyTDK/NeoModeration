@@ -48,7 +48,7 @@ class CloudHealthIsolationTest {
         String endpoint = "http://127.0.0.1:" + server.getAddress().getPort() + "/v1/events";
         ModerationSettings settings = settings(endpoint);
         try (ChatModerationCoordinator coordinator = new ChatModerationCoordinator(Logger.getLogger("test"))) {
-            coordinator.isMessageFlagged(player(), "hello", settings);
+            coordinator.checkMessage(player(), "hello", settings);
             assertEquals(ModerationApiResult.Kind.CLIENT_REQUEST, coordinator.lastCloudResultKind());
 
             NeoModerationPlugin plugin = plugin(settings, coordinator);
@@ -74,7 +74,7 @@ class CloudHealthIsolationTest {
         String endpoint = "http://127.0.0.1:" + server.getAddress().getPort() + "/v1/events";
         ModerationSettings settings = settings(endpoint);
         try (ChatModerationCoordinator coordinator = new ChatModerationCoordinator(Logger.getLogger("test"))) {
-            coordinator.isMessageFlagged(player(), "hello", settings);
+            coordinator.checkMessage(player(), "hello", settings);
             assertEquals(ModerationApiResult.Kind.CLIENT_REQUEST, coordinator.lastCloudResultKind());
 
             List<Map<String, String>> diagnostics = new ArrayList<>();

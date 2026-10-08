@@ -11,14 +11,14 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonElement;
 
 /**
  * Handles communication with the NeoMechanical 14-day trial activation service.
  *
- * <p>Enforces plugin exclusivity with User-Agent, product identity headers,
- * timestamp freshness, and timing-safe HMAC-SHA256 signatures.
+ * <p>The distributed signature is a public protocol marker, not proof of
+ * installation. Trial eligibility and claiming are enforced server-side.
  */
 public final class TrialClient {
     private static final String PLUGIN_SECRET = "nm_trial_sec_2026_eval_sign";
@@ -28,13 +28,6 @@ public final class TrialClient {
             .connectTimeout(Duration.ofSeconds(10))
             .build();
 
-    private static final Pattern API_KEY_PATTERN = Pattern.compile("\"apiKey\"\\s*:\\s*\"([^\"]+)\"");
-    private static final Pattern EXPIRES_AT_PATTERN = Pattern.compile("\"expiresAt\"\\s*:\\s*\"([^\"]+)\"");
-    private static final Pattern DAYS_PATTERN = Pattern.compile("\"daysRemaining\"\\s*:\\s*(\\d+)");
-    private static final Pattern IS_TRIAL_PATTERN = Pattern.compile("\"isTrial\"\\s*:\\s*(true|false)", Pattern.CASE_INSENSITIVE);
-    private static final Pattern STATUS_PATTERN = Pattern.compile("\"status\"\\s*:\\s*\"([^\"]+)\"");
-    private static final Pattern CLAIM_URL_PATTERN = Pattern.compile("\"claimUrl\"\\s*:\\s*\"([^\"]+)\"");
-    private static final Pattern UPGRADE_URL_PATTERN = Pattern.compile("\"upgradeUrl\"\\s*:\\s*\"([^\"]+)\"");
 
     public static String computeHmac(String installId, long timestampSeconds) {
         try {
@@ -147,47 +140,70 @@ public final class TrialClient {
         return base + "/v1/plugins/neomoderation/trial";
     }
 
-    private static TrialResult parseSuccess(String responseBody) throws TrialException {
-        Matcher keyMatcher = API_KEY_PATTERN.matcher(responseBody);
-        if (!keyMatcher.find()) {
+    private static TrialResult parseSuccess(String body) throws TrialException {
+        JsonObject response = responseObject(body);
+        String apiKey = stringField(response, "apiKey", "");
+        if (apiKey.isBlank()) {
             throw new TrialException(TrialError.INVALID_RESPONSE, "Missing apiKey in trial response");
         }
-        String apiKey = keyMatcher.group(1);
-
-        Matcher expiresMatcher = EXPIRES_AT_PATTERN.matcher(responseBody);
-        String expiresAt = expiresMatcher.find() ? expiresMatcher.group(1) : "14 days";
-
-        Matcher daysMatcher = DAYS_PATTERN.matcher(responseBody);
-        int days = daysMatcher.find() ? Integer.parseInt(daysMatcher.group(1)) : 14;
-
-        Matcher claimMatcher = CLAIM_URL_PATTERN.matcher(responseBody);
-        String claimUrl = claimMatcher.find() ? claimMatcher.group(1) : CloudRecovery.SIGNUP_URL;
-
-        return new TrialResult(apiKey, expiresAt, days, claimUrl);
+        return new TrialResult(apiKey, stringField(response, "expiresAt", "14 days"),
+                daysField(response, 14), stringField(response, "claimUrl", CloudRecovery.SIGNUP_URL));
     }
 
-    static TrialStatusResult parseStatusSuccess(String responseBody) throws TrialException {
-        if (responseBody == null || responseBody.isBlank()) {
-            throw new TrialException(TrialError.INVALID_RESPONSE, "Empty trial status response");
+    static TrialStatusResult parseStatusSuccess(String body) throws TrialException {
+        JsonObject response = responseObject(body);
+        JsonElement trial = response.get("isTrial");
+        if (trial == null || !trial.isJsonPrimitive() || !trial.getAsJsonPrimitive().isBoolean()) {
+            throw new TrialException(TrialError.INVALID_RESPONSE, "Missing isTrial in trial status response");
         }
-        Matcher trialMatcher = IS_TRIAL_PATTERN.matcher(responseBody);
-        boolean isTrial = trialMatcher.find() && Boolean.parseBoolean(trialMatcher.group(1));
+        boolean isTrial = trial.getAsBoolean();
+        String status = stringField(response, "status", "");
+        if ((isTrial && !status.equals("active") && !status.equals("expired"))
+                || (!isTrial && !status.equals("standard_workspace"))) {
+            throw new TrialException(TrialError.INVALID_RESPONSE, "Invalid trial status response");
+        }
+        return new TrialStatusResult(isTrial, status, stringField(response, "expiresAt", "unknown"),
+                daysField(response, 0), stringField(response, "upgradeUrl",
+                stringField(response, "claimUrl", CloudRecovery.BILLING_URL)));
+    }
 
-        Matcher statusMatcher = STATUS_PATTERN.matcher(responseBody);
-        String status = statusMatcher.find() ? statusMatcher.group(1) : (isTrial ? "active" : "standard_workspace");
+    private static JsonObject responseObject(String body) throws TrialException {
+        try {
+            JsonObject response = CloudResponseJson.parseObject(body);
+            if (response != null) {
+                return response;
+            }
+        } catch (RuntimeException ignored) {
+        }
+        throw new TrialException(TrialError.INVALID_RESPONSE, "Invalid trial response JSON");
+    }
 
-        Matcher expiresMatcher = EXPIRES_AT_PATTERN.matcher(responseBody);
-        String expiresAt = expiresMatcher.find() ? expiresMatcher.group(1) : "unknown";
+    private static String stringField(JsonObject response, String key, String fallback) throws TrialException {
+        JsonElement value = response.get(key);
+        if (value == null || value.isJsonNull()) {
+            return fallback;
+        }
+        if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()) {
+            throw new TrialException(TrialError.INVALID_RESPONSE, "Invalid " + key + " in trial response");
+        }
+        return value.getAsString();
+    }
 
-        Matcher daysMatcher = DAYS_PATTERN.matcher(responseBody);
-        int days = daysMatcher.find() ? Integer.parseInt(daysMatcher.group(1)) : 0;
-
-        Matcher urlMatcher = UPGRADE_URL_PATTERN.matcher(responseBody);
-        Matcher claimMatcher = CLAIM_URL_PATTERN.matcher(responseBody);
-        String upgradeUrl = urlMatcher.find() ? urlMatcher.group(1)
-                : (claimMatcher.find() ? claimMatcher.group(1) : CloudRecovery.BILLING_URL);
-
-        return new TrialStatusResult(isTrial, status, expiresAt, days, upgradeUrl);
+    private static int daysField(JsonObject response, int fallback) throws TrialException {
+        JsonElement value = response.get("daysRemaining");
+        if (value == null) {
+            return fallback;
+        }
+        try {
+            if (value.isJsonPrimitive() && value.getAsJsonPrimitive().isNumber()) {
+                int days = value.getAsBigDecimal().intValueExact();
+                if (days >= 0) {
+                    return days;
+                }
+            }
+        } catch (ArithmeticException | NumberFormatException ignored) {
+        }
+        throw new TrialException(TrialError.INVALID_RESPONSE, "Invalid daysRemaining in trial response");
     }
 
     private static String escapeJson(String s) {

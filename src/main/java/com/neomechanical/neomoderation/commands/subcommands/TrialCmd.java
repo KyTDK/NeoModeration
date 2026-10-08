@@ -7,6 +7,7 @@ import com.neomechanical.neomoderation.moderation.TrialClient;
 import com.neomechanical.neomoderation.platform.InstallIdentity;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 
 import java.util.List;
 import java.util.Map;
@@ -70,30 +71,48 @@ public class TrialCmd implements SubCommand {
             plugin.messages().send(sender, "trial.already-configured");
             return;
         }
+        if (!plugin.tryStartTrialActivation()) {
+            plugin.messages().send(sender, "trial.pending");
+            return;
+        }
 
         plugin.messages().send(sender, "trial.requesting");
 
+        var api = plugin.settings().api();
+        String installId = InstallIdentity.getOrCreate(plugin);
+        String platformInfo = resolvePlatformInfo();
         plugin.scheduler().runAsync(() -> {
             try {
-                String installId = InstallIdentity.getOrCreate(plugin);
-                String platformInfo = resolvePlatformInfo();
                 TrialClient.TrialResult result = trialClient.activateTrial(
-                        plugin.settings().api(),
+                        api,
                         installId,
                         platformInfo
                 );
 
-                plugin.getConfig().set(ENABLED_PATH, true);
-                plugin.getConfig().set(KEY_PATH, result.apiKey());
-                plugin.saveAndReload();
-
-                plugin.messages().send(sender, "trial.activated", Map.of(
-                        "expires", result.expiresAt(),
-                        "days", String.valueOf(result.daysRemaining()),
-                        "url", result.claimUrl()
-                ));
+                plugin.runSync(() -> {
+                    try {
+                        if (!plugin.settings().api().apiKey().isBlank()
+                                || !plugin.settings().api().endpoint().equals(api.endpoint())) {
+                            reply(sender, () -> plugin.messages().send(sender, "trial.configuration-changed"));
+                            return;
+                        }
+                        plugin.getConfig().set(ENABLED_PATH, true);
+                        plugin.getConfig().set("moderation.cloudMode", "monitor");
+                        plugin.getConfig().set(KEY_PATH, result.apiKey());
+                        plugin.saveAndReload();
+                        reply(sender, () -> plugin.messages().send(sender, "trial.activated", Map.of(
+                                "expires", result.expiresAt(),
+                                "days", String.valueOf(result.daysRemaining()),
+                                "url", result.claimUrl()
+                        )));
+                    } finally {
+                        plugin.finishTrialActivation();
+                    }
+                });
             } catch (TrialClient.TrialException e) {
-                switch (e.error()) {
+                plugin.finishTrialActivation();
+                reply(sender, () -> {
+                    switch (e.error()) {
                     case ALREADY_CLAIMED -> plugin.messages().send(sender, "trial.already-claimed", Map.of(
                             "url", CloudRecovery.BILLING_URL
                     ));
@@ -101,7 +120,11 @@ public class TrialCmd implements SubCommand {
                     default -> plugin.messages().send(sender, "trial.failed", Map.of(
                             "error", e.getMessage()
                     ));
-                }
+                    }
+                });
+            } catch (RuntimeException e) {
+                plugin.finishTrialActivation();
+                throw e;
             }
         });
     }
@@ -115,9 +138,11 @@ public class TrialCmd implements SubCommand {
         }
 
         plugin.messages().send(sender, "trial.status-checking");
+        var api = plugin.settings().api();
         plugin.scheduler().runAsync(() -> {
             try {
-                TrialClient.TrialStatusResult status = trialClient.fetchTrialStatus(plugin.settings().api());
+                TrialClient.TrialStatusResult status = trialClient.fetchTrialStatus(api);
+                reply(sender, () -> {
                 if (!status.isTrial()) {
                     plugin.messages().send(sender, "trial.status-standard");
                 } else if (status.isExpired()) {
@@ -132,12 +157,21 @@ public class TrialCmd implements SubCommand {
                             "url", status.upgradeUrl()
                     ));
                 }
+                });
             } catch (TrialClient.TrialException e) {
-                plugin.messages().send(sender, "trial.failed", Map.of(
+                reply(sender, () -> plugin.messages().send(sender, "trial.failed", Map.of(
                         "error", e.getMessage()
-                ));
+                )));
             }
         });
+    }
+
+    private void reply(CommandSender sender, Runnable task) {
+        if (sender instanceof Player player) {
+            plugin.runForEntity(player, task);
+        } else {
+            plugin.runSync(task);
+        }
     }
 
     private static String resolvePlatformInfo() {

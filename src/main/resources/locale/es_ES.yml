@@ -60,6 +60,8 @@ setup:
   usage: "{prefix} &cUso: &e/{label} setup <apiKey>&7. O ejecuta &e/{label} trial &7para una prueba de 14 días (&f{url}&7)."
   done: "{prefix} &aClave API guardada. &7Ejecuta &e/nmod doctor &7para verificar autenticación y créditos y luego &e/nmod test hello&7. Las pruebas nunca ejecutan acciones."
 trial:
+  pending: "{prefix} &eYa hay una solicitud de prueba en curso. Espera el resultado."
+  configuration-changed: "{prefix} &eLa configuración cambió durante la activación. Se conservó la configuración actual; ejecuta /nmod trial status."
   already-configured: "{prefix} &cEste servidor ya tiene una clave API configurada. &7Ejecuta &e/nmod trial status &7o &e/nmod doctor &7para verificarla."
   requesting: "{prefix} &7Conectando con NeoMechanical para activar tu prueba de 14 días..."
   activated: "{prefix} &aPrueba de 14 días activada (caduca &f{expires}&a). La nube empieza en modo monitor. Reclama tu espacio en &f{url}&a o ejecuta &e/nmod doctor &apara verificar."
@@ -154,6 +156,7 @@ cloudmode:
   set-monitor: "{prefix} &eModo monitor de nube activado. &7Las decisiones de la nube solo se avisan; tus reglas locales no cambian."
   set-enforce: "{prefix} &aModo aplicar de nube activado. &7Las decisiones de la nube ahora bloquean y usan las acciones adicionales configuradas."
 test:
+  would-block-unavailable: "{prefix} &eResultado: bloqueado mientras la nube no está disponible; sin infracciones ni castigos al jugador."
   usage: "{prefix} &cUso: &e/{label} test <mensaje>&7. Primera prueba: &e/{label} test badword&7. La previsualización nunca bloquea ni sanciona."
   title: "{prefix} &7Probando: &f{message}"
   scope: "{prefix} &8Solo vista de palabras/URL y texto en la nube: frecuencia, repeticiones, mayúsculas, secuencias, comandos y mapas requieren eventos reales."
@@ -207,3 +210,6 @@ preset:
   list-title: "&8&m----------&r &x&0&0&F&F&A&A&lPreajustes &8&m----------"
   list-item: "&b{name} &8- &7{summary}"
   applied: "{prefix} &aPreajuste de nube &f{name}&a aplicado. &7Categorías activas: &b{categories}&7. Acciones sin cambios: &f{actions}&7. Las reglas locales y modos no cambiaron; la nube requiere una clave API."
+
+chat:
+  cloud-unavailable: "{prefix} &eLa moderación en la nube no está disponible. Inténtalo pronto; esto no es una infracción del jugador."

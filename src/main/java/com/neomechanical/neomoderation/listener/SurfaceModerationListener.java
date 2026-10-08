@@ -21,6 +21,7 @@ import org.bukkit.inventory.meta.BookMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -47,9 +48,8 @@ public final class SurfaceModerationListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onSignChange(SignChangeEvent event) {
         SurfaceMode mode = plugin.settings().surfaces().sign();
-        String joined = String.join(" ", event.getLines());
         DetectionHandler.Disposition effective =
-                moderate(event.getPlayer(), mode, "sign", joined);
+                moderate(event.getPlayer(), mode, "sign", Arrays.asList(event.getLines()));
         if (effective == DetectionHandler.Disposition.BLOCK) {
             event.setCancelled(true);
             plugin.messages().send(event.getPlayer(), "surface.blocked");
@@ -67,13 +67,13 @@ public final class SurfaceModerationListener implements Listener {
     public void onBookEdit(PlayerEditBookEvent event) {
         SurfaceMode mode = plugin.settings().surfaces().book();
         BookMeta newMeta = event.getNewBookMeta();
-        StringBuilder text = new StringBuilder();
+        List<String> text = new ArrayList<>();
         if (newMeta.hasTitle()) {
-            text.append(newMeta.getTitle()).append(' ');
+            text.add(newMeta.getTitle());
         }
-        text.append(String.join(" ", newMeta.getPages()));
+        text.addAll(newMeta.getPages());
         DetectionHandler.Disposition effective =
-                moderate(event.getPlayer(), mode, "book", text.toString());
+                moderate(event.getPlayer(), mode, "book", text);
         if (effective == DetectionHandler.Disposition.BLOCK) {
             event.setCancelled(true);
             plugin.messages().send(event.getPlayer(), "surface.blocked");
@@ -106,7 +106,7 @@ public final class SurfaceModerationListener implements Listener {
             return;
         }
         String name = meta.getDisplayName();
-        DetectionHandler.Disposition effective = moderate(player, mode, "anvil", name);
+        DetectionHandler.Disposition effective = moderate(player, mode, "anvil", List.of(name));
         if (effective == DetectionHandler.Disposition.BLOCK) {
             event.setCancelled(true);
             plugin.messages().send(player, "surface.blocked");
@@ -132,7 +132,10 @@ public final class SurfaceModerationListener implements Listener {
             return;
         }
         String command = parts[0].startsWith("/") ? parts[0].substring(1) : parts[0];
-        if (!settings.surfaces().scannedCommands().contains(command.toLowerCase(Locale.ROOT))) {
+        command = command.toLowerCase(Locale.ROOT);
+        String bareCommand = command.substring(command.indexOf(':') + 1);
+        if (!settings.surfaces().scannedCommands().contains(command)
+                && !settings.surfaces().scannedCommands().contains(bareCommand)) {
             return;
         }
 
@@ -158,7 +161,8 @@ public final class SurfaceModerationListener implements Listener {
             return;
         }
         DetectionHandler.Disposition effective =
-                handler.handle(player, "command", result.reason(), args, requestedFor(mode, true));
+                handler.handle(player, "command", result.reason(), args,
+                        requestedFor(mode, mode != SurfaceMode.CENSOR || canCensor(List.of(args), settings)));
         if (effective == DetectionHandler.Disposition.BLOCK) {
             event.setCancelled(true);
             plugin.messages().send(player, "surface.blocked");
@@ -168,8 +172,9 @@ public final class SurfaceModerationListener implements Listener {
     }
 
     /** Runs local rules and routes any hit through the shared handler. */
-    private DetectionHandler.Disposition moderate(Player player, SurfaceMode mode, String surface, String text) {
+    private DetectionHandler.Disposition moderate(Player player, SurfaceMode mode, String surface, List<String> parts) {
         ModerationSettings settings = plugin.settings();
+        String text = String.join(" ", parts);
         if (mode == SurfaceMode.OFF
                 || !settings.enabled()
                 || text.isBlank()
@@ -180,7 +185,14 @@ public final class SurfaceModerationListener implements Listener {
         if (!result.flagged()) {
             return DetectionHandler.Disposition.ALLOW;
         }
-        return handler.handle(player, surface, result.reason(), text, requestedFor(mode, true));
+        return handler.handle(player, surface, result.reason(), text,
+                requestedFor(mode, mode != SurfaceMode.CENSOR || canCensor(parts, settings)));
+    }
+
+    private static boolean canCensor(List<String> parts, ModerationSettings settings) {
+        String censored = String.join(" ", parts.stream()
+                .map(part -> OfflineModerationEngine.censor(part, settings.offline())).toList());
+        return !OfflineModerationEngine.evaluate(censored, settings.offline()).flagged();
     }
 
     /** Spam hits can't be censored, so they escalate CENSOR to BLOCK. */

@@ -3,6 +3,7 @@ package com.neomechanical.neomoderation.moderation;
 import com.neomechanical.neomoderation.NeoModerationPlugin;
 import com.neomechanical.neomoderation.commands.DurationParser;
 import com.neomechanical.neomoderation.config.ModerationSettings;
+import com.neomechanical.neomoderation.config.ModerationMode;
 import org.bukkit.entity.Player;
 
 import java.util.Map;
@@ -74,12 +75,17 @@ public final class ChatModerationProcessor {
         if (settings.api().apiKey().isBlank() || settings.categories().enabledCount() == 0) {
             return ChatDecision.allow();
         }
-        Optional<String> cloudReason = coordinator.checkMessage(player, message, settings);
-        if (cloudReason.isEmpty()) {
+        ModerationApiResult cloudResult = coordinator.checkMessage(player, message, settings);
+        if (!cloudResult.isFlagged()) {
+            if (cloudResult.kind() != ModerationApiResult.Kind.CLEAR && !settings.failOpen()
+                    && settings.cloudMode() == ModerationMode.ENFORCE) {
+                plugin.messages().send(player, "chat.cloud-unavailable");
+                return ChatDecision.block();
+            }
             return ChatDecision.allow();
         }
         return toDecision(
-                handler.handle(player, "chat", cloudReason.get(), message, DetectionHandler.Disposition.BLOCK,
+                handler.handle(player, "chat", cloudResult.reason(), message, DetectionHandler.Disposition.BLOCK,
                         DetectionHandler.Source.CLOUD),
                 null);
     }

@@ -115,7 +115,7 @@ public class TestCmd implements SubCommand {
         }
         if (!plugin.coordinator().isRemoteCallAllowed()) {
             plugin.messages().send(sender, "test.cloud-skipped-circuit");
-            sendOutcome(sender, settings, !settings.failOpen(), DetectionHandler.Source.CLOUD, false);
+            sendCloudOutcome(sender, settings, ModerationApiResult.transientTransport());
             plugin.messages().sendFooter(sender);
             return;
         }
@@ -136,8 +136,7 @@ public class TestCmd implements SubCommand {
                     default -> Map.of("ms", ms);
                 };
                 plugin.messages().send(sender, cloudMessageKey(result.kind()), placeholders);
-                sendOutcome(sender, settings, cloudDetected(result, settings.failOpen()),
-                        DetectionHandler.Source.CLOUD, false);
+                sendCloudOutcome(sender, settings, result);
                 plugin.messages().send(sender, "test.note");
                 plugin.messages().sendFooter(sender);
             });
@@ -160,9 +159,13 @@ public class TestCmd implements SubCommand {
         return !locallyFlagged;
     }
 
-    static boolean cloudDetected(ModerationApiResult result, boolean failOpen) {
-        return result.isFlagged()
-                || (result.kind() != ModerationApiResult.Kind.CLEAR && !failOpen);
+    private void sendCloudOutcome(CommandSender sender, ModerationSettings settings, ModerationApiResult result) {
+        if (result.kind() != ModerationApiResult.Kind.CLEAR && !result.isFlagged()
+                && !settings.failOpen() && settings.cloudMode() == ModerationMode.ENFORCE) {
+            plugin.messages().send(sender, "test.would-block-unavailable");
+        } else {
+            sendOutcome(sender, settings, result.isFlagged(), DetectionHandler.Source.CLOUD, false);
+        }
     }
 
     static String cloudMessageKey(ModerationApiResult.Kind kind) {
@@ -172,7 +175,7 @@ public class TestCmd implements SubCommand {
             case CLIENT_AUTH -> "test.cloud-auth";
             case INSUFFICIENT_CREDITS -> "test.cloud-credits";
             case CLIENT_REQUEST -> "test.cloud-request-error";
-            case TRANSIENT_TRANSPORT -> "test.cloud-error";
+            case TRANSIENT_TRANSPORT, OVERLOADED -> "test.cloud-error";
         };
     }
 

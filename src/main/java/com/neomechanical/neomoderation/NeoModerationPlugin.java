@@ -30,6 +30,7 @@ import com.neomechanical.neomoderation.platform.InstallTelemetry;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Entity;
 import org.bukkit.plugin.java.JavaPlugin;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class NeoModerationPlugin extends JavaPlugin {
     private static final int BSTATS_PLUGIN_ID = 32542;
@@ -47,6 +48,7 @@ public final class NeoModerationPlugin extends JavaPlugin {
     private CaseLog caseLog;
     private DetectionHandler detectionHandler;
     private PlatformScheduler scheduler;
+    private final AtomicBoolean trialActivationPending = new AtomicBoolean();
 
     @Override
     public void onEnable() {
@@ -198,6 +200,14 @@ public final class NeoModerationPlugin extends JavaPlugin {
 
     public void runSync(Runnable task) {
         scheduler.runGlobal(task);
+    }
+
+    public boolean tryStartTrialActivation() {
+        return trialActivationPending.compareAndSet(false, true);
+    }
+
+    public void finishTrialActivation() {
+        trialActivationPending.set(false);
     }
 
     /**

@@ -45,6 +45,6 @@ class ChatModerationDisabledCategoriesTest {
                 spamDetector, handler).handleAsyncChat(player, "hello");
 
         assertEquals(ChatDecision.allow(), result);
-        verify(coordinator, never()).isMessageFlagged(any(Player.class), anyString(), any(ModerationSettings.class));
+        verify(coordinator, never()).checkMessage(any(Player.class), anyString(), any(ModerationSettings.class));
     }
 }

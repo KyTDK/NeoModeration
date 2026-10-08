@@ -1,12 +1,13 @@
 package com.neomechanical.neomoderation.moderation;
 
 import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 /**
  * Centralized detection for Minecraft threat intelligence, server advertising,
  * scam links, malicious IP grabbers, and evasion obfuscations.
  *
- * <p>Guaranteed zero false positives on standard Minecraft chat:
+ * <p>Detection avoids treating common Minecraft chat formats as URLs:
  * <ul>
  *   <li>Minecraft versions (1.20.4, 1.21.1, 1.8.9, 1.16.5, 1.12.2, etc.)</li>
  *   <li>World coordinates (120 64 -340, x: 120, y: 64, z: -340, -145.5, 70, 892.3)</li>
@@ -36,7 +37,7 @@ public final class MinecraftThreatDetector {
      * Matches common dot obfuscation attempts (e.g. "dot", "(dot)", "[dot]", "[.]", "(.)").
      */
     private static final Pattern DOT_OBFUSCATION_PATTERN = Pattern.compile(
-            "(?i)\\s*(?:[\\[\\(\\{]\\s*(?:dot|\\.)\\s*[\\]\\)\\}]|\\bdot\\b)\\s*"
+            "(?i)(?:[\\[\\(\\{]\\s*(?:dot|\\.)\\s*[\\]\\)\\}]|\\bdot\\b)"
     );
 
     private MinecraftThreatDetector() {
@@ -49,7 +50,24 @@ public final class MinecraftThreatDetector {
         if (text == null || text.isEmpty()) {
             return "";
         }
-        return DOT_OBFUSCATION_PATTERN.matcher(text).replaceAll(".");
+        Matcher matcher = DOT_OBFUSCATION_PATTERN.matcher(text);
+        if (!matcher.find()) {
+            return text;
+        }
+        StringBuilder normalized = new StringBuilder(text.length());
+        int from = 0;
+        do {
+            normalized.append(text, from, matcher.start());
+            while (!normalized.isEmpty() && Character.isWhitespace(normalized.charAt(normalized.length() - 1))) {
+                normalized.setLength(normalized.length() - 1);
+            }
+            normalized.append('.');
+            from = matcher.end();
+            while (from < text.length() && Character.isWhitespace(text.charAt(from))) {
+                from++;
+            }
+        } while (matcher.find());
+        return normalized.append(text, from, text.length()).toString();
     }
 
     /**

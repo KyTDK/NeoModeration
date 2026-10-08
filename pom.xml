@@ -6,7 +6,7 @@
 
     <groupId>com.neomechanical</groupId>
     <artifactId>NeoModeration</artifactId>
-    <version>1.6.4</version>
+    <version>1.6.5</version>
     <packaging>jar</packaging>
 
     <name>NeoModeration</name>
@@ -106,6 +106,10 @@
                             <minimizeJar>true</minimizeJar>
                             <relocations>
                                 <relocation>
+                                    <pattern>com.google.gson</pattern>
+                                    <shadedPattern>com.neomechanical.neomoderation.lib.gson</shadedPattern>
+                                </relocation>
+                                <relocation>
                                     <pattern>org.bstats</pattern>
                                     <shadedPattern>com.neomechanical.neomoderation.lib.bstats</shadedPattern>
                                 </relocation>
@@ -180,6 +184,11 @@
     </repositories>
 
     <dependencies>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.14.0</version>
+        </dependency>
         <dependency>
             <groupId>org.spigotmc</groupId>
             <artifactId>spigot-api</artifactId>

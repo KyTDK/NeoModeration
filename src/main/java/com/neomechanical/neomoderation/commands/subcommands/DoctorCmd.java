@@ -205,7 +205,8 @@ public class DoctorCmd implements SubCommand {
             case CLIENT_AUTH -> fail(sender, "Moderation events", "last request rejected the API key");
             case INSUFFICIENT_CREDITS -> fail(sender, "Moderation events", "last request had no credits");
             case CLIENT_REQUEST -> fail(sender, "Moderation events", "last request was rejected; check the endpoint");
-            case TRANSIENT_TRANSPORT -> warn(sender, "Moderation events", "last request hit a network/server error");
+            case TRANSIENT_TRANSPORT -> warn(sender, "Moderation events", "last request had no usable verdict (network/server error)");
+            case OVERLOADED -> warn(sender, "Moderation events", "cloud workers were busy; local rules still run");
         }
     }
 
@@ -214,7 +215,7 @@ public class DoctorCmd implements SubCommand {
             case CLIENT_AUTH -> "Account authentication";
             case INSUFFICIENT_CREDITS -> "Account credits";
             case CLIENT_REQUEST -> "Account request";
-            case TRANSIENT_TRANSPORT, FLAGGED, CLEAR -> "Account API";
+            case TRANSIENT_TRANSPORT, OVERLOADED, FLAGGED, CLEAR -> "Account API";
         };
     }
 
@@ -227,7 +228,7 @@ public class DoctorCmd implements SubCommand {
                     + CloudRecovery.BILLING_URL + ", then run /nmod test hello";
             case CLIENT_REQUEST -> timing
                     + " - request rejected without rejecting the API key; verify moderation.api.endpoint";
-            case TRANSIENT_TRANSPORT, FLAGGED, CLEAR -> timing
+            case TRANSIENT_TRANSPORT, OVERLOADED, FLAGGED, CLEAR -> timing
                     + " - temporary network or server error; local rules remain active";
         };
     }

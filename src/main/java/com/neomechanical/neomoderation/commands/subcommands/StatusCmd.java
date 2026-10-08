@@ -114,7 +114,7 @@ public class StatusCmd implements SubCommand {
             case CLIENT_AUTH -> "status.cloud-auth";
             case INSUFFICIENT_CREDITS -> "status.cloud-credits";
             case CLIENT_REQUEST -> "status.cloud-request-error";
-            case TRANSIENT_TRANSPORT -> "status.cloud-transient";
+            case TRANSIENT_TRANSPORT, OVERLOADED -> "status.cloud-transient";
         };
     }
 }

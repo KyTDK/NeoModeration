@@ -11,8 +11,8 @@ import java.util.UUID;
 /**
  * Manages the persistent, anonymous install identifier for this Minecraft server instance.
  *
- * <p>Used to bind 14-day cloud evaluation trials to the physical installation, preventing
- * replay and duplicate trial exploitation across server restarts.
+ * <p>Persists the trial identity across server restarts. This local identifier is
+ * not proof of a physical installation; trial eligibility is enforced by the service.
  */
 public final class InstallIdentity {
     private static final String ID_FILE = ".install-id";
