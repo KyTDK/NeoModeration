@@ -31,6 +31,9 @@ public final class TrialClient {
     private static final Pattern API_KEY_PATTERN = Pattern.compile("\"apiKey\"\\s*:\\s*\"([^\"]+)\"");
     private static final Pattern EXPIRES_AT_PATTERN = Pattern.compile("\"expiresAt\"\\s*:\\s*\"([^\"]+)\"");
     private static final Pattern DAYS_PATTERN = Pattern.compile("\"daysRemaining\"\\s*:\\s*(\\d+)");
+    private static final Pattern IS_TRIAL_PATTERN = Pattern.compile("\"isTrial\"\\s*:\\s*(true|false)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern STATUS_PATTERN = Pattern.compile("\"status\"\\s*:\\s*\"([^\"]+)\"");
+    private static final Pattern UPGRADE_URL_PATTERN = Pattern.compile("\"upgradeUrl\"\\s*:\\s*\"([^\"]+)\"");
 
     public static String computeHmac(String installId, long timestampSeconds) {
         try {
@@ -101,6 +104,41 @@ public final class TrialClient {
         }
     }
 
+    public TrialStatusResult fetchTrialStatus(ModerationApiSettings apiSettings) throws TrialException {
+        String endpoint = trialUrl(apiSettings.endpoint()) + "/status";
+        HttpRequest request;
+        try {
+            request = HttpRequest.newBuilder(URI.create(endpoint))
+                    .timeout(Duration.ofSeconds(10))
+                    .header("Accept", "application/json")
+                    .header("User-Agent", ClientIdentity.userAgent())
+                    .header("Authorization", "Bearer " + apiSettings.apiKey())
+                    .GET()
+                    .build();
+        } catch (IllegalArgumentException e) {
+            throw new TrialException(TrialError.INVALID_ENDPOINT, "Invalid trial status endpoint URL");
+        }
+
+        try {
+            HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
+            int status = response.statusCode();
+            if (status == 200) {
+                return parseStatusSuccess(response.body());
+            }
+            if (status == 401 || status == 403) {
+                throw new TrialException(TrialError.FORBIDDEN, "API key rejected");
+            }
+            throw new TrialException(TrialError.SERVER_ERROR, "HTTP " + status);
+        } catch (TrialException e) {
+            throw e;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new TrialException(TrialError.TRANSPORT_ERROR, "Trial status request interrupted");
+        } catch (Exception e) {
+            throw new TrialException(TrialError.TRANSPORT_ERROR, "Trial status request failed");
+        }
+    }
+
     static String trialUrl(String endpoint) {
         String trimmed = endpoint == null ? "" : endpoint.trim();
         int slash = trimmed.indexOf('/', "https://".length());
@@ -122,6 +160,28 @@ public final class TrialClient {
         int days = daysMatcher.find() ? Integer.parseInt(daysMatcher.group(1)) : 14;
 
         return new TrialResult(apiKey, expiresAt, days);
+    }
+
+    static TrialStatusResult parseStatusSuccess(String responseBody) throws TrialException {
+        if (responseBody == null || responseBody.isBlank()) {
+            throw new TrialException(TrialError.INVALID_RESPONSE, "Empty trial status response");
+        }
+        Matcher trialMatcher = IS_TRIAL_PATTERN.matcher(responseBody);
+        boolean isTrial = trialMatcher.find() && Boolean.parseBoolean(trialMatcher.group(1));
+
+        Matcher statusMatcher = STATUS_PATTERN.matcher(responseBody);
+        String status = statusMatcher.find() ? statusMatcher.group(1) : (isTrial ? "active" : "standard_workspace");
+
+        Matcher expiresMatcher = EXPIRES_AT_PATTERN.matcher(responseBody);
+        String expiresAt = expiresMatcher.find() ? expiresMatcher.group(1) : "unknown";
+
+        Matcher daysMatcher = DAYS_PATTERN.matcher(responseBody);
+        int days = daysMatcher.find() ? Integer.parseInt(daysMatcher.group(1)) : 0;
+
+        Matcher urlMatcher = UPGRADE_URL_PATTERN.matcher(responseBody);
+        String upgradeUrl = urlMatcher.find() ? urlMatcher.group(1) : CloudRecovery.BILLING_URL;
+
+        return new TrialStatusResult(isTrial, status, expiresAt, days, upgradeUrl);
     }
 
     private static String escapeJson(String s) {
@@ -153,5 +213,17 @@ public final class TrialClient {
     }
 
     public record TrialResult(String apiKey, String expiresAt, int daysRemaining) {
+    }
+
+    public record TrialStatusResult(
+            boolean isTrial,
+            String status,
+            String expiresAt,
+            int daysRemaining,
+            String upgradeUrl
+    ) {
+        public boolean isExpired() {
+            return isTrial && "expired".equalsIgnoreCase(status);
+        }
     }
 }

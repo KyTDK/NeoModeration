@@ -53,6 +53,25 @@ class ChatModerationResponseParserTest {
                 ModerationCategorySettings.from(new BukkitConfigView(config))));
     }
 
+    @Test
+    void matchedCategoryReturnsSpecificTriggeredCategoryOrGenericPlatformFallback() {
+        String body = "{\"decision\":{\"status\":\"blocked\",\"severity\":\"high\"},"
+                + "\"categories\":{\"harassment\":0.91,\"hate\":0.1}}";
+        ModerationCategorySettings settings = ModerationCategorySettings.from(new BukkitConfigView(categoriesConfig(true)));
+        org.junit.jupiter.api.Assertions.assertEquals(
+                java.util.Optional.of("harassment"),
+                ChatModerationResponseParser.matchedCategory(body, settings)
+        );
+        org.junit.jupiter.api.Assertions.assertEquals(
+                "platform:harassment",
+                ModerationApiResult.flagged("harassment").reason()
+        );
+        org.junit.jupiter.api.Assertions.assertEquals(
+                "platform",
+                ModerationApiResult.flagged("").reason()
+        );
+    }
+
     private static boolean parse(String body, boolean sexual) {
         YamlConfiguration config = new YamlConfiguration();
         config.set("moderation.categories.sexual", sexual);

@@ -42,7 +42,7 @@ public class TrialCmd implements SubCommand {
 
     @Override
     public String getUsage() {
-        return "/nmod trial";
+        return "/nmod trial [status]";
     }
 
     @Override
@@ -51,8 +51,21 @@ public class TrialCmd implements SubCommand {
     }
 
     @Override
+    public List<String> tabComplete(CommandSender sender, String[] args) {
+        if (args.length == 2) {
+            return List.of("status");
+        }
+        return List.of();
+    }
+
+    @Override
     public void execute(CommandSender sender, String label, String[] args) {
         String existingKey = plugin.settings().api().apiKey();
+        if (args.length >= 2 && "status".equalsIgnoreCase(args[1])) {
+            executeStatus(sender, existingKey);
+            return;
+        }
+
         if (existingKey != null && !existingKey.isBlank()) {
             plugin.messages().send(sender, "trial.already-configured");
             return;
@@ -88,6 +101,40 @@ public class TrialCmd implements SubCommand {
                             "error", e.getMessage()
                     ));
                 }
+            }
+        });
+    }
+
+    private void executeStatus(CommandSender sender, String existingKey) {
+        if (existingKey == null || existingKey.isBlank()) {
+            plugin.messages().send(sender, "trial.status-no-key", Map.of(
+                    "url", CloudRecovery.SIGNUP_URL
+            ));
+            return;
+        }
+
+        plugin.messages().send(sender, "trial.status-checking");
+        plugin.scheduler().runAsync(() -> {
+            try {
+                TrialClient.TrialStatusResult status = trialClient.fetchTrialStatus(plugin.settings().api());
+                if (!status.isTrial()) {
+                    plugin.messages().send(sender, "trial.status-standard");
+                } else if (status.isExpired()) {
+                    plugin.messages().send(sender, "trial.status-expired", Map.of(
+                            "expires", status.expiresAt(),
+                            "url", status.upgradeUrl()
+                    ));
+                } else {
+                    plugin.messages().send(sender, "trial.status-active", Map.of(
+                            "days", String.valueOf(status.daysRemaining()),
+                            "expires", status.expiresAt(),
+                            "url", status.upgradeUrl()
+                    ));
+                }
+            } catch (TrialClient.TrialException e) {
+                plugin.messages().send(sender, "trial.failed", Map.of(
+                        "error", e.getMessage()
+                ));
             }
         });
     }

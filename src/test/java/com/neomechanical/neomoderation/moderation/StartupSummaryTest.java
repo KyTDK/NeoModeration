@@ -90,6 +90,7 @@ class StartupSummaryTest {
 
         String text = joined(lines);
         assertTrue(text.toLowerCase().contains("no api key"), text);
+        assertTrue(text.contains("/nmod trial"), text);
         assertTrue(text.contains("/nmod setup"), text);
     }
 

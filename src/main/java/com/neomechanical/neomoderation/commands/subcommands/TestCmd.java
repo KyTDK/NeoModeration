@@ -65,7 +65,7 @@ public class TestCmd implements SubCommand {
         plugin.messages().sendDashboard(sender,
                 plugin.getDescription().getVersion(),
                 settings.mode().name(),
-                settings.cloudMode().name(),
+                ModerationCoverage.cloudDashboardLabel(settings),
                 plugin.monitorStats().total());
         plugin.messages().send(sender, "test.title", Map.of("message", message));
         plugin.messages().send(sender, "test.scope");

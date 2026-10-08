@@ -65,8 +65,12 @@ public final class ChatModerationCoordinator implements AutoCloseable {
     }
 
     public boolean isMessageFlagged(Player player, String message, ModerationSettings settings) {
+        return checkMessage(player, message, settings).isPresent();
+    }
+
+    public java.util.Optional<String> checkMessage(Player player, String message, ModerationSettings settings) {
         if (!circuit.isRemoteCallAllowed()) {
-            return !settings.failOpen();
+            return settings.failOpen() ? java.util.Optional.empty() : java.util.Optional.of("platform");
         }
 
         long waitMs = Math.min(
@@ -84,20 +88,25 @@ public final class ChatModerationCoordinator implements AutoCloseable {
         try {
             ModerationApiResult result = future.get(Math.max(1L, waitMs), TimeUnit.MILLISECONDS);
             circuit.record(result);
-            return result.isFlagged()
-                    || (result.kind() != ModerationApiResult.Kind.CLEAR && !settings.failOpen());
+            if (result.isFlagged()) {
+                return java.util.Optional.of(result.reason());
+            }
+            if (result.kind() != ModerationApiResult.Kind.CLEAR && !settings.failOpen()) {
+                return java.util.Optional.of("platform");
+            }
+            return java.util.Optional.empty();
         } catch (TimeoutException e) {
             future.cancel(true);
             circuit.record(ModerationApiResult.transientTransport());
-            return !settings.failOpen();
+            return settings.failOpen() ? java.util.Optional.empty() : java.util.Optional.of("platform");
         } catch (InterruptedException e) {
             future.cancel(true);
             Thread.currentThread().interrupt();
             circuit.record(ModerationApiResult.transientTransport());
-            return !settings.failOpen();
+            return settings.failOpen() ? java.util.Optional.empty() : java.util.Optional.of("platform");
         } catch (ExecutionException e) {
             circuit.record(ModerationApiResult.transientTransport());
-            return !settings.failOpen();
+            return settings.failOpen() ? java.util.Optional.empty() : java.util.Optional.of("platform");
         }
     }
 }

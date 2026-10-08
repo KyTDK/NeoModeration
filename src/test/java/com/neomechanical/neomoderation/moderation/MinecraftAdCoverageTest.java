@@ -175,12 +175,17 @@ class MinecraftAdCoverageTest {
 
         List<String> scamSamples = List.of(
                 "click grabify.link/secret",
+                "click grabify(dot)link/secret",
+                "click grabify [dot] link/secret",
+                "click grabify[.]link/secret",
                 "see iplogger.org/xyz",
+                "see iplogger(.)org/xyz",
                 "stats at 2no.co/profile",
                 "join discord.gg/free-nitro",
                 "claim at discord-nitro.gift",
                 "login to discordnitro.info for rank",
-                "claim gift at discord.gift"
+                "claim gift at discord.gift",
+                "free cape at optifine-cape(dot)com"
         );
 
         for (String scam : scamSamples) {

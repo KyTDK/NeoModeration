@@ -77,9 +77,10 @@ class HelpCmdTest {
 
     @Test
     void pageOneShowsDailyCommandsNotAdmin() {
-        Fixture f = fixture(Map.of("status", fake("status"), "key", fake("key")));
+        Fixture f = fixture(Map.of("trial", fake("trial"), "status", fake("status"), "key", fake("key")));
         f.help().execute(f.sender(), "nmod", new String[0]);
         List<String> console = consoleLines(f);
+        assertTrue(console.stream().anyMatch(l -> l.contains("/nmod trial")));
         assertTrue(console.stream().anyMatch(l -> l.contains("/nmod status")));
         assertFalse(console.stream().anyMatch(l -> l.contains("/nmod key")));
     }

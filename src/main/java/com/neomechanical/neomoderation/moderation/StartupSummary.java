@@ -110,9 +110,9 @@ public final class StartupSummary {
         if (settings.api().apiKey().isBlank()) {
             // The single biggest capability gap on a fresh install, and the only one
             // that needs a step outside the server.
-            inactive.add("cloud AI moderation and map-art scanning (no API key - "
-                    + "checks individual-message meaning and map imagery; account at " + CloudRecovery.SIGNUP_URL
-                    + ", then run /nmod setup <key>)");
+            inactive.add("cloud chat and map-art checks (no API key - "
+                    + "run /nmod trial, or sign up at " + CloudRecovery.SIGNUP_URL
+                    + " and run /nmod setup <key>)");
         } else if (!coverage.hasCloudChecks()) {
             inactive.add("cloud checks (text categories and map art are off)");
         }

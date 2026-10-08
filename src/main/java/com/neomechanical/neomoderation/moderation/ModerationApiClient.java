@@ -66,9 +66,9 @@ public final class ModerationApiClient {
             if (status < 200 || status >= 300) {
                 return ModerationApiResult.fromHttpFailureStatus(status);
             }
-            return ChatModerationResponseParser.matchesPositiveSignal(response.body(), categorySettings)
-                    ? ModerationApiResult.flagged()
-                    : ModerationApiResult.clear();
+            return ChatModerationResponseParser.matchedCategory(response.body(), categorySettings)
+                    .map(ModerationApiResult::flagged)
+                    .orElseGet(ModerationApiResult::clear);
         } catch (IOException e) {
             return ModerationApiResult.transientTransport();
         } catch (InterruptedException e) {

@@ -19,38 +19,70 @@ import java.util.Set;
 
 public final class MessageService {
     private static final String DEFAULT_LOCALE = "en_US";
-    private static final Map<String, Map<String, String>> LEGACY_BUNDLED_VALUES = Map.of(
+    private static final Map<String, Map<String, List<String>>> LEGACY_BUNDLED_VALUES = Map.of(
             "en_US", Map.ofEntries(
-                    Map.entry("error.no-api-key",
-                            "{prefix} &cNo API key configured. Please run &e/nmod setup <apiKey>"),
-                    Map.entry("help.usage.test", "/nmod test <msg>"),
-                    Map.entry("help.desc.test", "preview the bundled rule; never acts"),
-                    Map.entry("setup.done",
-                            "{prefix} &a&lSuccess! &7Cloud moderation is now &aactive&7. Chat is being scanned."),
-                    Map.entry("key.saved", "{prefix} &aAPI key saved successfully."),
-                    Map.entry("usage.error",
-                            "{prefix} &cFailed to fetch API usage. Check your key or try again later."),
-                    Map.entry("test.usage", "{prefix} &cUsage: &e/{label} test <message>"),
-                    Map.entry("test.cloud-error",
-                            "{prefix} &7Cloud: &cerror &8(&7{detail}, {ms}ms&8)"),
-                    Map.entry("test.cloud-skipped-key",
-                            "{prefix} &7Cloud: &8skipped (no API key; local rules only)")
+                    Map.entry("error.no-api-key", List.of(
+                            "{prefix} &cNo API key configured. Please run &e/nmod setup <apiKey>",
+                            "{prefix} &cNo API key configured. &7Sign up at &f{url}&7, create a key, then run &e/nmod setup <apiKey>"
+                    )),
+                    Map.entry("help.usage.test", List.of("/nmod test <msg>")),
+                    Map.entry("help.desc.test", List.of("preview the bundled rule; never acts")),
+                    Map.entry("setup.usage", List.of(
+                            "{prefix} &cUsage: &e/{label} setup <apiKey>&7. Cloud moderation adds zero-day threat feeds, AI evasion & map-art scanning. Get an evaluation key at &f{url}"
+                    )),
+                    Map.entry("setup.done", List.of(
+                            "{prefix} &a&lSuccess! &7Cloud moderation is now &aactive&7. Chat is being scanned."
+                    )),
+                    Map.entry("trial.already-configured", List.of(
+                            "{prefix} &cThis server already has an active API key configured."
+                    )),
+                    Map.entry("key.saved", List.of("{prefix} &aAPI key saved successfully.")),
+                    Map.entry("status.cloud-no-key", List.of(
+                            "&7Cloud setup: &eno key&7. Free evaluation unlocks AI evasion & map-art NSFW scanning at &f{url}&7, then run &e/nmod setup <key>&7."
+                    )),
+                    Map.entry("usage.error", List.of(
+                            "{prefix} &cFailed to fetch API usage. Check your key or try again later."
+                    )),
+                    Map.entry("test.usage", List.of("{prefix} &cUsage: &e/{label} test <message>")),
+                    Map.entry("test.cloud-error", List.of(
+                            "{prefix} &7Cloud: &cerror &8(&7{detail}, {ms}ms&8)"
+                    )),
+                    Map.entry("test.cloud-skipped-key", List.of(
+                            "{prefix} &7Cloud: &8skipped (no API key; local rules only)",
+                            "{prefix} &7Cloud: &8skipped (no API key). &7Cloud checks can classify individual chat messages and map art: &f{url} &7-> &e/nmod setup <key>&7."
+                    ))
             ),
             "es_ES", Map.ofEntries(
-                    Map.entry("error.no-api-key",
-                            "{prefix} &cNo hay clave API. Usa &e/nmod setup <apiKey>"),
-                    Map.entry("help.usage.test", "/nmod test <msj>"),
-                    Map.entry("help.desc.test", "probar la regla incluida; nunca actúa"),
-                    Map.entry("setup.done",
-                            "{prefix} &a&lListo! &7Moderación en la nube &aactiva&7."),
-                    Map.entry("key.saved", "{prefix} &aClave API guardada."),
-                    Map.entry("usage.error",
-                            "{prefix} &cNo se pudo obtener el uso. Revisa la clave."),
-                    Map.entry("test.usage", "{prefix} &cUso: &e/{label} test <mensaje>"),
-                    Map.entry("test.cloud-error",
-                            "{prefix} &7Nube: &cerror &8(&7{detail}, {ms}ms&8)"),
-                    Map.entry("test.cloud-skipped-key",
-                            "{prefix} &7Nube: &8omitida (sin clave API; solo reglas locales)")
+                    Map.entry("error.no-api-key", List.of(
+                            "{prefix} &cNo hay clave API. Usa &e/nmod setup <apiKey>",
+                            "{prefix} &cNo hay clave API. &7Regístrate en &f{url}&7, crea una clave y ejecuta &e/nmod setup <apiKey>"
+                    )),
+                    Map.entry("help.usage.test", List.of("/nmod test <msj>")),
+                    Map.entry("help.desc.test", List.of("probar la regla incluida; nunca actúa")),
+                    Map.entry("setup.usage", List.of(
+                            "{prefix} &cUso: &e/{label} setup <apiKey>&7. La moderación en la nube añade amenazas de día cero, evasión por IA y análisis de mapas. Obtén una clave de prueba en &f{url}"
+                    )),
+                    Map.entry("setup.done", List.of(
+                            "{prefix} &a&lListo! &7Moderación en la nube &aactiva&7."
+                    )),
+                    Map.entry("trial.already-configured", List.of(
+                            "{prefix} &cEste servidor ya tiene una clave API activa configurada."
+                    )),
+                    Map.entry("key.saved", List.of("{prefix} &aClave API guardada.")),
+                    Map.entry("status.cloud-no-key", List.of(
+                            "&7Configuración de nube: &esin clave&7. Regístrate en &f{url}&7, crea una clave y ejecuta &e/nmod setup <key>&7."
+                    )),
+                    Map.entry("usage.error", List.of(
+                            "{prefix} &cNo se pudo obtener el uso. Revisa la clave."
+                    )),
+                    Map.entry("test.usage", List.of("{prefix} &cUso: &e/{label} test <mensaje>")),
+                    Map.entry("test.cloud-error", List.of(
+                            "{prefix} &7Nube: &cerror &8(&7{detail}, {ms}ms&8)"
+                    )),
+                    Map.entry("test.cloud-skipped-key", List.of(
+                            "{prefix} &7Nube: &8omitida (sin clave API; solo reglas locales)",
+                            "{prefix} &7Nube: &8omitida (sin clave API). &7Regístrate en &f{url}&7, crea una clave y ejecuta &e/nmod setup <key>&7."
+                    ))
             )
     );
 
@@ -194,12 +226,14 @@ public final class MessageService {
             }
         }
 
-        for (Map.Entry<String, String> entry
+        for (Map.Entry<String, List<String>> entry
                 : LEGACY_BUNDLED_VALUES.getOrDefault(locale, Map.of()).entrySet()) {
             String replacement = bundled.getString(entry.getKey());
+            String current = onDisk.getString(entry.getKey());
             if (replacement != null
-                    && Objects.equals(onDisk.getString(entry.getKey()), entry.getValue())
-                    && !Objects.equals(replacement, entry.getValue())) {
+                    && current != null
+                    && entry.getValue().contains(current)
+                    && !Objects.equals(replacement, current)) {
                 onDisk.set(entry.getKey(), replacement);
                 changed = true;
             }

@@ -1,6 +1,10 @@
 package com.neomechanical.neomoderation.moderation;
 
-public record ModerationApiResult(Kind kind) {
+public record ModerationApiResult(Kind kind, String category) {
+    public ModerationApiResult(Kind kind) {
+        this(kind, null);
+    }
+
     public enum Kind {
         FLAGGED,
         CLEAR,
@@ -14,12 +18,20 @@ public record ModerationApiResult(Kind kind) {
         return kind == Kind.FLAGGED;
     }
 
+    public String reason() {
+        return category == null || category.isBlank() ? "platform" : "platform:" + category;
+    }
+
     public boolean tripsTransientBreaker() {
         return kind == Kind.TRANSIENT_TRANSPORT;
     }
 
     public static ModerationApiResult flagged() {
-        return new ModerationApiResult(Kind.FLAGGED);
+        return new ModerationApiResult(Kind.FLAGGED, null);
+    }
+
+    public static ModerationApiResult flagged(String category) {
+        return new ModerationApiResult(Kind.FLAGGED, category);
     }
 
     public static ModerationApiResult clear() {

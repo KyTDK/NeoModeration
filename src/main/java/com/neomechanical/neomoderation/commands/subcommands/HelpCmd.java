@@ -28,7 +28,7 @@ public class HelpCmd implements SubCommand {
             List.of("status", "mode", "cloudmode", "doctor", "cases", "usage", "privacy", "reload");
 
     static {
-        PAGE_ONE.put("start", List.of("setup", "status", "mode", "preset"));
+        PAGE_ONE.put("start", List.of("trial", "setup", "status", "mode", "preset"));
         PAGE_ONE.put("rules", List.of("word", "url", "allow", "action"));
         PAGE_ONE.put("tools", List.of("test", "doctor"));
         PAGE_TWO.put("tools", List.of("cases", "usage", "privacy"));
@@ -98,10 +98,11 @@ public class HelpCmd implements SubCommand {
     }
 
     private String dashboard() {
+        var settings = plugin.settings();
         return plugin.messages().dashboardLine(
                 plugin.getDescription().getVersion(),
-                plugin.settings().mode().name(),
-                plugin.settings().cloudMode().name(),
+                settings.mode().name(),
+                com.neomechanical.neomoderation.moderation.ModerationCoverage.cloudDashboardLabel(settings),
                 plugin.monitorStats().total());
     }
 

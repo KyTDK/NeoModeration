@@ -49,7 +49,7 @@ public class StatusCmd implements SubCommand {
         plugin.messages().sendDashboard(sender,
                 plugin.getDescription().getVersion(),
                 monitor ? "MONITOR" : "ENFORCE",
-                hasKey ? settings.cloudMode().name() : "OFF",
+                ModerationCoverage.cloudDashboardLabel(settings),
                 plugin.monitorStats().total());
         plugin.messages().send(sender, "status.enabled", Map.of(
                 "value", settings.enabled() ? "ON" : "OFF"

@@ -67,8 +67,16 @@ public final class OfflineModerationEngine {
         for (String allowedUrl : rules.allowedUrls()) {
             lowerMessage = lowerMessage.replace(allowedUrl, " ");
         }
+        String deobfuscatedUrlMessage = MinecraftThreatDetector.normalizeDotObfuscation(lowerMessage);
+        if (!deobfuscatedUrlMessage.equals(lowerMessage)) {
+            for (String allowedUrl : rules.allowedUrls()) {
+                deobfuscatedUrlMessage = deobfuscatedUrlMessage.replace(allowedUrl, " ");
+            }
+        }
         for (CompiledUrl url : rules.urls()) {
-            if (lowerMessage.contains(url.normalized())) {
+            if (lowerMessage.contains(url.normalized())
+                    || (!deobfuscatedUrlMessage.equals(lowerMessage)
+                            && deobfuscatedUrlMessage.contains(url.normalized()))) {
                 return OfflineModerationResult.flagged("blocked_url:" + url.original());
             }
         }

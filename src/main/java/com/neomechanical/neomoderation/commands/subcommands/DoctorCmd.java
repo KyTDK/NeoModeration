@@ -57,7 +57,7 @@ public class DoctorCmd implements SubCommand {
         plugin.messages().sendDashboard(sender,
                 plugin.getDescription().getVersion(),
                 settings.mode().name(),
-                settings.cloudMode().name(),
+                ModerationCoverage.cloudDashboardLabel(settings),
                 plugin.monitorStats().total());
         plugin.messages().send(sender, "doctor.title");
 
@@ -134,8 +134,8 @@ public class DoctorCmd implements SubCommand {
         }
 
         if (settings.api().apiKey().isBlank()) {
-            warn(sender, "Cloud", "no API key - local rules only. Sign up at "
-                    + CloudRecovery.SIGNUP_URL + ", create a key, then run /nmod setup <key>");
+            warn(sender, "Cloud", "no API key - local rules only. Run /nmod trial, or sign up at "
+                    + CloudRecovery.SIGNUP_URL + " and run /nmod setup <key>");
             plugin.messages().sendFooter(sender);
             return;
         }

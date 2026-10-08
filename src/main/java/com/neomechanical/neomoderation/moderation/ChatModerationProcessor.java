@@ -74,11 +74,12 @@ public final class ChatModerationProcessor {
         if (settings.api().apiKey().isBlank() || settings.categories().enabledCount() == 0) {
             return ChatDecision.allow();
         }
-        if (!coordinator.isMessageFlagged(player, message, settings)) {
+        Optional<String> cloudReason = coordinator.checkMessage(player, message, settings);
+        if (cloudReason.isEmpty()) {
             return ChatDecision.allow();
         }
         return toDecision(
-                handler.handle(player, "chat", "platform", message, DetectionHandler.Disposition.BLOCK,
+                handler.handle(player, "chat", cloudReason.get(), message, DetectionHandler.Disposition.BLOCK,
                         DetectionHandler.Source.CLOUD),
                 null);
     }

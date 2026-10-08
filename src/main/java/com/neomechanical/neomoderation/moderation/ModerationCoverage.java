@@ -59,6 +59,13 @@ public record ModerationCoverage(
                 localEnforces);
     }
 
+    public static String cloudDashboardLabel(ModerationSettings settings) {
+        boolean hasKey = settings.api() != null
+                && settings.api().apiKey() != null
+                && !settings.api().apiKey().isBlank();
+        return hasKey ? settings.cloudMode().name() : "OFF";
+    }
+
     private static boolean enforces(SurfaceMode mode) {
         return mode == SurfaceMode.BLOCK || mode == SurfaceMode.CENSOR;
     }

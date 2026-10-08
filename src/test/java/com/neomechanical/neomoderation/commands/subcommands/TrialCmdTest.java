@@ -126,4 +126,63 @@ class TrialCmdTest {
         assertEquals(hmac1, hmac2);
         org.junit.jupiter.api.Assertions.assertNotEquals(hmac1, hmacDiff);
     }
+
+    @Test
+    void statusSubcommandReportsActiveTrial() throws Exception {
+        when(apiSettings.apiKey()).thenReturn("nmt_trial_key_999");
+        when(trialClient.fetchTrialStatus(apiSettings)).thenReturn(
+                new TrialClient.TrialStatusResult(
+                        true,
+                        "active",
+                        "2026-10-22T00:00:00Z",
+                        12,
+                        "https://neomechanical.com/billing?src=neomoderation_trial_expired"
+                )
+        );
+
+        TrialCmd cmd = new TrialCmd(plugin, trialClient);
+        cmd.execute(sender, "nmod", new String[]{"trial", "status"});
+
+        verify(messages).send(eq(sender), eq("trial.status-checking"));
+        verify(messages).send(eq(sender), eq("trial.status-active"), argThat(map ->
+                "12".equals(map.get("days"))
+                        && "2026-10-22T00:00:00Z".equals(map.get("expires"))
+                        && map.get("url").contains("neomechanical.com/billing")
+        ));
+    }
+
+    @Test
+    void statusSubcommandReportsExpiredTrial() throws Exception {
+        when(apiSettings.apiKey()).thenReturn("nmt_trial_key_999");
+        when(trialClient.fetchTrialStatus(apiSettings)).thenReturn(
+                new TrialClient.TrialStatusResult(
+                        true,
+                        "expired",
+                        "2026-10-01T00:00:00Z",
+                        0,
+                        "https://neomechanical.com/billing?src=neomoderation_trial_expired"
+                )
+        );
+
+        TrialCmd cmd = new TrialCmd(plugin, trialClient);
+        cmd.execute(sender, "nmod", new String[]{"trial", "status"});
+
+        verify(messages).send(eq(sender), eq("trial.status-expired"), argThat(map ->
+                "2026-10-01T00:00:00Z".equals(map.get("expires"))
+                        && map.get("url").contains("neomechanical.com/billing")
+        ));
+    }
+
+    @Test
+    void statusSubcommandPromptsForTrialWhenNoKeyConfigured() {
+        when(apiSettings.apiKey()).thenReturn("");
+
+        TrialCmd cmd = new TrialCmd(plugin, trialClient);
+        cmd.execute(sender, "nmod", new String[]{"trial", "status"});
+
+        verify(messages).send(eq(sender), eq("trial.status-no-key"), argThat(map ->
+                map.containsKey("url") && map.get("url").contains("neomechanical.com/signup")
+        ));
+        verifyNoInteractions(trialClient);
+    }
 }

@@ -1,5 +1,6 @@
 name: NeoModeration
 version: '${project.version}'
+description: Chat, anti-spam, and map-art moderation for Minecraft.
 main: com.neomechanical.neomoderation.NeoModerationPlugin
 load: POSTWORLD
 authors:
@@ -11,7 +12,7 @@ softdepend: [ LuckPerms ]
 commands:
   neomod:
     description: Manage NeoModeration.
-    usage: /nmod setup <apiKey>
+    usage: /nmod help
     aliases: [ neomoderation, nmod ]
 permissions:
   neomoderation.admin:

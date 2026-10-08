@@ -94,10 +94,18 @@ moderation:
       - "2no.co"
       - "yip.su"
       - "blasze.com"
+      - "curiouscat.club"
+      - "ps3cfw.com"
       - "discord.gg/free"
       - "discord-nitro"
       - "discordnitro"
       - "discord.gift"
+      - "free-nitro"
+      - "hypixel-giveaway"
+      - "minecon-cape"
+      - "minecon-capes"
+      - "optifine-cape"
+      - "steamcommunity.link"
     # Exceptions that always win over the rules above (manage with /nmod allow).
     # allowedWords are whole phrases: a banned word inside an allowed phrase is
     # ignored. allowedUrls are substring matches, exactly like bannedUrls, and
@@ -106,8 +114,10 @@ moderation:
     allowedUrls: []
 
   # ---- Cloud moderation (requires a NeoMechanical API key) -----------------
-  # Sign up at https://neomechanical.com/signup?src=neomoderation, create a key
-  # with events:write + usage:read, then run:  /nmod setup <apiKey>
+  # Run "/nmod trial" in-game or from console to activate a free 14-day cloud
+  # evaluation with zero browser steps. Or sign up at
+  # https://neomechanical.com/signup?src=neomoderation, create a key with
+  # events:write + usage:read, then run:  /nmod setup <apiKey>
   # Verify authentication and credits with /nmod doctor. If credits reach zero,
   # recover at https://neomechanical.com/billing?src=neomoderation_credits.
   api:

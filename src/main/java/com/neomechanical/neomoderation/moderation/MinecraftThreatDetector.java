@@ -1,6 +1,5 @@
 package com.neomechanical.neomoderation.moderation;
 
-import java.util.List;
 import java.util.regex.Pattern;
 
 /**
@@ -34,34 +33,10 @@ public final class MinecraftThreatDetector {
     );
 
     /**
-     * Matches common dot obfuscation attempts (e.g. "dot", "(dot)", "[dot]").
+     * Matches common dot obfuscation attempts (e.g. "dot", "(dot)", "[dot]", "[.]", "(.)").
      */
     private static final Pattern DOT_OBFUSCATION_PATTERN = Pattern.compile(
-            "(?i)\\s*(?:[\\[\\(]\\s*dot\\s*[\\]\\)]|\\bdot\\b)\\s*"
-    );
-
-    /**
-     * High-confidence known Minecraft threat signatures including IP loggers,
-     * token grabbers, and Nitro / Cape / rank phishing domains.
-     */
-    public static final List<String> KNOWN_THREAT_SIGNATURES = List.of(
-            "grabify.link",
-            "iplogger.org",
-            "2no.co",
-            "yip.su",
-            "blasze.com",
-            "curiouscat.club",
-            "ps3cfw.com",
-            "discord.gg/free",
-            "discord-nitro",
-            "discordnitro",
-            "discord.gift",
-            "free-nitro",
-            "hypixel-giveaway",
-            "minecon-cape",
-            "minecon-capes",
-            "optifine-cape",
-            "steamcommunity.link"
+            "(?i)\\s*(?:[\\[\\(\\{]\\s*(?:dot|\\.)\\s*[\\]\\)\\}]|\\bdot\\b)\\s*"
     );
 
     private MinecraftThreatDetector() {

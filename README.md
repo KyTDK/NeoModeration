@@ -82,26 +82,24 @@ Mute durations: `30s`, `5m`, `1h`, `1d` (or bare seconds).
 
 | Command | What it does |
 |---------|----------------|
-| `/nmod setup <apiKey>` | Save a cloud key; verify it with `/nmod doctor` |
-| `/nmod mode [monitor\|enforce]` | Show or switch enforcement mode |
-| `/nmod test <message>` | Preview how a message would be moderated |
-| `/nmod doctor` | Diagnose configuration, account API, and known event health |
+| `/nmod trial [status]` | Start a 14-day cloud evaluation trial or check its status |
+| `/nmod setup <apiKey>` | Save a cloud API key; verify it with `/nmod doctor` |
+| `/nmod status` | Show current local and cloud protection status |
+| `/nmod mode [monitor\|enforce]` | Show or switch local enforcement mode |
+| `/nmod cloudmode [monitor\|enforce]` | Show or switch cloud enforcement mode |
+| `/nmod test <message>` | Preview how a message would be moderated (never acts) |
+| `/nmod doctor` | Diagnose configuration, account API, and event health |
 | `/nmod cases [player]` / `/nmod case <id>` | Browse the local detection history |
-| `/nmod preset <family\|community\|minimal>` | Tune cloud category thresholds; actions and local rules stay unchanged |
+| `/nmod preset <family\|community\|minimal>` | Tune cloud category thresholds |
+| `/nmod word add\|remove\|list [value]` | Manage blocked words |
+| `/nmod url add\|remove\|list [value]` | Manage blocked links |
 | `/nmod allow word\|url add\|remove\|list` | Manage exceptions (always win) |
-| `/nmod privacy` | Show what data stays local vs. cloud |
-| `/nmod on` / `/nmod off` | Enable or disable |
-| `/nmod key set <apiKey>` | Save a new key; verify it with `/nmod doctor` |
-| `/nmod key clear` | Remove the key (local rules stay) |
-| `/nmod action list` | Show actions on detect |
-| `/nmod action add <clear\|mute\|kick\|ban> [time]` | Add an action |
-| `/nmod action remove <clear\|mute\|kick\|ban>` | Remove an action |
-| `/nmod action reset` | Remove extra actions (block only); strikes are separate |
-| `/nmod word add\|remove\|list` | Manage blocked words |
-| `/nmod url add\|remove\|list` | Manage blocked links |
+| `/nmod action <list\|add\|remove\|reset>` | Configure extra actions (`clear`, `mute`, `kick`, `ban`) |
 | `/nmod usage` | Show cloud credits, limits, and requests |
-| `/nmod status` | Quick status |
-| `/nmod reload` | Reload config |
+| `/nmod privacy` | Show what data stays local vs. cloud |
+| `/nmod key <set\|clear> [apiKey]` | Replace or remove the saved API key |
+| `/nmod on` / `/nmod off` | Enable or disable moderation |
+| `/nmod reload` | Reload config from disk |
 
 Aliases: `/neomod`, `/nmod`, `/neomoderation`.
 

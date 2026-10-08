@@ -2,6 +2,7 @@ package com.neomechanical.neomoderation.moderation;
 
 import com.neomechanical.neomoderation.config.ModerationCategorySettings;
 
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -13,21 +14,25 @@ public final class ChatModerationResponseParser {
     }
 
     public static boolean matchesPositiveSignal(String responseBody, ModerationCategorySettings categorySettings) {
+        return matchedCategory(responseBody, categorySettings).isPresent();
+    }
+
+    public static Optional<String> matchedCategory(String responseBody, ModerationCategorySettings categorySettings) {
         if (responseBody == null || responseBody.isEmpty()) {
-            return false;
-        }
-        if (FLAGGED_TRUE.matcher(responseBody).find() || DECISION_BLOCKED.matcher(responseBody).find()) {
-            return true;
+            return Optional.empty();
         }
         for (String category : categorySettings.thresholds().keySet()) {
             if (categorySettings.isEnabled(category)
                     && (categoryTrue(category, responseBody)
                             || categoryScoreAtThreshold(category,
                                     categorySettings.threshold(category), responseBody))) {
-                return true;
+                return Optional.of(category);
             }
         }
-        return false;
+        if (FLAGGED_TRUE.matcher(responseBody).find() || DECISION_BLOCKED.matcher(responseBody).find()) {
+            return Optional.of("");
+        }
+        return Optional.empty();
     }
 
     private static boolean categoryTrue(String category, String responseBody) {
