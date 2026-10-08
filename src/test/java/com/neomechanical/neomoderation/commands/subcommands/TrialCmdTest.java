@@ -47,11 +47,15 @@ class TrialCmdTest {
         trialClient = mock(TrialClient.class);
 
         when(plugin.messages()).thenReturn(messages);
+        when(plugin.tryStartTrialActivation()).thenReturn(true);
+        doAnswer(call -> { ((Runnable) call.getArgument(0)).run(); return null; })
+                .when(plugin).runSync(any(Runnable.class));
         when(plugin.settings()).thenReturn(settings);
         when(plugin.scheduler()).thenReturn(scheduler);
         when(plugin.getConfig()).thenReturn(config);
         when(plugin.getDataFolder()).thenReturn(tempDir.toFile());
         when(settings.api()).thenReturn(apiSettings);
+        when(apiSettings.endpoint()).thenReturn("https://api.neomechanical.com/v1/events");
 
         // Run async scheduler callbacks synchronously in tests
         doAnswer(invocation -> {
@@ -85,9 +89,34 @@ class TrialCmdTest {
         verify(plugin).saveAndReload();
         assertEquals(true, config.get("moderation.enabled"));
         assertEquals("nmt_trial_key_999", config.get("moderation.api.apiKey"));
+        assertEquals("monitor", config.get("moderation.cloudMode"));
         verify(messages).send(eq(sender), eq("trial.activated"), argThat(map ->
                 "14".equals(map.get("days")) && "2026-10-15T00:00:00Z".equals(map.get("expires"))
         ));
+    }
+
+    @Test
+    void activationDoesNotOverwriteAKeyConfiguredDuringTheRequest() throws Exception {
+        when(apiSettings.apiKey()).thenReturn("");
+        when(trialClient.activateTrial(any(), any(), any())).thenAnswer(call -> {
+            when(apiSettings.apiKey()).thenReturn("owner-configured-key");
+            config.set("moderation.api.apiKey", "owner-configured-key");
+            return new TrialClient.TrialResult("nmt_trial_key_999", "2026-10-15T00:00:00Z", 14);
+        });
+        new TrialCmd(plugin, trialClient).execute(sender, "nmod", new String[]{"trial"});
+        assertEquals("owner-configured-key", config.get("moderation.api.apiKey"));
+        verify(plugin, never()).saveAndReload();
+        verify(messages).send(sender, "trial.configuration-changed");
+        verify(plugin).finishTrialActivation();
+    }
+
+    @Test
+    void concurrentActivationDoesNotStartAnotherRequest() {
+        when(apiSettings.apiKey()).thenReturn("");
+        when(plugin.tryStartTrialActivation()).thenReturn(false);
+        new TrialCmd(plugin, trialClient).execute(sender, "nmod", new String[]{"trial"});
+        verifyNoInteractions(trialClient);
+        verify(messages).send(sender, "trial.pending");
     }
 
     @Test

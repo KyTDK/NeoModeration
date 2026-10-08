@@ -10,6 +10,14 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OfflineModerationEngineTest {
+    @Test
+    void largeBookWhitespaceAndRepeatedTokensHaveABoundedCost() {
+        OfflineModerationSettings s = settings(false, List.of("fuck"), List.of("grabify.link"), List.of(), List.of());
+        org.junit.jupiter.api.Assertions.assertTimeout(java.time.Duration.ofSeconds(1), () ->
+                assertFalse(OfflineModerationEngine.evaluate(" ".repeat(32768) + "hello", s).flagged()));
+        org.junit.jupiter.api.Assertions.assertTimeout(java.time.Duration.ofSeconds(1), () ->
+                assertFalse(OfflineModerationEngine.evaluate("f ".repeat(32768) + "u cky", s).flagged()));
+    }
     private static OfflineModerationSettings settings(
             boolean blockAnyUrl,
             List<String> bannedWords,

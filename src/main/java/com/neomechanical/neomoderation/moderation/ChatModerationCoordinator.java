@@ -5,8 +5,10 @@ import org.bukkit.entity.Player;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -28,7 +30,8 @@ public final class ChatModerationCoordinator implements AutoCloseable {
     ChatModerationCoordinator(ModerationCircuitBreaker circuit, ModerationApiClient apiClient) {
         this.circuit = circuit;
         this.apiClient = apiClient;
-        this.workers = Executors.newFixedThreadPool(POOL_SIZE, task -> {
+        this.workers = new ThreadPoolExecutor(POOL_SIZE, POOL_SIZE, 0L, TimeUnit.MILLISECONDS,
+                new SynchronousQueue<>(), task -> {
             Thread thread = new Thread(task, "NeoModeration-worker-" + workerSeq.incrementAndGet());
             thread.setDaemon(true);
             return thread;
@@ -64,49 +67,46 @@ public final class ChatModerationCoordinator implements AutoCloseable {
         workers.shutdownNow();
     }
 
-    public boolean isMessageFlagged(Player player, String message, ModerationSettings settings) {
-        return checkMessage(player, message, settings).isPresent();
-    }
-
-    public java.util.Optional<String> checkMessage(Player player, String message, ModerationSettings settings) {
+    public ModerationApiResult checkMessage(Player player, String message, ModerationSettings settings) {
         if (!circuit.isRemoteCallAllowed()) {
-            return settings.failOpen() ? java.util.Optional.empty() : java.util.Optional.of("platform");
+            return ModerationApiResult.transientTransport();
         }
 
         long waitMs = Math.min(
                 MAX_WAIT_MS,
                 (long) settings.api().connectTimeoutMs() + settings.api().readTimeoutMs() + 400L
         );
-        Future<ModerationApiResult> future = workers.submit(() -> apiClient.moderateText(
+        Future<ModerationApiResult> future;
+        try {
+            future = workers.submit(() -> apiClient.moderateText(
                 player.getName(),
                 player.getUniqueId().toString(),
                 message,
                 settings.api(),
                 settings.categories()
-        ));
+            ));
+        } catch (RejectedExecutionException error) {
+            ModerationApiResult result = ModerationApiResult.overloaded();
+            circuit.record(result);
+            return result;
+        }
 
         try {
             ModerationApiResult result = future.get(Math.max(1L, waitMs), TimeUnit.MILLISECONDS);
             circuit.record(result);
-            if (result.isFlagged()) {
-                return java.util.Optional.of(result.reason());
-            }
-            if (result.kind() != ModerationApiResult.Kind.CLEAR && !settings.failOpen()) {
-                return java.util.Optional.of("platform");
-            }
-            return java.util.Optional.empty();
+            return result;
         } catch (TimeoutException e) {
             future.cancel(true);
             circuit.record(ModerationApiResult.transientTransport());
-            return settings.failOpen() ? java.util.Optional.empty() : java.util.Optional.of("platform");
+            return ModerationApiResult.transientTransport();
         } catch (InterruptedException e) {
             future.cancel(true);
             Thread.currentThread().interrupt();
             circuit.record(ModerationApiResult.transientTransport());
-            return settings.failOpen() ? java.util.Optional.empty() : java.util.Optional.of("platform");
+            return ModerationApiResult.transientTransport();
         } catch (ExecutionException e) {
             circuit.record(ModerationApiResult.transientTransport());
-            return settings.failOpen() ? java.util.Optional.empty() : java.util.Optional.of("platform");
+            return ModerationApiResult.transientTransport();
         }
     }
 }

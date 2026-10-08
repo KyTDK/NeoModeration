@@ -94,6 +94,7 @@ public final class InstallTelemetry {
             case "CLIENT_AUTH" -> "key_rejected";
             case "INSUFFICIENT_CREDITS" -> "no_credits";
             case "CLIENT_REQUEST" -> "bad_request";
+            case "OVERLOADED" -> "busy";
             case "TRANSIENT_TRANSPORT" -> circuitOpen ? "key_failing" : "transport_flaky";
             default -> "key_untested";
         };

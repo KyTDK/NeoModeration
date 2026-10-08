@@ -9,6 +9,7 @@ public record ModerationApiResult(Kind kind, String category) {
         FLAGGED,
         CLEAR,
         TRANSIENT_TRANSPORT,
+        OVERLOADED,
         CLIENT_AUTH,
         INSUFFICIENT_CREDITS,
         CLIENT_REQUEST
@@ -36,6 +37,10 @@ public record ModerationApiResult(Kind kind, String category) {
 
     public static ModerationApiResult clear() {
         return new ModerationApiResult(Kind.CLEAR);
+    }
+
+    public static ModerationApiResult overloaded() {
+        return new ModerationApiResult(Kind.OVERLOADED);
     }
 
     public static ModerationApiResult transientTransport() {

@@ -20,14 +20,23 @@ import org.bukkit.inventory.meta.MapMeta;
 import org.bukkit.map.MapView;
 
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Collections;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
+import com.neomechanical.neomoderation.config.ModerationApiSettings;
+import com.neomechanical.neomoderation.config.ModerationCategorySettings;
 
 /**
  * Scans filled maps (map art) for NSFW content when players hold them or interact with
- * them in item frames. Results are cached per map id so a given map is only scanned once.
+ * them in item frames. Verdicts are cached by saved image content and cloud settings;
+ * editing a previously scanned map requires a new verdict.
  * Uses reflection so the plugin still compiles against older Bukkit APIs while running on
  * modern Paper.
  */
@@ -35,8 +44,10 @@ public final class MapArtListener implements Listener {
     private static final String BYPASS_PERMISSION = "neomoderation.bypass";
 
     private final NeoModerationPlugin plugin;
-    private final Set<Integer> scannedMaps;
-    private final Set<Integer> flaggedMaps;
+    private final Set<CacheKey> scannedMaps;
+    private final Set<CacheKey> flaggedMaps;
+    private final Set<Integer> pendingMaps = ConcurrentHashMap.newKeySet();
+    private final Semaphore scanSlots = new Semaphore(2);
     private final Material filledMapMaterial = resolveFilledMapMaterial();
 
     public MapArtListener(NeoModerationPlugin plugin) {
@@ -97,45 +108,75 @@ public final class MapArtListener implements Listener {
         if (mapId == null) {
             return;
         }
-        if (flaggedMaps.contains(mapId)) {
-            handleFlaggedMap(player, mapItem, mapId, "mapart.blocked");
+        if (!scanSlots.tryAcquire()) {
             return;
         }
-        if (!plugin.coordinator().isRemoteCallAllowed()) {
+        if (!pendingMaps.add(mapId)) {
+            scanSlots.release();
             return;
         }
-        if (!scannedMaps.add(mapId)) {
-            return;
-        }
-
+        ModerationSettings settings = plugin.settings();
+        String playerName = player.getName();
+        String playerUuid = player.getUniqueId().toString();
         plugin.runAsync(() -> {
+            try {
                 String base64Image = MapArtScanner.getBase64Image(mapId);
                 if (base64Image == null) {
-                    scannedMaps.remove(mapId);
+                    return;
+                }
+                CacheKey key = new CacheKey(imageHash(base64Image), settings.api(), settings.categories());
+                if (flaggedMaps.contains(key)) {
+                    plugin.runForEntity(player, () -> applyFlaggedMap(player, mapItem, mapId, settings, "mapart.blocked"));
+                    return;
+                }
+                if (scannedMaps.contains(key) || !plugin.coordinator().isRemoteCallAllowed()) {
                     return;
                 }
                 ModerationApiResult result = plugin.apiClient().moderateImage(
-                        player.getName(),
-                        player.getUniqueId().toString(),
+                        playerName,
+                        playerUuid,
                         base64Image,
-                        plugin.settings().api(),
-                        plugin.settings().categories()
+                        settings.api(),
+                        settings.categories()
                 );
                 plugin.coordinator().recordApiResult(result);
                 if (!isCacheableResult(result)) {
-                    scannedMaps.remove(mapId);
                     return;
                 }
+                scannedMaps.add(key);
                 if (!result.isFlagged()) {
                     return;
                 }
                 // Folia: confiscation edits this player's inventory, so it must run
                 // on that player's entity scheduler rather than any global thread.
-                plugin.runForEntity(player, () -> {
-                    flaggedMaps.add(mapId);
-                    handleFlaggedMap(player, mapItem, mapId, "mapart.confiscated");
-                });
+                flaggedMaps.add(key);
+                plugin.runForEntity(player, () -> applyFlaggedMap(player, mapItem, mapId, settings, "mapart.confiscated"));
+            } finally {
+                pendingMaps.remove(mapId);
+                scanSlots.release();
+            }
         });
+    }
+
+    private void applyFlaggedMap(Player player, ItemStack mapItem, int mapId,
+                                 ModerationSettings scannedSettings, String messageKey) {
+        ModerationSettings current = plugin.settings();
+        if (current.enabled() && current.mapArt().enabled() && !shouldBypass(player)
+                && current.api().equals(scannedSettings.api())
+                && current.categories().equals(scannedSettings.categories())) {
+            handleFlaggedMap(player, mapItem, mapId, messageKey);
+        }
+    }
+
+    private record CacheKey(String imageHash, ModerationApiSettings api, ModerationCategorySettings categories) { }
+
+    private static String imageHash(String image) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(image.getBytes(StandardCharsets.US_ASCII)));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 unavailable", e);
+        }
     }
 
     /** Main thread only. Monitor mode alerts staff instead of messaging/confiscating. */
@@ -185,11 +226,11 @@ public final class MapArtListener implements Listener {
     }
 
     /** A thread-safe, insertion-ordered set that evicts its oldest entry past {@code maxSize}. */
-    private static Set<Integer> boundedSet(int maxSize) {
+    private static <T> Set<T> boundedSet(int maxSize) {
         return Collections.synchronizedSet(Collections.newSetFromMap(
                 new LinkedHashMap<>(16, 0.75f, false) {
                     @Override
-                    protected boolean removeEldestEntry(Map.Entry<Integer, Boolean> eldest) {
+                    protected boolean removeEldestEntry(Map.Entry<T, Boolean> eldest) {
                         return size() > maxSize;
                     }
                 }));

@@ -61,6 +61,8 @@ setup:
   usage: "{prefix} &cUsage: &e/{label} setup <apiKey>&7. Or run &e/{label} trial &7for a 14-day cloud trial (&f{url}&7)."
   done: "{prefix} &aAPI key saved. &7Run &e/nmod doctor &7to verify authentication and credits, then &e/nmod test hello&7. Tests never execute actions."
 trial:
+  pending: "{prefix} &eA cloud trial request is already running. Wait for its result."
+  configuration-changed: "{prefix} &eCloud configuration changed during activation. Your current settings were kept; run /nmod trial status."
   already-configured: "{prefix} &cThis server already has an API key configured. &7Run &e/nmod trial status &7or &e/nmod doctor &7to check it."
   requesting: "{prefix} &7Connecting to NeoMechanical to activate your 14-day cloud trial..."
   activated: "{prefix} &a14-day cloud trial activated (expires &f{expires}&a). Cloud chat and map-art checks start in monitor mode. Claim this workspace at &f{url}&a or run &e/nmod doctor &ato verify."
@@ -155,6 +157,7 @@ cloudmode:
   set-monitor: "{prefix} &eCloud monitor mode on. &7Cloud decisions are alerted only; your local rules are unaffected."
   set-enforce: "{prefix} &aCloud enforce mode on. &7Cloud decisions now block and use your configured extra actions."
 test:
+  would-block-unavailable: "{prefix} &eResult: blocked while cloud is unavailable; no strikes or player punishments."
   usage: "{prefix} &cUsage: &e/{label} test <message>&7. First check: &e/{label} test badword&7. Preview never blocks or punishes."
   title: "{prefix} &7Testing: &f{message}"
   scope: "{prefix} &8Word/URL and cloud-text preview only: rate, repeats, caps, character runs, commands, and maps need live events."
@@ -208,3 +211,6 @@ preset:
   list-title: "&8&m----------&r &x&0&0&F&F&A&A&lPolicy Presets &8&m----------"
   list-item: "&b{name} &8- &7{summary}"
   applied: "{prefix} &aApplied cloud preset &f{name}&a. &7Categories on: &b{categories}&7. Actions unchanged: &f{actions}&7. Local rules and modes unchanged; cloud checks require an API key."
+
+chat:
+  cloud-unavailable: "{prefix} &eCloud moderation is unavailable. Please try again shortly; this is not a player violation."

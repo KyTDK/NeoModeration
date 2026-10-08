@@ -6,7 +6,7 @@ Chat **and map-art** moderation for Minecraft. A starter English word list, conf
 
 ## Setup
 
-1. Drop `NeoModeration-1.6.4.jar` into `plugins/` and restart.
+1. Drop `NeoModeration-1.6.5.jar` into `plugins/` and restart.
 2. Run `/nmod test badword`. It should show the bundled local rule as **FLAGGED** and the result as **blocked**. This is a dry run: the preview itself never blocks or punishes anyone. Review the starter English word list in `config.yml`; it is a starting policy, not complete coverage. This command previews content rules; rate and repetition checks need live messages.
 3. Optional: for context-aware cloud moderation, start an instant 14-day evaluation trial:
 
@@ -119,8 +119,9 @@ reflectively.
 ## Map-art scanning
 
 With a cloud key, filled maps are scanned for NSFW imagery when a player holds one or
-right-clicks an item frame. Results are cached per map, and flagged maps are removed by
-default (in monitor mode, staff are alerted instead). Tune it under `moderation.mapArt`
+right-clicks an item frame. Verdicts are cached by saved image content and cloud settings;
+changed artwork is checked again after its map data is saved. Flagged maps in the
+player inventory are removed by default (in monitor mode, staff are alerted instead). Tune it under `moderation.mapArt`
 in `config.yml`:
 
 ```yaml
@@ -141,10 +142,11 @@ moderation:
 
 ## Notes
 
-- Without a key, local word/link and anti-spam rules run — no chat or map content leaves your server. Content-free bStats technical metrics are documented in [docs/PRIVACY.md](docs/PRIVACY.md).
+- Without a key, local word/link and anti-spam rules run — no chat or map content leaves your server. bStats reports technical metrics and aggregate configuration/detection buckets (including cloud state); it sends no chat, player names or API keys. Disable reporting in `plugins/bStats/config.yml`.
 - With a key, checked chat is sent to `https://api.neomechanical.com/v1/events` with `no_store` retention and training disabled. Details: [docs/PRIVACY.md](docs/PRIVACY.md).
 - Mute is built into NeoModeration (no Essentials required).
-- If the cloud is down, chat keeps working (fail-open) and local rules still run.
+- Cloud failures and busy workers follow `moderation.chat.failOpen` (true by default). In cloud enforce mode, fail-closed blocks that message without strikes, mutes or other player punishments. Cloud monitor mode allows it; local rules still run.
+- Cloud chat uses two workers with no waiting queue. Saturation is reported as busy and follows the same failure policy. Map scans allow two concurrent tasks and deduplicate pending map IDs.
 - Servers upgrading from 1.2.x keep enforcing exactly as before; local rules now enforce by default on brand-new installs, while cloud judgements stay in monitor until `/nmod cloudmode enforce`.
 - Edit `plugins/NeoModeration/config.yml` for advanced options.
 

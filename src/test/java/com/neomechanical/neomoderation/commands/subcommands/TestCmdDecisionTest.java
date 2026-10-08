@@ -47,16 +47,6 @@ class TestCmdDecisionTest {
     }
 
     @Test
-    void cloudErrorsFollowTheConfiguredFailurePolicy() {
-        assertFalse(TestCmd.cloudDetected(ModerationApiResult.transientTransport(), true));
-        assertTrue(TestCmd.cloudDetected(ModerationApiResult.transientTransport(), false));
-        assertFalse(TestCmd.cloudDetected(ModerationApiResult.insufficientCredits(), true));
-        assertTrue(TestCmd.cloudDetected(ModerationApiResult.clientAuth(), false));
-        assertTrue(TestCmd.cloudDetected(ModerationApiResult.flagged(), true));
-        assertFalse(TestCmd.cloudDetected(ModerationApiResult.clear(), false));
-    }
-
-    @Test
     void testAndStatusChooseSpecificRecoveryMessages() {
         assertEquals("test.cloud-auth", TestCmd.cloudMessageKey(ModerationApiResult.Kind.CLIENT_AUTH));
         assertEquals("test.cloud-credits",

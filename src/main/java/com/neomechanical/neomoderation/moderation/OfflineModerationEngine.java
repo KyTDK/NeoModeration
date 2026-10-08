@@ -184,6 +184,7 @@ public final class OfflineModerationEngine {
                 continue;
             }
             int position = start;
+            int firstRunEnd = start + 1;
             boolean matched = true;
             for (int run = 0; run < runChars.length; run++) {
                 if (position >= length || chars[position] != runChars[run]) {
@@ -199,6 +200,9 @@ public final class OfflineModerationEngine {
                     }
                     runLength++;
                 }
+                if (run == 0) {
+                    firstRunEnd = position + runLength;
+                }
                 if (runLength < runLengths[run]) {
                     matched = false;
                     break;
@@ -208,6 +212,9 @@ public final class OfflineModerationEngine {
             if (matched && position > start && tokenEnd[position - 1]) {
                 return new int[]{start, position};
             }
+            // Later starts in this same first run have the identical suffix.
+            // Retrying each separator-marked start would rescan it quadratically.
+            start = Math.max(start, firstRunEnd - 1);
         }
         return null;
     }
