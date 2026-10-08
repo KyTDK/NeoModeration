@@ -111,8 +111,12 @@ public class DoctorCmd implements SubCommand {
                 ? settings.strikes().escalation().size() + " rung(s), decay "
                         + settings.strikes().decayMinutes() + "m"
                 : "off");
-        pass(sender, "Surfaces", settings.surfaces().enabledCount()
-                + " of 4 active (local rules only; cloud never blocks sync events)");
+        if (settings.surfaces().enabledCount() == 0 && coverage.localRules()) {
+            pass(sender, "Surfaces", "0 of 4 active (chat only - set moderation.surfaces.sign/book/anvil/command: block in config.yml to scan beyond chat)");
+        } else {
+            pass(sender, "Surfaces", settings.surfaces().enabledCount()
+                    + " of 4 active (local rules only; cloud never blocks sync events)");
+        }
         if (settings.cases().enabled() && !plugin.caseLog().isAvailable()) {
             warn(sender, "Case history", "enabled but SQLite driver missing - not logging");
         } else {

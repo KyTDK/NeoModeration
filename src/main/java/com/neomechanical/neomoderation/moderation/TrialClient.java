@@ -33,6 +33,7 @@ public final class TrialClient {
     private static final Pattern DAYS_PATTERN = Pattern.compile("\"daysRemaining\"\\s*:\\s*(\\d+)");
     private static final Pattern IS_TRIAL_PATTERN = Pattern.compile("\"isTrial\"\\s*:\\s*(true|false)", Pattern.CASE_INSENSITIVE);
     private static final Pattern STATUS_PATTERN = Pattern.compile("\"status\"\\s*:\\s*\"([^\"]+)\"");
+    private static final Pattern CLAIM_URL_PATTERN = Pattern.compile("\"claimUrl\"\\s*:\\s*\"([^\"]+)\"");
     private static final Pattern UPGRADE_URL_PATTERN = Pattern.compile("\"upgradeUrl\"\\s*:\\s*\"([^\"]+)\"");
 
     public static String computeHmac(String installId, long timestampSeconds) {
@@ -159,7 +160,10 @@ public final class TrialClient {
         Matcher daysMatcher = DAYS_PATTERN.matcher(responseBody);
         int days = daysMatcher.find() ? Integer.parseInt(daysMatcher.group(1)) : 14;
 
-        return new TrialResult(apiKey, expiresAt, days);
+        Matcher claimMatcher = CLAIM_URL_PATTERN.matcher(responseBody);
+        String claimUrl = claimMatcher.find() ? claimMatcher.group(1) : CloudRecovery.SIGNUP_URL;
+
+        return new TrialResult(apiKey, expiresAt, days, claimUrl);
     }
 
     static TrialStatusResult parseStatusSuccess(String responseBody) throws TrialException {
@@ -179,7 +183,9 @@ public final class TrialClient {
         int days = daysMatcher.find() ? Integer.parseInt(daysMatcher.group(1)) : 0;
 
         Matcher urlMatcher = UPGRADE_URL_PATTERN.matcher(responseBody);
-        String upgradeUrl = urlMatcher.find() ? urlMatcher.group(1) : CloudRecovery.BILLING_URL;
+        Matcher claimMatcher = CLAIM_URL_PATTERN.matcher(responseBody);
+        String upgradeUrl = urlMatcher.find() ? urlMatcher.group(1)
+                : (claimMatcher.find() ? claimMatcher.group(1) : CloudRecovery.BILLING_URL);
 
         return new TrialStatusResult(isTrial, status, expiresAt, days, upgradeUrl);
     }
@@ -212,7 +218,10 @@ public final class TrialClient {
         }
     }
 
-    public record TrialResult(String apiKey, String expiresAt, int daysRemaining) {
+    public record TrialResult(String apiKey, String expiresAt, int daysRemaining, String claimUrl) {
+        public TrialResult(String apiKey, String expiresAt, int daysRemaining) {
+            this(apiKey, expiresAt, daysRemaining, CloudRecovery.SIGNUP_URL);
+        }
     }
 
     public record TrialStatusResult(

@@ -36,6 +36,9 @@ public final class MessageService {
                     Map.entry("trial.already-configured", List.of(
                             "{prefix} &cThis server already has an active API key configured."
                     )),
+                    Map.entry("trial.activated", List.of(
+                            "{prefix} &a14-day cloud trial activated (expires &f{expires}&a). Cloud chat and map-art checks start in monitor mode. Run &e/nmod doctor &ato verify."
+                    )),
                     Map.entry("key.saved", List.of("{prefix} &aAPI key saved successfully.")),
                     Map.entry("status.cloud-no-key", List.of(
                             "&7Cloud setup: &eno key&7. Free evaluation unlocks AI evasion & map-art NSFW scanning at &f{url}&7, then run &e/nmod setup <key>&7."
@@ -67,6 +70,9 @@ public final class MessageService {
                     )),
                     Map.entry("trial.already-configured", List.of(
                             "{prefix} &cEste servidor ya tiene una clave API activa configurada."
+                    )),
+                    Map.entry("trial.activated", List.of(
+                            "{prefix} &aPrueba de 14 días activada (caduca &f{expires}&a). La nube empieza en modo monitor. Ejecuta &e/nmod doctor &apara verificar."
                     )),
                     Map.entry("key.saved", List.of("{prefix} &aClave API guardada.")),
                     Map.entry("status.cloud-no-key", List.of(

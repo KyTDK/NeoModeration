@@ -62,7 +62,7 @@ setup:
 trial:
   already-configured: "{prefix} &cEste servidor ya tiene una clave API configurada. &7Ejecuta &e/nmod trial status &7o &e/nmod doctor &7para verificarla."
   requesting: "{prefix} &7Conectando con NeoMechanical para activar tu prueba de 14 días..."
-  activated: "{prefix} &aPrueba de 14 días activada (caduca &f{expires}&a). La nube empieza en modo monitor. Ejecuta &e/nmod doctor &apara verificar."
+  activated: "{prefix} &aPrueba de 14 días activada (caduca &f{expires}&a). La nube empieza en modo monitor. Reclama tu espacio en &f{url}&a o ejecuta &e/nmod doctor &apara verificar."
   already-claimed: "{prefix} &cEsta instalación ya usó su prueba de 14 días. Obtén una clave API en &f{url}"
   rate-limited: "{prefix} &cLímite de solicitudes de prueba alcanzado. Inténtalo más tarde o regístrate en &fhttps://neomechanical.com/signup?src=neomoderation"
   failed: "{prefix} &cNo se pudo activar la prueba: &e{error}"

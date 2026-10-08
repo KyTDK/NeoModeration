@@ -51,9 +51,9 @@ public class TrialCmd implements SubCommand {
     }
 
     @Override
-    public List<String> tabComplete(CommandSender sender, String[] args) {
+    public List<String> onTabComplete(CommandSender sender, String[] args) {
         if (args.length == 2) {
-            return List.of("status");
+            return SubCommand.filterPrefix(args[1], "status");
         }
         return List.of();
     }
@@ -89,7 +89,8 @@ public class TrialCmd implements SubCommand {
 
                 plugin.messages().send(sender, "trial.activated", Map.of(
                         "expires", result.expiresAt(),
-                        "days", String.valueOf(result.daysRemaining())
+                        "days", String.valueOf(result.daysRemaining()),
+                        "url", result.claimUrl()
                 ));
             } catch (TrialClient.TrialException e) {
                 switch (e.error()) {
